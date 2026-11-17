@@ -61,6 +61,7 @@ import type {
   GraphQLSchema,
 } from "graphql";
 import { SDL } from "../generated/graphql/schema.ts";
+import { mirroredRoute } from "./lib/graphql-mirrors.ts";
 
 // Live GraphQL payloads, read for reporting. Same `Row` precedent as
 // scripts/check-mcp-conformance.ts: an unexpected shape is what this exists to
@@ -218,14 +219,6 @@ function selectionFor(type: GraphQLNamedType, depth: number): string {
   }
   const selected = [...leaves, ...branches];
   return selected.length > 0 ? `{ ${selected.join(" ")} }` : "";
-}
-
-/** `Mirrors GET /api/v1/…` out of a field's own description. */
-export function mirroredRoute(
-  description: string | null | undefined,
-): string | null {
-  const match = /Mirrors GET (\/api\/v1\/[^\s.]+)/.exec(description ?? "");
-  return match ? match[1] : null;
 }
 
 function argumentLiteral(value: unknown): string {

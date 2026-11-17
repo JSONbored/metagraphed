@@ -37,6 +37,7 @@ import {
 } from "../schemas-src/graphql/published-names.ts";
 import { extractSdl } from "./validate-graphql-component-parity.ts";
 import { dataComponent } from "./openapi-document.ts";
+import { mirroredRoute } from "./lib/graphql-mirrors.ts";
 
 const SDL_PATH = "generated/graphql/schema.ts";
 
@@ -244,12 +245,10 @@ const generatedName = (type: unknown): string | null => {
 
 // ── the SDL's own Query bindings ─────────────────────────────────────────────
 const sdlBindings = (sdlTypes.get("Query")?.fields ?? []).map((field) => {
-  const mirrors = /Mirrors GET (\/api\/v1\/[^\s.]+)/.exec(
-    field.description?.value ?? "",
-  );
+  const mirrors = mirroredRoute(field.description?.value);
   return {
     field: field.name.value,
-    route: mirrors ? mirrors[1].replace(/\.$/, "") : null,
+    route: mirrors,
     /** The bare name, for the component pairing below. */
     returnsName: namedType(field.type),
     /** The full spelling, nullability included -- what the registry declares. */

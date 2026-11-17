@@ -9,11 +9,11 @@ import { describe, test } from "vitest";
 import { buildSchema, parse } from "graphql";
 import { SDL } from "../generated/graphql/schema.ts";
 import {
-  mirroredRoute,
   numericDivergences,
   planAll,
   planFor,
 } from "../scripts/check-graphql-conformance.ts";
+import { mirroredRoute } from "../scripts/lib/graphql-mirrors.ts";
 
 const schema = buildSchema(SDL);
 const queryFields = schema.getQueryType()!.getFields();
