@@ -54,17 +54,43 @@ export function d1RetirementFindings(name: string, raw: string): string[] {
   return findings;
 }
 
-export function main(): number {
+/** Read one deployed wrangler config, absent configs reading as retired. */
+function loadConfig(config: string): string | null {
+  try {
+    return readFileSync(path.join(repoRoot, config), "utf8");
+  } catch {
+    // A config this repo no longer deploys has no D1 left to retire.
+    return null;
+  }
+}
+
+/**
+ * Bare mode is the retirement step's refusal: exit 1 while any deployed store
+ * falls through (metagraphed-infra#887 runs `node
+ * scripts/validate-d1-retirement.ts`). `--pre-cutover` is the era guard CI and
+ * the local gate run until the cutover config lands: exit 0 exactly while the
+ * fallthrough still exists, and exit 1 the moment it does not — so the cutover
+ * diff that drops the D1 bindings must also drop the flag here, flipping this
+ * same program into the always-on proof that nothing reintroduces D1.
+ */
+export function main(preCutover = false, load = loadConfig): number {
   const findings = WORKER_CONFIGS.flatMap((config) => {
-    let raw: string;
-    try {
-      raw = readFileSync(path.join(repoRoot, config), "utf8");
-    } catch {
-      // A config this repo no longer deploys has no D1 left to retire.
-      return [];
-    }
-    return d1RetirementFindings(config, raw);
+    const raw = load(config);
+    return raw === null ? [] : d1RetirementFindings(config, raw);
   });
+  if (preCutover) {
+    if (findings.length) {
+      process.stdout.write(
+        `d1-retirement (pre-cutover): ${findings.length} declared fallthroughs still deployed, as this era expects\n`,
+      );
+      return 0;
+    }
+    process.stderr.write(
+      "d1-retirement (pre-cutover): no deployed store falls through — the cutover landed; drop --pre-cutover " +
+        "from package.json's validate:d1-retirement and flip the era test in tests/d1-retirement.test.ts\n",
+    );
+    return 1;
+  }
   if (findings.length) {
     process.stderr.write(
       `D1 retirement refused — deployed stores still fall through:\n${findings.join("\n")}\n`,
@@ -77,4 +103,4 @@ export function main(): number {
   return 0;
 }
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href)
-  process.exit(main());
+  process.exit(main(process.argv.includes("--pre-cutover")));

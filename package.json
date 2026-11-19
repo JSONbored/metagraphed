@@ -114,7 +114,7 @@
     "validate:module-state-resets": "node scripts/validate-module-state-resets.ts",
     "validate:pg-json-binds": "node scripts/validate-pg-json-binds.ts",
     "validate:retired-store-vocabulary": "node scripts/validate-retired-store-vocabulary.ts",
-    "validate:d1-retirement": "node scripts/validate-d1-retirement.ts",
+    "validate:d1-retirement": "node scripts/validate-d1-retirement.ts --pre-cutover",
     "openapi:generate": "node scripts/generate-openapi.ts --write",
     "openapi:generate:dry-run": "node scripts/generate-openapi.ts",
     "types:generate": "node scripts/generate-types.ts",

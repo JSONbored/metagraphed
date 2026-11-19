@@ -57,6 +57,7 @@ it("refuses today's deployed estate by name — this assertion flips with the cu
   // drops the bindings flips main() to 0 and updates this assertion in the
   // same reviewed diff, which is exactly the evidence the gate wants.
   expect(main()).toBe(1);
+  expect(main(true)).toBe(0);
   const carrying = WORKER_CONFIGS.filter((config) => {
     try {
       return (
@@ -72,4 +73,19 @@ it("refuses today's deployed estate by name — this assertion flips with the cu
   expect(carrying).toContain("wrangler.jsonc");
   expect(carrying).toContain("wrangler.data.jsonc");
   expect(carrying).toContain("wrangler.registry.jsonc");
+});
+
+it("both modes flip together when the estate goes D1-free, and bare mode passes then", () => {
+  const clean = () => JSON.stringify({ vars: {} });
+  const carrying = () =>
+    JSON.stringify({ d1_databases: [{ binding: "D1_STATE" }] });
+  // The era guard fails the moment the fallthrough disappears, forcing the
+  // cutover diff to drop --pre-cutover; the bare refusal inverts with it.
+  expect(main(true, clean)).toBe(1);
+  expect(main(false, clean)).toBe(0);
+  expect(main(true, carrying)).toBe(0);
+  expect(main(false, carrying)).toBe(1);
+  // A config the repo no longer ships reads as retired in both modes.
+  expect(main(false, () => null)).toBe(0);
+  expect(main(true, () => null)).toBe(1);
 });
