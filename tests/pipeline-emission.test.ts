@@ -240,7 +240,7 @@ describe.skipIf(process.platform === "win32")(
       expect(result.stdout.every((byte) => byte === 65)).toBe(true);
     }, 40_000);
 
-    it("keeps the full 85-command success path and summary", async () => {
+    it("keeps the full 86-command success path and summary", async () => {
       const result = await runFixture();
       expect(result.failed).toBe(false);
       expect(result.firstReadableObserved).toBe(true);
@@ -249,20 +249,20 @@ describe.skipIf(process.platform === "win32")(
       expect(result.status).toBe(0);
       expect(result.signal).toBeNull();
       expect(result.stderr.byteLength).toBe(0);
-      expect(result.calls).toHaveLength(85);
+      expect(result.calls).toHaveLength(86);
       expect(result.calls[0]).toEqual({
         verb: "run",
         script: "artifacts:prepare-local",
       });
       expect(result.calls.at(-1)).toEqual({ verb: "run", script: "test" });
-      expect(new Set(result.calls.map((row) => row.script)).size).toBe(85);
+      expect(new Set(result.calls.map((row) => row.script)).size).toBe(86);
       const report = JSON.parse(result.stdout.toString("utf8")) as {
         mode: string;
         result_count: number;
         results: { script: string; status: string }[];
       };
       expect(report.mode).toBe("check");
-      expect(report.result_count).toBe(85);
+      expect(report.result_count).toBe(86);
       expect(report.results.map((row) => row.script)).toEqual(
         result.calls.map((row) => row.script),
       );
