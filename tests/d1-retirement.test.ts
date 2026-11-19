@@ -1,12 +1,25 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { expect, it } from "vitest";
-import { WORKER_CONFIGS } from "../scripts/check-worker-deploys.ts";
 import { repoRoot } from "../scripts/lib.ts";
 import {
   d1RetirementFindings,
   main,
+  trackedWranglerConfigs,
 } from "../scripts/validate-d1-retirement.ts";
+
+it("derives the walked configs from the tree, so a Worker outside check-worker-deploys' list cannot dodge the gate", () => {
+  // Exact, like worker-deploy-drift's WORKER_CONFIGS pin: adding or removing
+  // a Worker updates this list in the same reviewed diff. apps/ui is the
+  // entry WORKER_CONFIGS never carried — the gate must walk it anyway.
+  expect([...trackedWranglerConfigs()].sort()).toEqual([
+    "apps/ui/wrangler.jsonc",
+    "wrangler.data.jsonc",
+    "wrangler.jsonc",
+    "wrangler.registry.jsonc",
+    "wrangler.wss-lb.jsonc",
+  ]);
+});
 
 it("names each way a deployed config keeps D1 alive, including env sections", () => {
   const findings = d1RetirementFindings(
@@ -51,6 +64,17 @@ it("refuses an unreadable or non-object config instead of reading it as nothing 
     ]);
 });
 
+it("a non-array d1_databases is the parse-failure contract, and a null entry still names a binding", () => {
+  expect(
+    d1RetirementFindings("w.jsonc", JSON.stringify({ d1_databases: {} })),
+  ).toEqual([
+    "w.jsonc: unreadable wrangler config counts as a live D1 consumer",
+  ]);
+  expect(
+    d1RetirementFindings("w.jsonc", JSON.stringify({ d1_databases: [null] })),
+  ).toEqual(["w.jsonc: d1_databases binds ? (?)"]);
+});
+
 it("refuses today's deployed estate by name — this assertion flips with the cutover config change", () => {
   // Pre-cutover, the deployed configs still carry D1 (metagraphed-infra#884
   // gate 9): the retirement step must get a refusal. The cutover PR that
@@ -58,7 +82,7 @@ it("refuses today's deployed estate by name — this assertion flips with the cu
   // same reviewed diff, which is exactly the evidence the gate wants.
   expect(main()).toBe(1);
   expect(main(true)).toBe(0);
-  const carrying = WORKER_CONFIGS.filter((config) => {
+  const carrying = trackedWranglerConfigs().filter((config) => {
     try {
       return (
         d1RetirementFindings(

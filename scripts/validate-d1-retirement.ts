@@ -1,7 +1,7 @@
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { WORKER_CONFIGS } from "./check-worker-deploys.ts";
 import { repoRoot, stripJsonComments } from "./lib.ts";
 
 /**
@@ -15,6 +15,13 @@ import { repoRoot, stripJsonComments } from "./lib.ts";
  * then this program exits 1 naming each survivor, so the retirement step
  * cannot run past a live consumer. An unreadable config counts as a live
  * consumer: a parse failure must never read as "nothing to retire".
+ *
+ * The walked set is derived from the tree — every tracked wrangler*.json(c) —
+ * not check-worker-deploys' WORKER_CONFIGS, which owns the four backend
+ * deploys and nothing else: apps/ui/wrangler.jsonc, the live `metagraphed-ui`
+ * Worker on metagraph.sh, sat outside that list from the day this gate
+ * landed, and a Worker added tomorrow is walked the moment its config is
+ * tracked instead of dodging a hand list.
  */
 export function d1RetirementFindings(name: string, raw: string): string[] {
   let config: unknown;
@@ -34,13 +41,25 @@ export function d1RetirementFindings(name: string, raw: string): string[] {
   for (const [prefix, section] of sections) {
     if (!section || typeof section !== "object") continue;
     const bag = section as {
-      d1_databases?: readonly { binding?: string; database_name?: string }[];
+      d1_databases?: unknown;
       vars?: Record<string, unknown>;
     };
-    for (const entry of bag.d1_databases ?? [])
+    const bindings = bag.d1_databases ?? [];
+    if (!Array.isArray(bindings)) {
+      // A d1_databases that is not an array is schema-invalid, which is the
+      // parse-failure contract, not the no-bindings one.
       findings.push(
-        `${name}: ${prefix}d1_databases binds ${entry.binding ?? "?"} (${entry.database_name ?? "?"})`,
+        `${name}: unreadable wrangler config counts as a live D1 consumer`,
       );
+    } else {
+      for (const entry of bindings as readonly ({
+        binding?: string;
+        database_name?: string;
+      } | null)[])
+        findings.push(
+          `${name}: ${prefix}d1_databases binds ${entry?.binding ?? "?"} (${entry?.database_name ?? "?"})`,
+        );
+    }
     const tables = bag.vars?.D1_STATE_TABLES;
     if (typeof tables === "string" && tables.trim().length)
       findings.push(
@@ -52,6 +71,29 @@ export function d1RetirementFindings(name: string, raw: string): string[] {
       findings.push(`${name}: ${prefix}vars.D1_EXPORT_REVISIONS is enabled`);
   }
   return findings;
+}
+
+/**
+ * Every deployed Worker's config, derived from the tree: all tracked files
+ * named wrangler*.json or wrangler*.jsonc. The reach is stated as this
+ * derivation so a drop reads as "it stopped looking": an empty enumeration or
+ * a git failure throws instead of validating nothing. The floor is tracked
+ * files under that name — an untracked or generated config (the UI preview
+ * pipeline's wrangler.preview.json) is outside it, and every deploy pipeline
+ * reads a tracked config as its source of truth.
+ */
+export function trackedWranglerConfigs(): string[] {
+  const listed = spawnSync(
+    "git",
+    ["-C", repoRoot, "ls-files", "-z", "--", ":(glob)**/wrangler*.json*"],
+    { encoding: "utf8" },
+  );
+  const configs = (listed.stdout || "").split("\0").filter(Boolean);
+  if (listed.status !== 0 || configs.length === 0)
+    throw new Error(
+      "d1-retirement: git ls-files found no wrangler configs; refusing to validate nothing",
+    );
+  return configs;
 }
 
 /** Read one deployed wrangler config. Only an absent file (ENOENT) reads as
@@ -78,9 +120,13 @@ function loadConfig(config: string): string | null {
  * that cannot be read exits 1 in both modes: bare because it may hide a live
  * consumer, pre-cutover because an unknown is not a declared fallthrough.
  */
-export function main(preCutover = false, load = loadConfig): number {
+export function main(
+  preCutover = false,
+  load = loadConfig,
+  configs: readonly string[] = trackedWranglerConfigs(),
+): number {
   const unreadable: string[] = [];
-  const findings = WORKER_CONFIGS.flatMap((config) => {
+  const findings = configs.flatMap((config) => {
     let raw: string | null;
     try {
       raw = load(config);
