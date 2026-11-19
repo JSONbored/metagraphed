@@ -1,0 +1,2582 @@
+{
+  "version": 1,
+  "runId": "39493041173",
+  "head": "f8f3ede2b186c065d88d0816e067306f071000e2",
+  "artifactId": "12296482853",
+  "artifactZipSha256": "a3eaeb53ee4e94b266b8eda3932ed784c751e9dc101a8dfc8779729298529f96",
+  "qualificationSummarySha256": "cc9c3c242b1e124e1b7bb07a267f3e17b29eb8a3ff2289a2197690220716c7cb",
+  "baseCommit": "6b8422966b1411dff6d7c486f4e9a549acecc761",
+  "esbuild": {
+    "version": "0.28.2",
+    "commit": "609683d892977362a0f99026cb74b96263d728a9"
+  },
+  "inspection": {
+    "mode": "hash-verified-source-only",
+    "parser": "TypeScript 5.9.3 source parser; no emission or execution",
+    "recordCount": 33,
+    "sourceCount": 20,
+    "outputImportTargetEqualityCount": 0,
+    "acceptanceChanged": false
+  },
+  "proofCounts": {
+    "explicit-inline-types-erased": 6,
+    "type-context-only-value-import-erased": 21,
+    "empty-typescript-import-erased": 6
+  },
+  "compilerSourceProofs": {
+    "typescript-loader": {
+      "source": "internal/bundler/bundler.go",
+      "gitBlob": "982c9e47b16d8f3e5f70df48fc26a77875ca8f52",
+      "lineRanges": [
+        [
+          285,
+          293
+        ],
+        [
+          2953,
+          2965
+        ]
+      ],
+      "finding": "The default .ts loader enables TypeScript parsing. The production builder only overrides .wasm."
+    },
+    "static-record-index": {
+      "source": "internal/js_parser/js_parser.go",
+      "gitBlob": "5bfa4555b48f88b56962e469ee4491f6362483ce",
+      "lineRanges": [
+        [
+          8053,
+          8093
+        ],
+        [
+          8162,
+          8165
+        ],
+        [
+          8450,
+          8468
+        ],
+        [
+          15155,
+          15163
+        ],
+        [
+          15535,
+          15537
+        ],
+        [
+          15748,
+          15755
+        ]
+      ],
+      "finding": "Whole import type declarations return before record creation; ordinary static imports append a record at the current length. Dynamic/require records are added during the later visit pass."
+    },
+    "inline-type-specifier-omission": {
+      "source": "internal/js_parser/js_parser.go",
+      "gitBlob": "5bfa4555b48f88b56962e469ee4491f6362483ce",
+      "lineRanges": [
+        [
+          5748,
+          5827
+        ]
+      ],
+      "finding": "Explicit inline type specifiers are parsed without appending runtime clause items; an all-type clause retains an empty Items pointer before later culling."
+    },
+    "type-syntax-omission": {
+      "source": "internal/js_parser/ts_parser.go",
+      "gitBlob": "36f5328f0d92591a12fbf8ddeeae49b47fefa58d",
+      "lineRanges": [
+        [
+          164,
+          166
+        ],
+        [
+          216,
+          219
+        ],
+        [
+          309,
+          394
+        ],
+        [
+          396,
+          428
+        ]
+      ],
+      "finding": "Type-reference identifiers and typeof type queries are consumed by type-skipping code, without producing runtime symbol usages."
+    },
+    "satisfies-type-omission": {
+      "source": "internal/js_parser/js_parser.go",
+      "gitBlob": "5bfa4555b48f88b56962e469ee4491f6362483ce",
+      "lineRanges": [
+        [
+          4960,
+          4964
+        ]
+      ],
+      "finding": "The type operand of as/satisfies is skipped as TypeScript syntax."
+    },
+    "typescript-unused-import-elision": {
+      "source": "internal/js_parser/js_parser.go",
+      "gitBlob": "5bfa4555b48f88b56962e469ee4491f6362483ce",
+      "lineRanges": [
+        [
+          17392,
+          17408
+        ],
+        [
+          17436,
+          17462
+        ],
+        [
+          17466,
+          17485
+        ]
+      ],
+      "finding": "In TS mode with zero preservation flags, an existing named clause sets foundImports even when empty. With no value-syntax usages, isUnusedInTypeScript remains true, the import is marked IsUnused and its statement is omitted."
+    },
+    "unused-record-metadata": {
+      "source": "internal/bundler/bundler.go",
+      "gitBlob": "982c9e47b16d8f3e5f70df48fc26a77875ca8f52",
+      "lineRanges": [
+        [
+          541,
+          545
+        ],
+        [
+          2439,
+          2446
+        ],
+        [
+          2469,
+          2484
+        ]
+      ],
+      "finding": "IsUnused records skip resolution. Input metadata still iterates the original record array and writes external:true for nil resolution results, preserving the metadata array index."
+    },
+    "zero-preservation-flags": {
+      "source": "internal/config/config.go",
+      "gitBlob": "dd9f89fbea4c7c1f2fab871480cb6df8d599a86e",
+      "lineRanges": [
+        [
+          139,
+          150
+        ],
+        [
+          534,
+          565
+        ]
+      ],
+      "finding": "UnusedImportFlags defaults to zero unless verbatimModuleSyntax, preserveValueImports, or importsNotUsedAsValues preservation is selected."
+    }
+  },
+  "buildConfiguration": {
+    "builder": {
+      "path": "scripts/build-api-worker.ts",
+      "gitBlob": "48face14c44fae096bb9be84034716ae7084479b",
+      "bundle": true,
+      "minify": true,
+      "tsconfigOverride": false,
+      "loaderOverrides": [
+        ".wasm"
+      ]
+    },
+    "tsconfig": {
+      "path": "tsconfig.json",
+      "gitBlob": "a03b61910d2ff2fcb292c1c7d2929908706fb5f2",
+      "extends": false,
+      "verbatimModuleSyntax": false,
+      "preserveValueImports": false,
+      "importsNotUsedAsValuesPreserve": false
+    },
+    "packageLock": {
+      "path": "package-lock.json",
+      "gitBlob": "5b0282bb9e45bab1fd38e28725d7f87ea6bb6ad8",
+      "sourceBytes": 633552,
+      "esbuildVersion": "0.28.2",
+      "platformPackage": "@esbuild/linux-x64",
+      "platformVersion": "0.28.2"
+    },
+    "nestedSourceTsconfigsPresent": false
+  },
+  "caveats": [
+    "Quoted occurrences are disambiguated by static import-record creation order, excluding whole import type declarations.",
+    "Binding occurrence inspection is conservative name-based AST inspection; every same-spelling identifier outside its import is recorded, including potential shadowed names.",
+    "These are discarded import records, not globally absent target modules. Other imports from the same source target may contribute bundled code.",
+    "Exact target absence from all output import paths is established by the complete hosted diagnostic association; this inspection does not rerun the builder.",
+    "No runtime code, build, native add-on, or provider was executed by this classification.",
+    "The separate unresolved optional pg-native require remains in the bundled output graph; this classification does not prove branch inactivity."
+  ],
+  "records": [
+    {
+      "sourcePath": "src/retained-history-store.ts",
+      "gitBlob": "9b0715f1a9e45f69b59a1687037603b07c29dc79",
+      "sourceBytes": 1404,
+      "importIndex": 0,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "./history-readers.ts",
+        "resolvedSourcePath": "src/history-readers.ts",
+        "gitBlob": "1590b16b32232bdc130a2040c4c2983186046aae"
+      },
+      "declaration": {
+        "start": {
+          "line": 2,
+          "column": 1
+        },
+        "end": {
+          "line": 2,
+          "column": 60
+        }
+      },
+      "selectedLiteral": {
+        "line": 2,
+        "column": 37
+      },
+      "quotedOccurrences": [
+        {
+          "line": 2,
+          "column": 37,
+          "syntax": "inline-type-only-specifiers",
+          "staticRecordIndex": 0,
+          "selected": true
+        }
+      ],
+      "importSyntax": "inline-type-only-specifiers",
+      "bindings": [
+        {
+          "name": "HistoryReadEnv",
+          "declaration": {
+            "line": 2,
+            "column": 15
+          },
+          "explicitTypeOnly": true,
+          "references": [
+            {
+              "line": 7,
+              "column": 9,
+              "context": "TypeReference"
+            },
+            {
+              "line": 26,
+              "column": 56,
+              "context": "TypeReference"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 2
+        }
+      ],
+      "proofCategory": "explicit-inline-types-erased",
+      "proofBasis": [
+        "inline-type-specifier-omission",
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/history-account-feed.ts",
+      "gitBlob": "94152a306688ae34fa9ed41e73e4c3178652645d",
+      "sourceBytes": 7679,
+      "importIndex": 6,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "./indexed-parquet.ts",
+        "resolvedSourcePath": "src/indexed-parquet.ts",
+        "gitBlob": "376b851353d4178e76c5e785863745ebd2159408"
+      },
+      "declaration": {
+        "start": {
+          "line": 19,
+          "column": 1
+        },
+        "end": {
+          "line": 22,
+          "column": 31
+        }
+      },
+      "selectedLiteral": {
+        "line": 22,
+        "column": 8
+      },
+      "quotedOccurrences": [
+        {
+          "line": 22,
+          "column": 8,
+          "syntax": "inline-type-only-specifiers",
+          "staticRecordIndex": 6,
+          "selected": true
+        }
+      ],
+      "importSyntax": "inline-type-only-specifiers",
+      "bindings": [
+        {
+          "name": "ParquetRangeSource",
+          "declaration": {
+            "line": 20,
+            "column": 8
+          },
+          "explicitTypeOnly": true,
+          "references": [
+            {
+              "line": 117,
+              "column": 11,
+              "context": "TypeReference"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ParquetReadBudget",
+          "declaration": {
+            "line": 21,
+            "column": 8
+          },
+          "explicitTypeOnly": true,
+          "references": [
+            {
+              "line": 120,
+              "column": 11,
+              "context": "TypeReference"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "explicit-inline-types-erased",
+      "proofBasis": [
+        "inline-type-specifier-omission",
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/account-summary-projection.ts",
+      "gitBlob": "3af4409a7888d4d8803dff7e99e5d83a78e4195d",
+      "sourceBytes": 37212,
+      "importIndex": 4,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-package",
+        "path": "zod"
+      },
+      "declaration": {
+        "start": {
+          "line": 74,
+          "column": 1
+        },
+        "end": {
+          "line": 74,
+          "column": 25
+        }
+      },
+      "selectedLiteral": {
+        "line": 74,
+        "column": 19
+      },
+      "quotedOccurrences": [
+        {
+          "line": 74,
+          "column": 19,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 4,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "z",
+          "declaration": {
+            "line": 74,
+            "column": 10
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 285,
+              "column": 18,
+              "context": "TypeReference"
+            },
+            {
+              "line": 286,
+              "column": 14,
+              "context": "TypeReference"
+            },
+            {
+              "line": 301,
+              "column": 12,
+              "context": "TypeReference"
+            },
+            {
+              "line": 310,
+              "column": 12,
+              "context": "TypeReference"
+            },
+            {
+              "line": 365,
+              "column": 12,
+              "context": "TypeReference"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 5
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/chain-detail-hot-tier.ts",
+      "gitBlob": "eda90193e3f247be0aea7e866a1944e891f8a727",
+      "sourceBytes": 37552,
+      "importIndex": 6,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "./chain-firehose-topics.ts",
+        "resolvedSourcePath": "src/chain-firehose-topics.ts",
+        "gitBlob": "a230bcb221b3ff8adb9a8da416a4689bac80c233"
+      },
+      "declaration": {
+        "start": {
+          "line": 55,
+          "column": 1
+        },
+        "end": {
+          "line": 55,
+          "column": 70
+        }
+      },
+      "selectedLiteral": {
+        "line": 55,
+        "column": 41
+      },
+      "quotedOccurrences": [
+        {
+          "line": 55,
+          "column": 41,
+          "syntax": "inline-type-only-specifiers",
+          "staticRecordIndex": 6,
+          "selected": true
+        }
+      ],
+      "importSyntax": "inline-type-only-specifiers",
+      "bindings": [
+        {
+          "name": "ChainFirehoseTopic",
+          "declaration": {
+            "line": 55,
+            "column": 15
+          },
+          "explicitTypeOnly": true,
+          "references": [
+            {
+              "line": 785,
+              "column": 25,
+              "context": "TypeReference"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "explicit-inline-types-erased",
+      "proofBasis": [
+        "inline-type-specifier-omission",
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/capture-state-neon-write.ts",
+      "gitBlob": "168700487545de798ae14f97eb2a02118033fdba",
+      "sourceBytes": 9947,
+      "importIndex": 4,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "./pg-sql.ts",
+        "resolvedSourcePath": "src/pg-sql.ts",
+        "gitBlob": "ccf1b850b1fd3c928db28d28ff91aa72672242e8"
+      },
+      "declaration": {
+        "start": {
+          "line": 30,
+          "column": 1
+        },
+        "end": {
+          "line": 30,
+          "column": 71
+        }
+      },
+      "selectedLiteral": {
+        "line": 30,
+        "column": 57
+      },
+      "quotedOccurrences": [
+        {
+          "line": 30,
+          "column": 57,
+          "syntax": "inline-type-only-specifiers",
+          "staticRecordIndex": 4,
+          "selected": true
+        }
+      ],
+      "importSyntax": "inline-type-only-specifiers",
+      "bindings": [
+        {
+          "name": "HyperdriveLike",
+          "declaration": {
+            "line": 30,
+            "column": 15
+          },
+          "explicitTypeOnly": true,
+          "references": [
+            {
+              "line": 67,
+              "column": 41,
+              "context": "TypeReference"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "WaitUntilLike",
+          "declaration": {
+            "line": 30,
+            "column": 36
+          },
+          "explicitTypeOnly": true,
+          "references": [
+            {
+              "line": 50,
+              "column": 8,
+              "context": "TypeReference"
+            },
+            {
+              "line": 126,
+              "column": 8,
+              "context": "TypeReference"
+            },
+            {
+              "line": 171,
+              "column": 8,
+              "context": "TypeReference"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 3
+        }
+      ],
+      "proofCategory": "explicit-inline-types-erased",
+      "proofBasis": [
+        "inline-type-specifier-omission",
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/events-cold-tier.ts",
+      "gitBlob": "7822ad26a0a1fa49d8e12acad269dc6e49e823f0",
+      "sourceBytes": 12614,
+      "importIndex": 3,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "./chain-network.ts",
+        "resolvedSourcePath": "src/chain-network.ts",
+        "gitBlob": "899869359e60baf81e4585155d7d789022a56a2c"
+      },
+      "declaration": {
+        "start": {
+          "line": 13,
+          "column": 1
+        },
+        "end": {
+          "line": 13,
+          "column": 58
+        }
+      },
+      "selectedLiteral": {
+        "line": 13,
+        "column": 37
+      },
+      "quotedOccurrences": [
+        {
+          "line": 13,
+          "column": 37,
+          "syntax": "inline-type-only-specifiers",
+          "staticRecordIndex": 3,
+          "selected": true
+        }
+      ],
+      "importSyntax": "inline-type-only-specifiers",
+      "bindings": [
+        {
+          "name": "ChainNetworkId",
+          "declaration": {
+            "line": 13,
+            "column": 15
+          },
+          "explicitTypeOnly": true,
+          "references": [
+            {
+              "line": 77,
+              "column": 13,
+              "context": "TypeReference"
+            },
+            {
+              "line": 173,
+              "column": 13,
+              "context": "TypeReference"
+            },
+            {
+              "line": 237,
+              "column": 13,
+              "context": "TypeReference"
+            },
+            {
+              "line": 274,
+              "column": 13,
+              "context": "TypeReference"
+            },
+            {
+              "line": 330,
+              "column": 13,
+              "context": "TypeReference"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 5
+        }
+      ],
+      "proofCategory": "explicit-inline-types-erased",
+      "proofBasis": [
+        "inline-type-specifier-omission",
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/r2-sql-blocks.ts",
+      "gitBlob": "ac8e6dc73544c98f45fd0ae9c9388cb319385ecc",
+      "sourceBytes": 13731,
+      "importIndex": 5,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "./chain-network.ts",
+        "resolvedSourcePath": "src/chain-network.ts",
+        "gitBlob": "899869359e60baf81e4585155d7d789022a56a2c"
+      },
+      "declaration": {
+        "start": {
+          "line": 21,
+          "column": 1
+        },
+        "end": {
+          "line": 21,
+          "column": 58
+        }
+      },
+      "selectedLiteral": {
+        "line": 21,
+        "column": 37
+      },
+      "quotedOccurrences": [
+        {
+          "line": 21,
+          "column": 37,
+          "syntax": "inline-type-only-specifiers",
+          "staticRecordIndex": 5,
+          "selected": true
+        }
+      ],
+      "importSyntax": "inline-type-only-specifiers",
+      "bindings": [
+        {
+          "name": "ChainNetworkId",
+          "declaration": {
+            "line": 21,
+            "column": 15
+          },
+          "explicitTypeOnly": true,
+          "references": [
+            {
+              "line": 88,
+              "column": 13,
+              "context": "TypeReference"
+            },
+            {
+              "line": 176,
+              "column": 13,
+              "context": "TypeReference"
+            },
+            {
+              "line": 200,
+              "column": 13,
+              "context": "TypeReference"
+            },
+            {
+              "line": 280,
+              "column": 13,
+              "context": "TypeReference"
+            },
+            {
+              "line": 330,
+              "column": 13,
+              "context": "TypeReference"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 5
+        }
+      ],
+      "proofCategory": "explicit-inline-types-erased",
+      "proofBasis": [
+        "inline-type-specifier-omission",
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "schemas-src/mcp-tools/registry-catalogs-2.ts",
+      "gitBlob": "ff3ef18c1fc3bf60bc172840c9cfbb54e5874155",
+      "sourceBytes": 7766,
+      "importIndex": 12,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "./shared.ts",
+        "resolvedSourcePath": "schemas-src/mcp-tools/shared.ts",
+        "gitBlob": "7d2d97bdd182acc7db3e48c3f9c82f6d7447e3d2"
+      },
+      "declaration": {
+        "start": {
+          "line": 48,
+          "column": 1
+        },
+        "end": {
+          "line": 48,
+          "column": 30
+        }
+      },
+      "selectedLiteral": {
+        "line": 48,
+        "column": 16
+      },
+      "quotedOccurrences": [
+        {
+          "line": 32,
+          "column": 8,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 4,
+          "selected": false
+        },
+        {
+          "line": 48,
+          "column": 16,
+          "syntax": "empty-import-clause",
+          "staticRecordIndex": 12,
+          "selected": true
+        }
+      ],
+      "importSyntax": "empty-import-clause",
+      "bindings": [],
+      "proofCategory": "empty-typescript-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "schemas-src/mcp-tools/curation-and-gaps.ts",
+      "gitBlob": "5b73f618951b08e17b3b083d3cc9925c2028bc35",
+      "sourceBytes": 3228,
+      "importIndex": 6,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../routes/curation-gaps.ts",
+        "resolvedSourcePath": "schemas-src/routes/curation-gaps.ts",
+        "gitBlob": "588f1b9a40a671955b7247e66fc9ae939f12bb3e"
+      },
+      "declaration": {
+        "start": {
+          "line": 25,
+          "column": 1
+        },
+        "end": {
+          "line": 25,
+          "column": 45
+        }
+      },
+      "selectedLiteral": {
+        "line": 25,
+        "column": 16
+      },
+      "quotedOccurrences": [
+        {
+          "line": 22,
+          "column": 40,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 3,
+          "selected": false
+        },
+        {
+          "line": 23,
+          "column": 36,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 4,
+          "selected": false
+        },
+        {
+          "line": 25,
+          "column": 16,
+          "syntax": "empty-import-clause",
+          "staticRecordIndex": 6,
+          "selected": true
+        }
+      ],
+      "importSyntax": "empty-import-clause",
+      "bindings": [],
+      "proofCategory": "empty-typescript-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/neuron-daily-cold-tier.ts",
+      "gitBlob": "238ca29e0c8bd928bdb20d2ea14d262ffd1730f3",
+      "sourceBytes": 22747,
+      "importIndex": 3,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../generated/lakehouse/types.ts",
+        "resolvedSourcePath": "generated/lakehouse/types.ts",
+        "gitBlob": "f23a5b94628aece8247736d175563d2798c84a5f"
+      },
+      "declaration": {
+        "start": {
+          "line": 13,
+          "column": 1
+        },
+        "end": {
+          "line": 16,
+          "column": 42
+        }
+      },
+      "selectedLiteral": {
+        "line": 16,
+        "column": 8
+      },
+      "quotedOccurrences": [
+        {
+          "line": 16,
+          "column": 8,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 3,
+          "selected": true
+        },
+        {
+          "line": 20,
+          "column": 8,
+          "syntax": "whole-type-import",
+          "staticRecordIndex": null,
+          "selected": false
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "ACCOUNT_POSITION_DAILY_COLUMNS",
+          "declaration": {
+            "line": 14,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 418,
+              "column": 39,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "NEURON_DAILY_COLUMNS",
+          "declaration": {
+            "line": 15,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 91,
+              "column": 39,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/runtime-versions-cold-tier.ts",
+      "gitBlob": "bc459dca9e167c36c26b9e05af79d6d786abbac8",
+      "sourceBytes": 584,
+      "importIndex": 0,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "./runtime-versions.ts",
+        "resolvedSourcePath": "src/runtime-versions.ts",
+        "gitBlob": "049499389dce0c1ca8d42277fc3fecfe27b6c0e9"
+      },
+      "declaration": {
+        "start": {
+          "line": 4,
+          "column": 1
+        },
+        "end": {
+          "line": 4,
+          "column": 68
+        }
+      },
+      "selectedLiteral": {
+        "line": 4,
+        "column": 44
+      },
+      "quotedOccurrences": [
+        {
+          "line": 4,
+          "column": 44,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 0,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "buildRuntimeVersionHistory",
+          "declaration": {
+            "line": 4,
+            "column": 10
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 9,
+              "column": 30,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/revenue-serving.ts",
+      "gitBlob": "e0c4487ba371978795be21e712a65115f0a8d8d6",
+      "sourceBytes": 15228,
+      "importIndex": 1,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/routes/revenue-coverage.ts",
+        "resolvedSourcePath": "schemas-src/routes/revenue-coverage.ts",
+        "gitBlob": "6d837080fe4da0bca39272c9bc5086f808eae3c4"
+      },
+      "declaration": {
+        "start": {
+          "line": 30,
+          "column": 1
+        },
+        "end": {
+          "line": 30,
+          "column": 87
+        }
+      },
+      "selectedLiteral": {
+        "line": 30,
+        "column": 43
+      },
+      "quotedOccurrences": [
+        {
+          "line": 30,
+          "column": 43,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 1,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "REVENUE_PROVENANCE_VALUES",
+          "declaration": {
+            "line": 30,
+            "column": 10
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 107,
+              "column": 39,
+              "context": "TypeQuery"
+            },
+            {
+              "line": 110,
+              "column": 13,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 2
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "schemas-src/mcp-tools/enrichment-evidence-and-targets.ts",
+      "gitBlob": "4beb696d833a3b0a2f105645a0a3990873f2be7d",
+      "sourceBytes": 9012,
+      "importIndex": 8,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../routes/review-enrichment.ts",
+        "resolvedSourcePath": "schemas-src/routes/review-enrichment.ts",
+        "gitBlob": "22d6f8b23045c0aca8af976b32bc6e4941bfa341"
+      },
+      "declaration": {
+        "start": {
+          "line": 36,
+          "column": 1
+        },
+        "end": {
+          "line": 36,
+          "column": 49
+        }
+      },
+      "selectedLiteral": {
+        "line": 36,
+        "column": 16
+      },
+      "quotedOccurrences": [
+        {
+          "line": 31,
+          "column": 8,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 3,
+          "selected": false
+        },
+        {
+          "line": 33,
+          "column": 55,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 5,
+          "selected": false
+        },
+        {
+          "line": 36,
+          "column": 16,
+          "syntax": "empty-import-clause",
+          "staticRecordIndex": 8,
+          "selected": true
+        }
+      ],
+      "importSyntax": "empty-import-clause",
+      "bindings": [],
+      "proofCategory": "empty-typescript-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "schemas-src/mcp-tools/get-subnet-movers.ts",
+      "gitBlob": "ea7566b35271e524343019948d67a6885458582e",
+      "sourceBytes": 1627,
+      "importIndex": 5,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../routes/subnet-movers.ts",
+        "resolvedSourcePath": "schemas-src/routes/subnet-movers.ts",
+        "gitBlob": "a6594490eac20a2e5900c054cb70ca55cc1c7661"
+      },
+      "declaration": {
+        "start": {
+          "line": 21,
+          "column": 1
+        },
+        "end": {
+          "line": 21,
+          "column": 45
+        }
+      },
+      "selectedLiteral": {
+        "line": 21,
+        "column": 16
+      },
+      "quotedOccurrences": [
+        {
+          "line": 20,
+          "column": 44,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 4,
+          "selected": false
+        },
+        {
+          "line": 21,
+          "column": 16,
+          "syntax": "empty-import-clause",
+          "staticRecordIndex": 5,
+          "selected": true
+        }
+      ],
+      "importSyntax": "empty-import-clause",
+      "bindings": [],
+      "proofCategory": "empty-typescript-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "workers/alerter-hub.ts",
+      "gitBlob": "9ef9e07d225f78e43149d3ce467ebba3397bcaa8",
+      "sourceBytes": 42332,
+      "importIndex": 8,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-package",
+        "path": "zod"
+      },
+      "declaration": {
+        "start": {
+          "line": 58,
+          "column": 1
+        },
+        "end": {
+          "line": 58,
+          "column": 25
+        }
+      },
+      "selectedLiteral": {
+        "line": 58,
+        "column": 19
+      },
+      "quotedOccurrences": [
+        {
+          "line": 58,
+          "column": 19,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 8,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "z",
+          "declaration": {
+            "line": 58,
+            "column": 10
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 75,
+              "column": 23,
+              "context": "TypeReference"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/subnet-lifecycle.ts",
+      "gitBlob": "0721c47a49dee9af813c702e3dd49aceea44ba3f",
+      "sourceBytes": 10189,
+      "importIndex": 0,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/routes/subnet-lifecycle.ts",
+        "resolvedSourcePath": "schemas-src/routes/subnet-lifecycle.ts",
+        "gitBlob": "ea21283c4bb716d6db4647c6661ab6c359fa4837"
+      },
+      "declaration": {
+        "start": {
+          "line": 33,
+          "column": 1
+        },
+        "end": {
+          "line": 33,
+          "column": 85
+        }
+      },
+      "selectedLiteral": {
+        "line": 33,
+        "column": 41
+      },
+      "quotedOccurrences": [
+        {
+          "line": 33,
+          "column": 41,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 0,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "SUBNET_LIFECYCLE_EVENTS",
+          "declaration": {
+            "line": 33,
+            "column": 10
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 56,
+              "column": 48,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/chain-detail-prune.ts",
+      "gitBlob": "310103fe95fc12747a1f3e65e48ee36b1f073a21",
+      "sourceBytes": 23525,
+      "importIndex": 3,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "./chain-detail-hot-tier.ts",
+        "resolvedSourcePath": "src/chain-detail-hot-tier.ts",
+        "gitBlob": "eda90193e3f247be0aea7e866a1944e891f8a727"
+      },
+      "declaration": {
+        "start": {
+          "line": 68,
+          "column": 1
+        },
+        "end": {
+          "line": 68,
+          "column": 75
+        }
+      },
+      "selectedLiteral": {
+        "line": 68,
+        "column": 46
+      },
+      "quotedOccurrences": [
+        {
+          "line": 68,
+          "column": 46,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 3,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "CHAIN_DETAIL_HOT_TIER_TABLES",
+          "declaration": {
+            "line": 68,
+            "column": 10
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 176,
+              "column": 39,
+              "context": "TypeQuery"
+            },
+            {
+              "line": 179,
+              "column": 13,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 2
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "schemas-src/mcp-tools/validators.ts",
+      "gitBlob": "f1be10971ede142ed7e7065a9b2b149eb13a7fdf",
+      "sourceBytes": 12963,
+      "importIndex": 12,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../routes/validator-nominators.ts",
+        "resolvedSourcePath": "schemas-src/routes/validator-nominators.ts",
+        "gitBlob": "a736e7441d8a6310325575bcf9158dbf60575531"
+      },
+      "declaration": {
+        "start": {
+          "line": 46,
+          "column": 1
+        },
+        "end": {
+          "line": 46,
+          "column": 52
+        }
+      },
+      "selectedLiteral": {
+        "line": 46,
+        "column": 16
+      },
+      "quotedOccurrences": [
+        {
+          "line": 45,
+          "column": 8,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 11,
+          "selected": false
+        },
+        {
+          "line": 46,
+          "column": 16,
+          "syntax": "empty-import-clause",
+          "staticRecordIndex": 12,
+          "selected": true
+        }
+      ],
+      "importSyntax": "empty-import-clause",
+      "bindings": [],
+      "proofCategory": "empty-typescript-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "schemas-src/mcp-tools/accounts-leaderboards.ts",
+      "gitBlob": "9f023cda0ca3ba744783ebce5742f7e2cd65fecf",
+      "sourceBytes": 2299,
+      "importIndex": 1,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../../src/route-limits.ts",
+        "resolvedSourcePath": "src/route-limits.ts",
+        "gitBlob": "07811a6935904270b11078ce85d16ad48b4f4a11"
+      },
+      "declaration": {
+        "start": {
+          "line": 14,
+          "column": 1
+        },
+        "end": {
+          "line": 14,
+          "column": 44
+        }
+      },
+      "selectedLiteral": {
+        "line": 14,
+        "column": 16
+      },
+      "quotedOccurrences": [
+        {
+          "line": 14,
+          "column": 16,
+          "syntax": "empty-import-clause",
+          "staticRecordIndex": 1,
+          "selected": true
+        }
+      ],
+      "importSyntax": "empty-import-clause",
+      "bindings": [],
+      "proofCategory": "empty-typescript-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/mcp-server.ts",
+      "gitBlob": "ab47c4f32c3d78359fcd9a2bda3246a857d152e0",
+      "sourceBytes": 849724,
+      "importIndex": 20,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/mcp-tools/get-network-health.ts",
+        "resolvedSourcePath": "schemas-src/mcp-tools/get-network-health.ts",
+        "gitBlob": "a2850752baedcd06fab3f0ce11203f3b8d8ad314"
+      },
+      "declaration": {
+        "start": {
+          "line": 91,
+          "column": 1
+        },
+        "end": {
+          "line": 91,
+          "column": 94
+        }
+      },
+      "selectedLiteral": {
+        "line": 91,
+        "column": 45
+      },
+      "quotedOccurrences": [
+        {
+          "line": 91,
+          "column": 45,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 20,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "GetNetworkHealthInputSchema",
+          "declaration": {
+            "line": 91,
+            "column": 10
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 6732,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/mcp-server.ts",
+      "gitBlob": "ab47c4f32c3d78359fcd9a2bda3246a857d152e0",
+      "sourceBytes": 849724,
+      "importIndex": 22,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/mcp-tools/get-economics.ts",
+        "resolvedSourcePath": "schemas-src/mcp-tools/get-economics.ts",
+        "gitBlob": "d8dcff6a75eb037d7212a5463a8cc2095401db1c"
+      },
+      "declaration": {
+        "start": {
+          "line": 96,
+          "column": 1
+        },
+        "end": {
+          "line": 96,
+          "column": 85
+        }
+      },
+      "selectedLiteral": {
+        "line": 96,
+        "column": 41
+      },
+      "quotedOccurrences": [
+        {
+          "line": 96,
+          "column": 41,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 22,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "GetEconomicsInputSchema",
+          "declaration": {
+            "line": 96,
+            "column": 10
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 7260,
+              "column": 40,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/mcp-server.ts",
+      "gitBlob": "ab47c4f32c3d78359fcd9a2bda3246a857d152e0",
+      "sourceBytes": 849724,
+      "importIndex": 151,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/mcp-tools/get-health-history.ts",
+        "resolvedSourcePath": "schemas-src/mcp-tools/get-health-history.ts",
+        "gitBlob": "ce99bfb235b2c2bb97f8d0305d02a063e01fc0cd"
+      },
+      "declaration": {
+        "start": {
+          "line": 638,
+          "column": 1
+        },
+        "end": {
+          "line": 638,
+          "column": 94
+        }
+      },
+      "selectedLiteral": {
+        "line": 638,
+        "column": 45
+      },
+      "quotedOccurrences": [
+        {
+          "line": 638,
+          "column": 45,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 151,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "GetHealthHistoryInputSchema",
+          "declaration": {
+            "line": 638,
+            "column": 10
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 6755,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/mcp-server.ts",
+      "gitBlob": "ab47c4f32c3d78359fcd9a2bda3246a857d152e0",
+      "sourceBytes": 849724,
+      "importIndex": 154,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/mcp-tools/profiles.ts",
+        "resolvedSourcePath": "schemas-src/mcp-tools/profiles.ts",
+        "gitBlob": "f8ef55408aef63b6aaf100531789d4ef5b498cca"
+      },
+      "declaration": {
+        "start": {
+          "line": 647,
+          "column": 1
+        },
+        "end": {
+          "line": 650,
+          "column": 47
+        }
+      },
+      "selectedLiteral": {
+        "line": 650,
+        "column": 8
+      },
+      "quotedOccurrences": [
+        {
+          "line": 650,
+          "column": 8,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 154,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "ListProfilesInputSchema",
+          "declaration": {
+            "line": 648,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 9244,
+              "column": 40,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "GetSubnetProfileInputSchema",
+          "declaration": {
+            "line": 649,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 9259,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/mcp-server.ts",
+      "gitBlob": "ab47c4f32c3d78359fcd9a2bda3246a857d152e0",
+      "sourceBytes": 849724,
+      "importIndex": 214,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/mcp-tools/registry-catalogs-1.ts",
+        "resolvedSourcePath": "schemas-src/mcp-tools/registry-catalogs-1.ts",
+        "gitBlob": "04139c7ad891caf8fbaa7277da3583622b340e53"
+      },
+      "declaration": {
+        "start": {
+          "line": 980,
+          "column": 1
+        },
+        "end": {
+          "line": 984,
+          "column": 58
+        }
+      },
+      "selectedLiteral": {
+        "line": 984,
+        "column": 8
+      },
+      "quotedOccurrences": [
+        {
+          "line": 984,
+          "column": 8,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 214,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "ListProvidersInputSchema",
+          "declaration": {
+            "line": 981,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 13747,
+              "column": 40,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ListSurfacesInputSchema",
+          "declaration": {
+            "line": 982,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 13753,
+              "column": 40,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ListCandidatesInputSchema",
+          "declaration": {
+            "line": 983,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 13760,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/mcp-server.ts",
+      "gitBlob": "ab47c4f32c3d78359fcd9a2bda3246a857d152e0",
+      "sourceBytes": 849724,
+      "importIndex": 215,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/mcp-tools/registry-catalogs-2.ts",
+        "resolvedSourcePath": "schemas-src/mcp-tools/registry-catalogs-2.ts",
+        "gitBlob": "ff3ef18c1fc3bf60bc172840c9cfbb54e5874155"
+      },
+      "declaration": {
+        "start": {
+          "line": 985,
+          "column": 1
+        },
+        "end": {
+          "line": 991,
+          "column": 58
+        }
+      },
+      "selectedLiteral": {
+        "line": 991,
+        "column": 8
+      },
+      "quotedOccurrences": [
+        {
+          "line": 991,
+          "column": 8,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 215,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "ListEvidenceInputSchema",
+          "declaration": {
+            "line": 986,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 13901,
+              "column": 40,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ListRpcEndpointsInputSchema",
+          "declaration": {
+            "line": 987,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 13908,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ListRpcPoolsInputSchema",
+          "declaration": {
+            "line": 988,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 13934,
+              "column": 40,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ListSourceSnapshotsInputSchema",
+          "declaration": {
+            "line": 989,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 13917,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ListProfileCompletenessInputSchema",
+          "declaration": {
+            "line": 990,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 13926,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/mcp-server.ts",
+      "gitBlob": "ab47c4f32c3d78359fcd9a2bda3246a857d152e0",
+      "sourceBytes": 849724,
+      "importIndex": 216,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/mcp-tools/subnet-scoped-lists.ts",
+        "resolvedSourcePath": "schemas-src/mcp-tools/subnet-scoped-lists.ts",
+        "gitBlob": "b9aa7bb5f51861a313c19c7276fadd1598b36c95"
+      },
+      "declaration": {
+        "start": {
+          "line": 992,
+          "column": 1
+        },
+        "end": {
+          "line": 996,
+          "column": 58
+        }
+      },
+      "selectedLiteral": {
+        "line": 996,
+        "column": 8
+      },
+      "quotedOccurrences": [
+        {
+          "line": 996,
+          "column": 8,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 216,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "ListSubnetEndpointsInputSchema",
+          "declaration": {
+            "line": 993,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 13976,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ListSubnetSurfacesInputSchema",
+          "declaration": {
+            "line": 994,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 13985,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ListSubnetHealthInputSchema",
+          "declaration": {
+            "line": 995,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 13994,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/mcp-server.ts",
+      "gitBlob": "ab47c4f32c3d78359fcd9a2bda3246a857d152e0",
+      "sourceBytes": 849724,
+      "importIndex": 226,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/mcp-tools/search-documents.ts",
+        "resolvedSourcePath": "schemas-src/mcp-tools/search-documents.ts",
+        "gitBlob": "ce72c2a3e918ccd6190eeeb6f8fff724ee8f0ae0"
+      },
+      "declaration": {
+        "start": {
+          "line": 1079,
+          "column": 1
+        },
+        "end": {
+          "line": 1082,
+          "column": 55
+        }
+      },
+      "selectedLiteral": {
+        "line": 1082,
+        "column": 8
+      },
+      "quotedOccurrences": [
+        {
+          "line": 1082,
+          "column": 8,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 226,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "ListSearchIndexInputSchema",
+          "declaration": {
+            "line": 1080,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 14135,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ListSearchInputSchema",
+          "declaration": {
+            "line": 1081,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 14143,
+              "column": 40,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/mcp-server.ts",
+      "gitBlob": "ab47c4f32c3d78359fcd9a2bda3246a857d152e0",
+      "sourceBytes": 849724,
+      "importIndex": 227,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/mcp-tools/curation-and-gaps.ts",
+        "resolvedSourcePath": "schemas-src/mcp-tools/curation-and-gaps.ts",
+        "gitBlob": "5b73f618951b08e17b3b083d3cc9925c2028bc35"
+      },
+      "declaration": {
+        "start": {
+          "line": 1083,
+          "column": 1
+        },
+        "end": {
+          "line": 1086,
+          "column": 56
+        }
+      },
+      "selectedLiteral": {
+        "line": 1086,
+        "column": 8
+      },
+      "quotedOccurrences": [
+        {
+          "line": 1086,
+          "column": 8,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 227,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "ListCurationInputSchema",
+          "declaration": {
+            "line": 1084,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 14149,
+              "column": 40,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ListGapsInputSchema",
+          "declaration": {
+            "line": 1085,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 14155,
+              "column": 40,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/mcp-server.ts",
+      "gitBlob": "ab47c4f32c3d78359fcd9a2bda3246a857d152e0",
+      "sourceBytes": 849724,
+      "importIndex": 228,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/mcp-tools/enrichment-queue-and-candidates.ts",
+        "resolvedSourcePath": "schemas-src/mcp-tools/enrichment-queue-and-candidates.ts",
+        "gitBlob": "63ab65da9393da2f8442b11ae3dcfd337d8423ce"
+      },
+      "declaration": {
+        "start": {
+          "line": 1087,
+          "column": 1
+        },
+        "end": {
+          "line": 1090,
+          "column": 70
+        }
+      },
+      "selectedLiteral": {
+        "line": 1090,
+        "column": 8
+      },
+      "quotedOccurrences": [
+        {
+          "line": 1090,
+          "column": 8,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 228,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "ListEnrichmentQueueInputSchema",
+          "declaration": {
+            "line": 1088,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 14162,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ListAdapterCandidatesInputSchema",
+          "declaration": {
+            "line": 1089,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 14171,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/mcp-server.ts",
+      "gitBlob": "ab47c4f32c3d78359fcd9a2bda3246a857d152e0",
+      "sourceBytes": 849724,
+      "importIndex": 229,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/mcp-tools/enrichment-evidence-and-targets.ts",
+        "resolvedSourcePath": "schemas-src/mcp-tools/enrichment-evidence-and-targets.ts",
+        "gitBlob": "4beb696d833a3b0a2f105645a0a3990873f2be7d"
+      },
+      "declaration": {
+        "start": {
+          "line": 1091,
+          "column": 1
+        },
+        "end": {
+          "line": 1095,
+          "column": 70
+        }
+      },
+      "selectedLiteral": {
+        "line": 1095,
+        "column": 8
+      },
+      "quotedOccurrences": [
+        {
+          "line": 1095,
+          "column": 8,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 229,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "ListEnrichmentEvidenceInputSchema",
+          "declaration": {
+            "line": 1092,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 14180,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ListReviewGapsInputSchema",
+          "declaration": {
+            "line": 1093,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 14189,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ListReviewEnrichmentTargetsInputSchema",
+          "declaration": {
+            "line": 1094,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 14198,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/mcp-server.ts",
+      "gitBlob": "ab47c4f32c3d78359fcd9a2bda3246a857d152e0",
+      "sourceBytes": 849724,
+      "importIndex": 230,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/mcp-tools/endpoint-pools-and-provider.ts",
+        "resolvedSourcePath": "schemas-src/mcp-tools/endpoint-pools-and-provider.ts",
+        "gitBlob": "e3449d21bc89825dc063121a846a134fbb40f46c"
+      },
+      "declaration": {
+        "start": {
+          "line": 1096,
+          "column": 1
+        },
+        "end": {
+          "line": 1100,
+          "column": 66
+        }
+      },
+      "selectedLiteral": {
+        "line": 1100,
+        "column": 8
+      },
+      "quotedOccurrences": [
+        {
+          "line": 1100,
+          "column": 8,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 230,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "ListEndpointPoolsInputSchema",
+          "declaration": {
+            "line": 1097,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 14207,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ListEndpointIncidentsInputSchema",
+          "declaration": {
+            "line": 1098,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 14216,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        },
+        {
+          "name": "ListProviderEndpointsInputSchema",
+          "declaration": {
+            "line": 1099,
+            "column": 3
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 14225,
+              "column": 28,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/mcp-server.ts",
+      "gitBlob": "ab47c4f32c3d78359fcd9a2bda3246a857d152e0",
+      "sourceBytes": 849724,
+      "importIndex": 234,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/mcp-tools/feed.ts",
+        "resolvedSourcePath": "schemas-src/mcp-tools/feed.ts",
+        "gitBlob": "bbe9360b7f4ca69f1f327ba1d7c1381bf5adc016"
+      },
+      "declaration": {
+        "start": {
+          "line": 1119,
+          "column": 1
+        },
+        "end": {
+          "line": 1119,
+          "column": 71
+        }
+      },
+      "selectedLiteral": {
+        "line": 1119,
+        "column": 36
+      },
+      "quotedOccurrences": [
+        {
+          "line": 1119,
+          "column": 36,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 234,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "GetFeedInputSchema",
+          "declaration": {
+            "line": 1119,
+            "column": 10
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 14300,
+              "column": 40,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    },
+    {
+      "sourcePath": "src/mcp-server.ts",
+      "gitBlob": "ab47c4f32c3d78359fcd9a2bda3246a857d152e0",
+      "sourceBytes": 849724,
+      "importIndex": 235,
+      "kind": "import-statement",
+      "target": {
+        "kind": "public-repository-source",
+        "path": "../schemas-src/mcp-tools/get-adapter.ts",
+        "resolvedSourcePath": "schemas-src/mcp-tools/get-adapter.ts",
+        "gitBlob": "8f2765b1ca70ded7c442f327b02fa18520f8e1c1"
+      },
+      "declaration": {
+        "start": {
+          "line": 1120,
+          "column": 1
+        },
+        "end": {
+          "line": 1120,
+          "column": 81
+        }
+      },
+      "selectedLiteral": {
+        "line": 1120,
+        "column": 39
+      },
+      "quotedOccurrences": [
+        {
+          "line": 1120,
+          "column": 39,
+          "syntax": "named-value-import",
+          "staticRecordIndex": 235,
+          "selected": true
+        }
+      ],
+      "importSyntax": "named-value-import",
+      "bindings": [
+        {
+          "name": "GetAdapterInputSchema",
+          "declaration": {
+            "line": 1120,
+            "column": 10
+          },
+          "explicitTypeOnly": false,
+          "references": [
+            {
+              "line": 14330,
+              "column": 40,
+              "context": "TypeQuery"
+            }
+          ],
+          "nonTypeReferenceCount": 0,
+          "typeReferenceCount": 1
+        }
+      ],
+      "proofCategory": "type-context-only-value-import-erased",
+      "proofBasis": [
+        "typescript-unused-import-elision",
+        "unused-record-metadata"
+      ]
+    }
+  ]
+}

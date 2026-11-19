@@ -1,0 +1,251 @@
+{
+  "baseCommit": "ea18c9e309063fb339cd8c8109e2e179c70f3289",
+  "qualificationHead": "3e0545ee7f5cdadbd73157f37fc73564cae57536",
+  "files": [
+    {
+      "path": "tests/qualification/strict-gzip/chain-summary-workspace-custody.ts",
+      "sha256": "7fbc57f3d08ce2159fcb07b17ebe3527081f5ea435ec7f5811e34d3449b651a3",
+      "bytes": 24281
+    },
+    {
+      "path": "tests/qualification/strict-gzip/chain-summary-workspace-probe.ts",
+      "sha256": "7726e0023fd54dc6ad92862d8f15b50da1f363b56f767f4b06e211149cde65a1",
+      "bytes": 16497
+    },
+    {
+      "path": "tests/qualification/strict-gzip/discarded-input-pins.ts",
+      "sha256": "d7bd9326fd3d0d4935f78d8650f169d9cd9e6ff27dc78014f2239302c49225ca",
+      "bytes": 15490
+    },
+    {
+      "path": "tests/qualification/strict-gzip/discarded-input-proof.ts",
+      "sha256": "cb422daf2fb2cb4c7d6b10bc448aba3f4bf457ef3c48a6d5bea93151b2039cbf",
+      "bytes": 19433
+    },
+    {
+      "path": "tests/qualification/strict-gzip/failure-lifecycle-assertions.ts",
+      "sha256": "f6e6fbc4c6529270f1cfbe4d814efd93688f030090eb219c978c144fe896279e",
+      "bytes": 27523
+    },
+    {
+      "path": "tests/qualification/strict-gzip/failure-lifecycle-observer.ts",
+      "sha256": "bed16ecf9200fc3fdb5d5356577f2deae84ce1f33f38925fc45260d074421006",
+      "bytes": 15152
+    },
+    {
+      "path": "tests/qualification/strict-gzip/failure-native-diagnostics.ts",
+      "sha256": "8e42cdb17c530eec9b1b1883495f038ae768c1a48116e370f29e6a2fa099efe8",
+      "bytes": 15169
+    },
+    {
+      "path": "tests/qualification/strict-gzip/failure-native-reason-codes.ts",
+      "sha256": "65ee7efa800fe986c677fa7a66542d1023f3dfdba2f2f018fbfbfb1c0c83e612",
+      "bytes": 51210
+    },
+    {
+      "path": "tests/qualification/strict-gzip/failure-phase.json",
+      "sha256": "88c1b7b93b2ac05a93876d9e4e5f520438a5089a2238f43884856b88acffc990",
+      "bytes": 27
+    },
+    {
+      "path": "tests/qualification/strict-gzip/failure-postgres-fixture.ts",
+      "sha256": "a2770bd506f7d5b7e2e07e3338cf175be2d6f510e933a6768474701f6940b3c9",
+      "bytes": 15205
+    },
+    {
+      "path": "tests/qualification/strict-gzip/failure-postgres-policy.ts",
+      "sha256": "34c0bdb4ecd820bc755f4505efcccdfa89812e538ada078c2da3e33cc82c3930",
+      "bytes": 37673
+    },
+    {
+      "path": "tests/qualification/strict-gzip/failure-postgres-private.ts",
+      "sha256": "a9b2fd9999ba18cd21e8279be053c964637df4fcf27238b5d18cc30558abd9fa",
+      "bytes": 28225
+    },
+    {
+      "path": "tests/qualification/strict-gzip/failure-replay-diagnostics.ts",
+      "sha256": "37f481a2d4c2f1e04d62be04e4f56d0ccb8f9a99a21729b6330ad14b6c7e04cd",
+      "bytes": 7560
+    },
+    {
+      "path": "tests/qualification/strict-gzip/failure-replay-reason-codes.ts",
+      "sha256": "c158f103c19c2c11c03e70bff2ad3fbf3b07a1574803643ffbb2f4767b5928e5",
+      "bytes": 155106
+    },
+    {
+      "path": "tests/qualification/strict-gzip/failure-test-evidence.ts",
+      "sha256": "4f8d55e0a609d3e058d1850b2fcf8e27b88cdc6d07dca011f90aa2c5bd1988ad",
+      "bytes": 5411
+    },
+    {
+      "path": "tests/qualification/strict-gzip/guard-preload.ts",
+      "sha256": "2ac68e3ff9c73c027d8e764508c56c9c5f3321c81157118dbe03a6a2eb54ed34",
+      "bytes": 27879
+    },
+    {
+      "path": "tests/qualification/strict-gzip/input-only-public-diagnostics.ts",
+      "sha256": "f0c6f3d46c8b1ab5868a6ec6a094524b8d99f0eec3563114a44bda1a3650faf4",
+      "bytes": 23858
+    },
+    {
+      "path": "tests/qualification/strict-gzip/launch-policy.ts",
+      "sha256": "c9abaa533e06339570c3625ac14baccfaa085815fa10dcf8534ff354aadb9c57",
+      "bytes": 23035
+    },
+    {
+      "path": "tests/qualification/strict-gzip/optional-pg-import.ts",
+      "sha256": "8b335247053c6f0bfdc229bc0d8cc3a01187890d6677bd65f4e8c381fe943d49",
+      "bytes": 60832
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-build-evidence.ts",
+      "sha256": "e9c895933fc43d0373edee7924a9c24ea76fd5b054b0bdb2d774d1a43bd419e7",
+      "bytes": 52488
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-build-stages.ts",
+      "sha256": "2e745035ee8b95fabaee9171a800adc6c4b2940cbb6ba4ecca9f002d91dbe6ed",
+      "bytes": 2763
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-deadline.ts",
+      "sha256": "7ce5ade26a96dd8e2d32a062a2f23a0dde54a1a60eca39f6301a14752a8b0db1",
+      "bytes": 784
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-diagnostics.ts",
+      "sha256": "3fc3a9897032eea25de51c50e3f628029db7e6338af0419468376b444e9607e7",
+      "bytes": 11998
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-evidence.ts",
+      "sha256": "e486563bec956a172d121d606f5cc69db3f29e7ea6a96c1578e73e9d1e430196",
+      "bytes": 4382
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-input-diagnostics.ts",
+      "sha256": "41febca35895460ba5b0e8c6b76910cd02fffe3a30d450f6c9d6ac297e35c18b",
+      "bytes": 7701
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-native-evidence.ts",
+      "sha256": "d50ed59840e6213a30cdd88a5346580131e2051c29990071c46cb704064aa478",
+      "bytes": 3480
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-overlay.ts",
+      "sha256": "d7a660db389cdc3cafeb691e188fe9cea93a27f16dbc64707b7ef3cd8aec5ee2",
+      "bytes": 4060
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-pg-identity.ts",
+      "sha256": "f3f597194160b2d39bdeebdf303c06ec2dbdaf4334bff4fe0cc6041139fbaf71",
+      "bytes": 1333
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-proof-reason-codes.ts",
+      "sha256": "ef1d4513a9d9e6bab102cf24f664b5755e65c2c756be218677ee9c858f375c8c",
+      "bytes": 167857
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-proof-reasons.ts",
+      "sha256": "40e277d203a2bfb1368817dcd7779fcfe1b009cb5167cf87e11f82d56f4d128b",
+      "bytes": 2642
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-public-receipts.ts",
+      "sha256": "4bb7ae23662a7b588c13e17acb0d72627d3ad7baee3b161c9e6c55810960adef",
+      "bytes": 7493
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-public-source-index.json",
+      "sha256": "6ad383fa2e9e12240af06fd2e60ed35f586c7e56565a07bd2117a1fa2388bdec",
+      "bytes": 287991
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-resource-fixture.ts",
+      "sha256": "dcc86bdd9c609eac6ee1e094c8bac07a665c5bba6f2ce40f7e494c0e0c2683e9",
+      "bytes": 11583
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-resource-policy.ts",
+      "sha256": "76b027ca0aafdb3c6c70292e7e4dd5b08ef657aeb3c114447d1faa664b8f2c2f",
+      "bytes": 10095
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-service.ts",
+      "sha256": "881e0ec1b0fe0fd1750fd8e30e6f2e27e45d1c3d2df79291d4969aebfff0a847",
+      "bytes": 6918
+    },
+    {
+      "path": "tests/qualification/strict-gzip/owner-test-evidence.ts",
+      "sha256": "bc3fba4d6c021f3e68defc94d83aaf360cfa028a18dda73b9394ae8e7b62b753",
+      "bytes": 2373
+    },
+    {
+      "path": "tests/qualification/strict-gzip/postgres-owner-fixture.ts",
+      "sha256": "9275f4f9f1a36b9248d25db2fff9cef11e9aedc6262934274875f900c2be8ce0",
+      "bytes": 21133
+    },
+    {
+      "path": "tests/qualification/strict-gzip/public-receipts.ts",
+      "sha256": "a5ce9ca8e4c83e6896e24b816e9a5c3375f93528ad0dcb95f5eb31c64fc87ea2",
+      "bytes": 5260
+    },
+    {
+      "path": "tests/qualification/strict-gzip/queue-owner-bundle.ts",
+      "sha256": "d7dd9bcde057323cfbf788c1a2ddde0cb565e18950a26d02843b08bc93371278",
+      "bytes": 7455
+    },
+    {
+      "path": "tests/qualification/strict-gzip/queue-owner-failure.test.ts",
+      "sha256": "bb75fce23981863738cf747c67fac4a92dbe6d362e9c213ac67805b7012b58b6",
+      "bytes": 63002
+    },
+    {
+      "path": "tests/qualification/strict-gzip/queue-owner-resource.test.ts",
+      "sha256": "e6bef85d2e8ac96c009e718d40658c3e851d54011b5ec013aa5ab8569416ee63",
+      "bytes": 11732
+    },
+    {
+      "path": "tests/qualification/strict-gzip/raw-owner-fixture.ts",
+      "sha256": "57c58fe4356b37fde7918c9d264478f724c4c272001c1badd873cf0a5417718b",
+      "bytes": 31640
+    },
+    {
+      "path": "tests/qualification/strict-gzip/raw-owner-resource.test.ts",
+      "sha256": "9ce654292a25090f0e9c1bcc45ecd89a17655cc8ea55e88ca25224fef9114e21",
+      "bytes": 14665
+    },
+    {
+      "path": "tests/qualification/strict-gzip/receipt-files.ts",
+      "sha256": "e274859786451455e10eb11b384bc3f4a16c613888ed7827bff1673256f8dab4",
+      "bytes": 3504
+    },
+    {
+      "path": "tests/qualification/strict-gzip/receipt-policy.ts",
+      "sha256": "08ee7e937d4a1e51eb6305e1150899edabe7f8d392f3777ed4d8cbaac63bac93",
+      "bytes": 22239
+    },
+    {
+      "path": "tests/qualification/strict-gzip/run.ts",
+      "sha256": "068a584ece0973faaec79d33fd0ba873e2d853fc9f8947d92dd6d2a8b58ab236",
+      "bytes": 12848
+    },
+    {
+      "path": "tests/qualification/strict-gzip/thread-policy.ts",
+      "sha256": "e3597a0f7fdfd637b57fdfb9209da3ee3287dafad3e687a28b7c4d8a8241cd45",
+      "bytes": 14619
+    },
+    {
+      "path": "tests/qualification/strict-gzip/verify-candidate.ts",
+      "sha256": "b83443f3f197c18582b2732aeff45429cbc4a7fda5805464baa1e777f8ede521",
+      "bytes": 8896
+    },
+    {
+      "path": "tests/qualification/strict-gzip/vitest.config.ts",
+      "sha256": "9d24da0ee5dd742bec54f77d313a059e1b63fa3ee7dbb7326c0cd7be2f858bd0",
+      "bytes": 1828
+    }
+  ]
+}
