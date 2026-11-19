@@ -95,7 +95,6 @@ for (const configFile of [
   "wrangler.jsonc",
   "wrangler.data.jsonc",
   "wrangler.registry.jsonc",
-  "wrangler.wss-lb.jsonc",
   "apps/ui/wrangler.jsonc",
 ]) {
   const workerConfig: Row = JSON.parse(

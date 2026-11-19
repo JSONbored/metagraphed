@@ -111,7 +111,6 @@ describe("the Worker list", () => {
       "wrangler.data.jsonc",
       "wrangler.jsonc",
       "wrangler.registry.jsonc",
-      "wrangler.wss-lb.jsonc",
     ]);
   });
 

@@ -11,8 +11,8 @@ export default defineConfig({
     server: { deps: { inline: ["graphql-ws"] } },
     // `.claude/**` keeps gitignored agent worktrees (.claude/worktrees/*, each a
     // full repo copy with its own tests) from doubling the run + skewing coverage.
-    // `deploy/**` is standalone infra (the wss-lb service is tested via
-    // `node --test`, not vitest) — keep it out of the Worker test run.
+    // `deploy/**` is standalone infra tested on its own terms (historically
+    // via `node --test`) — keep it out of the Worker test run.
     // `apps/ui/**`, `packages/ui-kit/**`, and `packages/chain-summaries/**` each
     // have their own vitest config + test run, gated separately in CI.
     exclude: [

@@ -5,7 +5,7 @@ description: One read-only JSON-RPC URL for Bittensor — health-aware load bala
 
 ## Proxy
 
-POST a single JSON-RPC object to `/rpc/v1/{network}`. Supported networks: `finney` (mainnet) and `test` (testnet). WebSocket upgrade is not available on this HTTP path — use `wss.metagraph.sh` or a public WSS endpoint.
+POST a single JSON-RPC object to `/rpc/v1/{network}`. Supported networks: `finney` (mainnet) and `test` (testnet). WebSocket upgrade is not available on this HTTP path. The `wss.metagraph.sh` WebSocket endpoint is being retired and will shut down — HTTP JSON-RPC here remains; point WebSocket clients at a public WSS endpoint (the [pool roster](/api/v1/rpc/pools) lists healthy ones).
 
 ```
 POST https://api.metagraph.sh/rpc/v1/{network}

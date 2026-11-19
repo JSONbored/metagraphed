@@ -88,14 +88,11 @@ export const WORKERS: WorkerConfig[] = [
     types: "workers/registry-sync-api.worker-configuration.d.ts",
     envInterface: "RegistrySyncApiEnv",
   },
-  // #10861: the fourth, and the one this list was missing. Every wrangler
-  // config in the repo belongs here -- an omission is invisible, because a
-  // Worker with no generated types has nothing for the gate to disagree with.
-  {
-    config: "wrangler.wss-lb.jsonc",
-    types: "workers/wss-lb.worker-configuration.d.ts",
-    envInterface: "WssLbWorkerEnv",
-  },
+  // #10861 added the wss-lb entry this list was missing; that Worker is now
+  // retired (#13151). Every wrangler config in the repo belongs here -- an
+  // omission is invisible, because a Worker with no generated types has
+  // nothing for the gate to disagree with (findUnlistedConfigs below is the
+  // check that makes an omission loud).
 ];
 
 /**

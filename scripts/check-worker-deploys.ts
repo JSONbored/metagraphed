@@ -96,7 +96,6 @@ export const WORKER_CONFIGS = [
   "wrangler.jsonc",
   "wrangler.data.jsonc",
   "wrangler.registry.jsonc",
-  "wrangler.wss-lb.jsonc",
 ] as const;
 
 /**
