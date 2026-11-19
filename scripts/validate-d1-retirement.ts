@@ -54,13 +54,16 @@ export function d1RetirementFindings(name: string, raw: string): string[] {
   return findings;
 }
 
-/** Read one deployed wrangler config, absent configs reading as retired. */
+/** Read one deployed wrangler config. Only an absent file (ENOENT) reads as
+ * retired; any other read failure throws, and main() counts that config as a
+ * live consumer — an unreadable config must never read as nothing to retire,
+ * at the filesystem layer exactly as at the parse layer. */
 function loadConfig(config: string): string | null {
   try {
     return readFileSync(path.join(repoRoot, config), "utf8");
-  } catch {
-    // A config this repo no longer deploys has no D1 left to retire.
-    return null;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
+    throw error;
   }
 }
 
@@ -71,13 +74,30 @@ function loadConfig(config: string): string | null {
  * the local gate run until the cutover config lands: exit 0 exactly while the
  * fallthrough still exists, and exit 1 the moment it does not — so the cutover
  * diff that drops the D1 bindings must also drop the flag here, flipping this
- * same program into the always-on proof that nothing reintroduces D1.
+ * same program into the always-on proof that nothing reintroduces D1. A config
+ * that cannot be read exits 1 in both modes: bare because it may hide a live
+ * consumer, pre-cutover because an unknown is not a declared fallthrough.
  */
 export function main(preCutover = false, load = loadConfig): number {
+  const unreadable: string[] = [];
   const findings = WORKER_CONFIGS.flatMap((config) => {
-    const raw = load(config);
+    let raw: string | null;
+    try {
+      raw = load(config);
+    } catch {
+      unreadable.push(
+        `${config}: unreadable wrangler config counts as a live D1 consumer`,
+      );
+      return [];
+    }
     return raw === null ? [] : d1RetirementFindings(config, raw);
   });
+  if (unreadable.length) {
+    process.stderr.write(
+      `d1-retirement: configs could not be read — fix the read before trusting any verdict:\n${unreadable.join("\n")}\n`,
+    );
+    return 1;
+  }
   if (preCutover) {
     if (findings.length) {
       process.stdout.write(

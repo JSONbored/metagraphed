@@ -88,4 +88,12 @@ it("both modes flip together when the estate goes D1-free, and bare mode passes 
   // A config the repo no longer ships reads as retired in both modes.
   expect(main(false, () => null)).toBe(0);
   expect(main(true, () => null)).toBe(1);
+  // A config that exists but cannot be read refuses in both modes: bare
+  // because it may hide a live consumer, pre-cutover because an unknown is
+  // not a declared fallthrough.
+  const throwing = () => {
+    throw new Error("EACCES: permission denied");
+  };
+  expect(main(false, throwing)).toBe(1);
+  expect(main(true, throwing)).toBe(1);
 });
