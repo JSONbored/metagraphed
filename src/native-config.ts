@@ -95,6 +95,8 @@ function count(env: NativeConfigSource, key: string, fallback: number): number {
   return value;
 }
 
+export { count as configCount, optionalText as configText, text as requiredText };
+
 function profileOf(env: NativeConfigSource): NativeProcessProfile {
   const requested = optionalText(env, "METAGRAPHED_PROFILE", "serving");
   if (!PROFILES.includes(requested as NativeProcessProfile))
