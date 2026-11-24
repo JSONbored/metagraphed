@@ -23,6 +23,7 @@
   "scripts": {
     "validate": "node scripts/validate.ts",
     "build": "node scripts/build.ts",
+    "build:native-bundle": "node scripts/build-native-bundle.ts",
     "start:native": "node src/native-entry.ts",
     "start:native:producer": "METAGRAPHED_PROFILE=producer node src/native-entry.ts",
     "build:artifacts": "node scripts/build-artifacts.ts",

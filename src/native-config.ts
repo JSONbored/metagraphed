@@ -267,7 +267,7 @@ export async function nativeConfig(
         optionalText(
           env,
           "METAGRAPHED_OAUTH_MODULE",
-          "./generated/native-oauth.js",
+          "./dist/native/oauth-provider.mjs",
         ),
         `file://${optionalText(env, "METAGRAPHED_ROOT", process.cwd())}/`,
       ),
