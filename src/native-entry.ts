@@ -33,7 +33,10 @@ import { listenNativeApi } from "./native-http-server.ts";
 const EXIT_CONFIGURATION = 78; // EX_CONFIG: the declaration is wrong, a retry cannot help.
 const EXIT_RUNTIME = 70; // EX_SOFTWARE: it started and then failed.
 
-function listenerOptions(env: NativeConfigSource, onError: (e: unknown) => void) {
+function listenerOptions(
+  env: NativeConfigSource,
+  onError: (e: unknown) => void,
+) {
   return {
     // The public origin the application builds absolute URLs from; not the
     // bind address, which is loopback below.
@@ -83,8 +86,10 @@ export async function startNativeProcess(
   const profile = options.profile ?? "trusted";
   const listen = listenerOptions(env, (error) => report(error, "listener"));
 
-  let listener: { address: { port: number }; close(): Promise<void> } | undefined;
-  if (profile !== "producer") listener = await listenNativeApi(application, listen);
+  let listener:
+    { address: { port: number }; close(): Promise<void> } | undefined;
+  if (profile !== "producer")
+    listener = await listenNativeApi(application, listen);
 
   // Background work starts only once the listener is up, so a serving process
   // that cannot bind never takes a lease it would have to give back.
@@ -109,7 +114,9 @@ export async function startNativeProcess(
         // The listener first, so no request arrives for a closing application;
         // then the application, which owns the loops', queues' and actors' own
         // drains and their declared timeouts.
-        await listener?.close().catch((error) => report(error, "listener-close"));
+        await listener
+          ?.close()
+          .catch((error) => report(error, "listener-close"));
         await application.close();
       })()),
   };

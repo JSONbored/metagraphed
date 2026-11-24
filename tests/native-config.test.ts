@@ -76,7 +76,10 @@ test("every missing secret is named, and all of them in one failure", async () =
     () => undefined,
     (reason: unknown) => reason,
   );
-  assert.ok(error instanceof NativeConfigError, "refuses as a configuration error");
+  assert.ok(
+    error instanceof NativeConfigError,
+    "refuses as a configuration error",
+  );
   // Both, not just the first: a deployment learns its whole gap from one failed
   // start instead of one name per restart.
   assert.match(error.message, new RegExp(first));

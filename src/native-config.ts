@@ -56,7 +56,9 @@ const PROFILES: readonly NativeProcessProfile[] = [
 ];
 
 /** The settings owners whose credentials the environment supplies. */
-const OWNERS = Object.keys(NATIVE_REQUIRED_SECRETS) as readonly NativeCronOwner[];
+const OWNERS = Object.keys(
+  NATIVE_REQUIRED_SECRETS,
+) as readonly NativeCronOwner[];
 
 export interface NativeConfigSource {
   readonly [key: string]: string | undefined;
@@ -95,7 +97,11 @@ function count(env: NativeConfigSource, key: string, fallback: number): number {
   return value;
 }
 
-export { count as configCount, optionalText as configText, text as requiredText };
+export {
+  count as configCount,
+  optionalText as configText,
+  text as requiredText,
+};
 
 function profileOf(env: NativeConfigSource): NativeProcessProfile {
   const requested = optionalText(env, "METAGRAPHED_PROFILE", "serving");
@@ -478,7 +484,11 @@ export async function nativeConfig(
           8 * 1024 * 1024,
         ),
         leaseMilliseconds: count(env, "METAGRAPHED_CHAIN_LEASE_MS", 60_000),
-        maxConcurrentCalls: count(env, "METAGRAPHED_CHAIN_CONCURRENT_CALLS", 32),
+        maxConcurrentCalls: count(
+          env,
+          "METAGRAPHED_CHAIN_CONCURRENT_CALLS",
+          32,
+        ),
         maxPendingCalls: count(env, "METAGRAPHED_CHAIN_PENDING_CALLS", 256),
         maxRequestBytes: count(
           env,
@@ -560,13 +570,21 @@ export async function nativeConfig(
       maxMessages: count(env, "METAGRAPHED_QUEUE_MAX_MESSAGES", 10_000),
       maxBytes: count(env, "METAGRAPHED_QUEUE_MAX_BYTES", 64 * 1024 * 1024),
       leaseMilliseconds: count(env, "METAGRAPHED_QUEUE_LEASE_MS", 60_000),
-      executionTimeoutMillis: count(env, "METAGRAPHED_QUEUE_TIMEOUT_MS", 60_000),
+      executionTimeoutMillis: count(
+        env,
+        "METAGRAPHED_QUEUE_TIMEOUT_MS",
+        60_000,
+      ),
       drainTimeoutMillis: count(env, "METAGRAPHED_QUEUE_DRAIN_MS", 15_000),
     },
     cron: {
       maxConcurrent: count(env, "METAGRAPHED_CRON_CONCURRENCY", 4),
       leaseMilliseconds: count(env, "METAGRAPHED_CRON_LEASE_MS", 60_000),
-      executionTimeoutMillis: count(env, "METAGRAPHED_CRON_TIMEOUT_MS", 300_000),
+      executionTimeoutMillis: count(
+        env,
+        "METAGRAPHED_CRON_TIMEOUT_MS",
+        300_000,
+      ),
       drainTimeoutMillis: count(env, "METAGRAPHED_CRON_DRAIN_MS", 15_000),
       maxAttempts: count(env, "METAGRAPHED_CRON_MAX_ATTEMPTS", 3),
       historyLimit: count(env, "METAGRAPHED_CRON_HISTORY", 1_000),
