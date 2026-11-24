@@ -345,7 +345,7 @@ interface SubtleCryptoDeriveKeyAlgorithm {
 /** Optional capabilities used by retained PostgreSQL and buffer fixtures.
  * Production configs bind neither capability; retirement tests enforce their
  * absence. Keep this concern on the three state Workers only, so compatibility
- * fixtures do not make these bindings appear required or available on wss-lb. */
+ * fixtures do not make these bindings appear required or available anywhere else. */
 interface LegacyStoreFixtureEnv {
   HYPERDRIVE?: Hyperdrive;
   /** #13171 (part of #13142): selects the Hyperdrive-backed state assembly on

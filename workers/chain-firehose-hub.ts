@@ -166,8 +166,8 @@ export const ALERTER_HUB_EVALUATE_TIMEOUT_MS = 15_000;
 // broadcast() runs once per chain event, so this is the one capture in this
 // file whose natural rate is the chain's, not a user's. The window makes the
 // cost of reporting an alerting outage independent of how long it lasts --
-// the same shape, and the same reasoning, as shouldEmitCondition in
-// workers/wss-lb.ts.
+// the same shape, and the same reasoning, as shouldEmitCondition in the
+// retired wss-lb Worker (#13151) had.
 export const ALERTER_UNREACHABLE_EVENT_WINDOW_MS = 5 * 60 * 1000;
 
 let alerterUnreachableLastSentMs: number | null = null;

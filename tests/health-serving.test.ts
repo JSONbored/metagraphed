@@ -1801,8 +1801,8 @@ describe("worker live health serving", () => {
 
   test("/api/v1/rpc/pools overlays live KV health so a dead upstream is marked ineligible", async () => {
     // The static R2 artifact still lists `dead` as pool_eligible (it was healthy
-    // at build time). The wss-lb / proxy route off this served body, so without
-    // the overlay they would keep routing to a node that has been down for ~30 min.
+    // at build time). The HTTP RPC proxy routes off this served body, so without
+    // the overlay it would keep routing to a node that has been down for ~30 min.
     const env = createLocalArtifactEnv({
       METAGRAPH_ARCHIVE: rpcPoolsArchiveFixture({
         schema_version: 1,

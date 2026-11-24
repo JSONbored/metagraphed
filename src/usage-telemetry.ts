@@ -2206,8 +2206,8 @@ export interface ExceptionEvent {
 // condition where the second occurrence genuinely adds nothing for the life of
 // the isolate, whereas a general fault can stop and restart, and a permanent
 // suppression would hide the restart forever. Same shape and reasoning as
-// shouldEmitCondition in workers/wss-lb.ts, which throttles its availability
-// events on exactly this model.
+// shouldEmitCondition in the retired wss-lb Worker (#13151), which throttled
+// its availability events on exactly this model.
 //
 // OFF UNLESS EXPLICITLY CONFIGURED, for exactly the reason
 // POSTHOG_USAGE_SAMPLE_RATE and POSTHOG_TRACES_SAMPLE_RATE are (see their own
@@ -2321,7 +2321,7 @@ const KV_MIN_EXPIRATION_TTL_SECONDS = 60;
  * keeps the meaning it already had: occurrences held by THIS isolate since
  * its last emission. It is a floor on the real count, not the total.
  *
- * FAILS OPEN, ALWAYS. No KV binding (registry-sync-api, wss-lb) or a KV
+ * FAILS OPEN, ALWAYS. No KV binding (registry-sync-api) or a KV
  * error degrades to the local-only behaviour that shipped before this, never
  * to silence. Losing the first report of a genuine outage to a KV blip would
  * trade a billing problem for an availability one.

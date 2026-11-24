@@ -11188,8 +11188,8 @@ async function liveHealthOverlay(
       break;
     }
     case "rpc-pools": {
-      // The served pool scores feed the public RPC load-balancer (workers/wss-lb.ts)
-      // and the proxy's pool selection. Overlay the same 15-minute cron health the
+      // The served pool scores feed the HTTP RPC proxy's pool selection.
+      // Overlay the same 15-minute cron health the
       // HTTP proxy applies (overlayRpcPoolEligibility) so a sustained-down/wrong-chain
       // upstream baked into the static artifact is marked ineligible instead of being
       // routed to. Each pool in pools[] shares the per-endpoint shape the overlay

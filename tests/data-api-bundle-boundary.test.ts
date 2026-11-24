@@ -371,8 +371,3 @@ test("indexed chain windows do not import capture cron wiring or route contracts
   ])
     assert.ok(!graph[forbidden], `history reader imports ${forbidden}`);
 });
-
-test("websocket worker bundles without Node compatibility", () => {
-  const graph = inputs("workers/wss-lb.ts", true);
-  assert.ok(graph["workers/wss-lb.ts"]);
-});

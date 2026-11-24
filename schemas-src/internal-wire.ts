@@ -252,7 +252,6 @@ const RpcPoolsReadEndpointSchema = z
     archive_support: z.unknown().optional(),
   })
   .catchall(z.unknown());
-export type RpcPoolsReadEndpoint = z.infer<typeof RpcPoolsReadEndpointSchema>;
 
 const RpcPoolsReadPoolSchema = z
   .object({
@@ -264,12 +263,10 @@ const RpcPoolsReadPoolSchema = z
   // rewrites pool-level fields (`eligible_count`, `best_endpoint_id`) that a
   // stripped copy would arrive without.
   .catchall(z.unknown());
-export type RpcPoolsReadPool = z.infer<typeof RpcPoolsReadPoolSchema>;
 
 const RpcPoolsReadArtifactSchema = z.object({
   pools: z.array(RpcPoolsReadPoolSchema),
 });
-export type RpcPoolsReadArtifact = z.infer<typeof RpcPoolsReadArtifactSchema>;
 
 /**
  * The same artifact as `/api/v1` serves it: wrapped in an envelope.
