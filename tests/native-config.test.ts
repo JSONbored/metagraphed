@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import test from "node:test";
+import { test } from "vitest";
 import {
   NativeConfigError,
   nativeConfig,
@@ -64,13 +64,16 @@ test("a complete environment composes every required option", async () => {
 });
 
 test("every missing secret is named, and all of them in one failure", async () => {
-  const owners = Object.keys(NATIVE_REQUIRED_SECRETS);
+  type OwnerKey = keyof typeof NATIVE_REQUIRED_SECRETS;
+  const owners = Object.keys(NATIVE_REQUIRED_SECRETS) as readonly OwnerKey[];
   assert.ok(owners.length >= 2, "the declaration should cover several owners");
-  const first = NATIVE_REQUIRED_SECRETS[owners[0] as never][0] as string;
-  const last = NATIVE_REQUIRED_SECRETS[owners.at(-1) as never].at(-1) as string;
+  const firstKey = NATIVE_REQUIRED_SECRETS[owners[0]][0];
+  const lastOwner = owners[owners.length - 1];
+  const lastKeys = NATIVE_REQUIRED_SECRETS[lastOwner];
+  const lastKey = lastKeys[lastKeys.length - 1];
   const env = completeEnvironment();
-  delete env[first];
-  delete env[last];
+  delete env[firstKey];
+  delete env[lastKey];
 
   const error = await build(env).then(
     () => undefined,
@@ -82,8 +85,8 @@ test("every missing secret is named, and all of them in one failure", async () =
   );
   // Both, not just the first: a deployment learns its whole gap from one failed
   // start instead of one name per restart.
-  assert.match(error.message, new RegExp(first));
-  assert.match(error.message, new RegExp(last));
+  assert.match(error.message, new RegExp(firstKey));
+  assert.match(error.message, new RegExp(lastKey));
 });
 
 test("a required scalar is refused by its own name", async () => {
