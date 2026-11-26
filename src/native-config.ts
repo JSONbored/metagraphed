@@ -33,21 +33,12 @@ import {
   loadNativeOAuthProvider,
   type NativeOAuthModule,
 } from "./native-oauth-provider.ts";
-import type {
-  NativeProcessProfile,
-  NativeSourceOwners,
+import {
+  NATIVE_SCHEMA_NAMES,
+  type NativeProcessProfile,
+  type NativeSourceOwners,
 } from "./native-source-manifest.ts";
 import type { NativeCronOwner } from "./pg-cron.ts";
-
-/** The logical sources a composed process presents one credential for. */
-const SOURCES = [
-  "app",
-  "auth",
-  "jobs",
-  "realtime",
-  "retained",
-  "search",
-] as const;
 
 const PROFILES: readonly NativeProcessProfile[] = [
   "trusted",
@@ -159,7 +150,7 @@ function settingsFrom(
 function ownersFrom(env: NativeConfigSource): NativeSourceOwners {
   const role = text(env, "METAGRAPHED_DATABASE_ROLE");
   return Object.freeze(
-    Object.fromEntries(SOURCES.map((source) => [source, role])),
+    Object.fromEntries(NATIVE_SCHEMA_NAMES.map((source) => [source, role])),
   ) as NativeSourceOwners;
 }
 
