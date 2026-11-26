@@ -244,23 +244,30 @@ export const NATIVE_SINGLE_WRITER_SERVING: Readonly<
   ]),
 });
 
+/** The logical schemas a composed process presents a credential for: the one
+ * list, read here to validate an owners map and by the process configuration
+ * to build one, so the two cannot name different sets. */
+export const NATIVE_SCHEMA_NAMES: readonly NativeSchemaName[] = Object.freeze([
+  "app",
+  "auth",
+  "jobs",
+  "realtime",
+  "retained",
+  "search",
+]);
+
 export function nativeSourceDefinitions(
   owners: NativeSourceOwners,
   profile: NativeProcessProfile = "trusted",
 ): readonly NativeSourceDefinition[] {
-  const schemas: NativeSchemaName[] = [
-    "app",
-    "auth",
-    "jobs",
-    "realtime",
-    "retained",
-    "search",
-  ];
+  const schemas: readonly NativeSchemaName[] = NATIVE_SCHEMA_NAMES;
   if (
     !owners ||
     typeof owners !== "object" ||
     Array.isArray(owners) ||
-    Object.keys(owners).some((key) => !(schemas as string[]).includes(key))
+    Object.keys(owners).some(
+      (key) => !(schemas as readonly string[]).includes(key),
+    )
   )
     throw new TypeError(
       "Native source owners must contain only declared schemas",
