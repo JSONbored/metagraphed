@@ -88,6 +88,22 @@ function count(env: NativeConfigSource, key: string, fallback: number): number {
   return value;
 }
 
+/** A count that must also sit inside a range the process cannot work outside. */
+function bounded(
+  env: NativeConfigSource,
+  key: string,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  const value = count(env, key, fallback);
+  if (value < minimum || value > maximum)
+    throw new NativeConfigError(
+      `${key} must be between ${minimum} and ${maximum}`,
+    );
+  return value;
+}
+
 export {
   count as configCount,
   optionalText as configText,
@@ -144,13 +160,34 @@ function settingsFrom(
   return settings;
 }
 
-/** One credential for every source this process presents (infra#882). The role
- * is the DSN's own user, named once so the manifest and the connection cannot
- * disagree about which credential started the process. */
+/** The role that OWNS each schema's relations, which is not the role this
+ * process logs in as.
+ *
+ * `createNativeApiProcess` reads `pg_get_userbyid(c.relowner)` for every
+ * declared relation at startup and refuses the process when it differs, so
+ * this names the provisioning owner the migrations ran as (the fleet's
+ * `metagraphed_owner`). The login -- the narrow serving role, or the writer --
+ * is the DSN's own user and is never repeated here: naming the login would
+ * make every start fail its ownership preflight, and "fixing" that by making
+ * the login the owner would hand a serving credential the DDL it must not
+ * hold (infra#882).
+ *
+ * One owner for all six schemas by default, since one migration role creates
+ * them; a schema whose owner differs names it as
+ * METAGRAPHED_SCHEMA_OWNER_<SCHEMA>. */
 function ownersFrom(env: NativeConfigSource): NativeSourceOwners {
-  const role = text(env, "METAGRAPHED_DATABASE_ROLE");
+  const shared = text(env, "METAGRAPHED_SCHEMA_OWNER");
   return Object.freeze(
-    Object.fromEntries(NATIVE_SCHEMA_NAMES.map((source) => [source, role])),
+    Object.fromEntries(
+      NATIVE_SCHEMA_NAMES.map((schema) => [
+        schema,
+        optionalText(
+          env,
+          `METAGRAPHED_SCHEMA_OWNER_${schema.toUpperCase()}`,
+          shared,
+        ),
+      ]),
+    ),
   ) as NativeSourceOwners;
 }
 
@@ -192,10 +229,20 @@ export async function nativeConfig(
   return {
     postgres: {
       connectionString: text(env, "METAGRAPHED_DATABASE_URL"),
-      // The validator detail reads five independent sources at once, which
-      // `createNativeEnvironment` enforces as its floor; the default leaves
-      // room for that fan-out plus the request concurrency below.
-      maxConnections: count(env, "METAGRAPHED_DATABASE_CONNECTIONS", 24),
+      // Bounded on both sides. The validator detail reads five independent
+      // sources at once, which `createNativeEnvironment` enforces as its floor.
+      // The ceiling is the login's own CONNECTION LIMIT, which PostgreSQL
+      // enforces per role: the fleet's serving login allows eight, so a larger
+      // pool would not serve more, it would turn load into "too many
+      // connections for role" errors. The default is therefore that limit, and
+      // a deployment whose login allows more says so explicitly.
+      maxConnections: bounded(
+        env,
+        "METAGRAPHED_DATABASE_CONNECTIONS",
+        8,
+        5,
+        32,
+      ),
       connectionTimeoutMillis: count(
         env,
         "METAGRAPHED_DATABASE_CONNECT_TIMEOUT_MS",

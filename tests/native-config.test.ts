@@ -24,7 +24,7 @@ const loadOAuth = async () => ({
 /** Every scalar `nativeConfig` requires outright, apart from the secrets. */
 const REQUIRED_TEXT = {
   METAGRAPHED_DATABASE_URL: "postgresql://fixture-only/metagraphed",
-  METAGRAPHED_DATABASE_ROLE: "metagraphed_serve",
+  METAGRAPHED_SCHEMA_OWNER: "metagraphed_owner",
   METAGRAPHED_EXPORT_IDENTITY: "urn:metagraphed:export:fixture",
   METAGRAPHED_INFERENCE_BASE_URL: "https://inference.example/v1/",
   METAGRAPHED_INFERENCE_TOKEN: "fixture-token",
@@ -52,14 +52,18 @@ test("a complete environment composes every required option", async () => {
     options.postgres.connectionString,
     REQUIRED_TEXT.METAGRAPHED_DATABASE_URL,
   );
-  // The validator read fan-out needs five; createNativeEnvironment enforces it,
-  // so the default must never be chosen below that floor.
-  assert.ok(options.postgres.maxConnections >= 5);
-  // One credential for every logical source this process presents (infra#882).
-  assert.deepEqual(
-    Object.values(options.owners),
-    Array.from(Object.values(options.owners), () => "metagraphed_serve"),
-  );
+  // The default pool is the fleet serving login's own connection limit: above
+  // the five the validator fan-out needs, never above what the role may hold.
+  assert.equal(options.postgres.maxConnections, 8);
+  // The schema OWNER, for all six schemas, and never the login the DSN names.
+  assert.deepEqual(options.owners, {
+    app: "metagraphed_owner",
+    auth: "metagraphed_owner",
+    jobs: "metagraphed_owner",
+    realtime: "metagraphed_owner",
+    retained: "metagraphed_owner",
+    search: "metagraphed_owner",
+  });
   assert.equal(typeof options.oauthModule.getOAuthApi, "function");
 });
 
@@ -154,4 +158,30 @@ test("each supported profile is carried through to the composition", async () =>
     env.METAGRAPHED_PROFILE = profile;
     assert.equal((await build(env)).profile, profile);
   }
+});
+
+test("one schema may name a different owner without moving the others", async () => {
+  const env = completeEnvironment();
+  env.METAGRAPHED_SCHEMA_OWNER_RETAINED = "metagraphed_ingest";
+  const options = await build(env);
+  assert.equal(options.owners.retained, "metagraphed_ingest");
+  assert.equal(options.owners.app, "metagraphed_owner");
+});
+
+test("a pool outside what the process and its login can hold refuses", async () => {
+  // Four cannot serve the validator fan-out; forty exceeds any login the
+  // qualified package admitted. Both are declaration errors, named.
+  for (const value of ["4", "40"]) {
+    const env = completeEnvironment();
+    env.METAGRAPHED_DATABASE_CONNECTIONS = value;
+    const error = await build(env).then(
+      () => undefined,
+      (reason: unknown) => reason,
+    );
+    assert.ok(error instanceof NativeConfigError, `${value} must refuse`);
+    assert.match(error.message, /METAGRAPHED_DATABASE_CONNECTIONS/);
+  }
+  const env = completeEnvironment();
+  env.METAGRAPHED_DATABASE_CONNECTIONS = "5";
+  assert.equal((await build(env)).postgres.maxConnections, 5);
 });
