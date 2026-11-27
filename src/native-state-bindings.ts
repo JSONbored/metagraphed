@@ -44,6 +44,7 @@ import { createPgGeneratedArtifactStore } from "./pg-generated-artifacts.ts";
 import { createPgSelfHealthStore } from "./pg-self-health.ts";
 import { createPgChainConcentrationStore } from "./pg-chain-concentration.ts";
 import { createPgRetainedBlocks } from "./retained-blocks-pg.ts";
+import { createPgChainCore } from "./chain-core-pg.ts";
 import { createPgRawCapture } from "./pg-raw-capture.ts";
 import { createPgRetentionStore } from "./pg-retention.ts";
 import { createPgArchiveCatalog } from "./archive-catalog-pg.ts";
@@ -72,6 +73,7 @@ export function createNativeStateBindings(
 ) {
   const app = nativeSource(sources, "app");
   const retained = nativeSource(sources, "retained");
+  const chain = nativeSource(sources, "chain");
   const capture = createPgNeuronCaptureStore(app, decoder, limits.capture);
   onStartupCleanup(() => capture.close());
   const rpcUsage = createPgRpcUsageStore(app, limits.rpcUsage);
@@ -118,6 +120,9 @@ export function createNativeStateBindings(
     CHAIN_CONCENTRATION_STORE: createPgChainConcentrationStore(app, decoder),
     AXON_TRANSITION_STORE: createPgAxonTransition(app),
     RETAINED_BLOCKS_STORE: createPgRetainedBlocks(retained),
+    CHAIN_CORE_STORE: createPgChainCore({
+      transaction: (callback) => chain.transaction((scope) => callback(scope)),
+    }),
     NATIVE_RAW_CAPTURE: createPgRawCapture(app),
     RAW_CAPTURE_STORAGE: "postgresql",
     NATIVE_RETENTION_STORE: createPgRetentionStore(app),

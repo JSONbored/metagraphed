@@ -37,6 +37,7 @@ export function nativeEnvironmentFixture(
     owners: {
       app: owner,
       auth: owner,
+      chain: owner,
       jobs: owner,
       realtime: owner,
       retained: owner,

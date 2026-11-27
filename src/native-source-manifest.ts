@@ -159,6 +159,19 @@ export const NATIVE_SOURCE_RELATIONS = Object.freeze({
   ]),
   retained_views: Object.freeze(["history_block_rows"]),
   search: Object.freeze(["indexes", "vectors"]),
+  // The chain core (ADR 0029, migration 0057): finalized chain facts, written
+  // by the producer profile's chain-detail lane and read by everything else.
+  chain: Object.freeze([
+    "account_events",
+    "accounts",
+    "blocks",
+    "calls",
+    "coverage",
+    "event_kinds",
+    "events",
+    "extrinsics",
+    "networks",
+  ]),
 });
 export type NativeSourceName = keyof typeof NATIVE_SOURCE_RELATIONS;
 export type NativeSchemaName = Exclude<NativeSourceName, "retained_views">;
@@ -225,6 +238,7 @@ export const NATIVE_SERVING_WRITES: Readonly<
   ]),
   retained: Object.freeze([]),
   search: Object.freeze([]),
+  chain: Object.freeze([]),
 });
 
 /** Relations with exactly ONE writing composition (infra#882 condition 1):
@@ -251,6 +265,7 @@ export function nativeSourceDefinitions(
   const schemas: NativeSchemaName[] = [
     "app",
     "auth",
+    "chain",
     "jobs",
     "realtime",
     "retained",

@@ -18,6 +18,7 @@ import {
 const owners = {
   app: "owner",
   auth: "owner",
+  chain: "owner",
   jobs: "owner",
   realtime: "owner",
   retained: "owner",
@@ -55,7 +56,7 @@ test("the serving profile reads everywhere and writes only the pinned user state
   // neither, and the app schema's write set is a strict subset.
   const app = definitions.find((definition) => definition.name === "app")!;
   assert.ok(app.writable!.length < app.relations.length);
-  for (const readOnly of ["retained", "retained_views", "search"])
+  for (const readOnly of ["chain", "retained", "retained_views", "search"])
     assert.equal(
       definitions.find((definition) => definition.name === readOnly)!.access,
       "read",
