@@ -199,7 +199,7 @@ checked by a test over every migration, not by review.
 - **Hyperparameter change logs** naming the extrinsic that made each change.
 - **Validator and neuron history per epoch**: stake, take, dividends,
   incentive, trust, nominator counts.
-- **Relations over time**: identities, child keys, proxies, multisigs, coldkey
+- **Relations over time**: identities, child keys, proxies, multisigs, scheduled key
   swaps, EVM associations, liquidity positions, limit orders, leases,
   crowdloans and admin actions.
 
