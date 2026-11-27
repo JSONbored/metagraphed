@@ -360,8 +360,7 @@ export function packSyncBatchMessages(input: {
   rows: Record<string, unknown>[];
   maxBytes?: number;
   maxRows?: number;
-  /** The transport's own cap on one message: Cloudflare's 128 KB by default,
-   * or what the queue binding states (pg-queue's maxMessageBytes). */
+  /** One message's cap; default Cloudflare's 128 KB. */
   maxMessageBytes?: number;
   /** Overridable so the "listed as pruning, no key declared" guard below is
    * reachable from a test. PRUNING_LANES and PRUNING_LANE_KEYS are deliberately
@@ -545,7 +544,6 @@ export interface SyncBatchQueue {
   /** Returns `unknown` rather than `void` so the real `Queue<T>` binding, whose
    * `send` resolves a `QueueSendResponse`, satisfies this structurally. */
   send(body: SyncBatchMessage): Promise<unknown>;
-  /** The transport's cap on one message, where the binding states one. */
   readonly maxMessageBytes?: number;
 }
 
