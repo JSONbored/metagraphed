@@ -515,6 +515,8 @@ const NAMESPACE_HARDCODED_NON_ROUTES: readonly string[] = [
   // The PostgreSQL `chain` schema's writer (ADR 0029): a database schema that
   // carries its network in every row, not the mainnet lakehouse namespace.
   "src/chain-core-pg.ts",
+  // Its reads over the same schema's views.
+  "src/chain-core-read.ts",
 ];
 
 describe("readers that hardcode the mainnet namespace", () => {

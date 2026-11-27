@@ -38,6 +38,14 @@
 // an incomplete answer is recoverable, a wrong one is not. See
 // `storeCanServe` for the exact predicate.
 
+import {
+  CHAIN_CORE_BLOCK_BY_HASH,
+  CHAIN_CORE_BLOCK_BY_HEIGHT,
+  chainCoreBlockFeedSql,
+  chainCoreNetwork,
+  chainViewsStore,
+  type ChainViewsStore,
+} from "./chain-core-read.ts";
 import { buildBlock, buildBlockFeed, declineBlock } from "./blocks.ts";
 import {
   fetchBlockRowsFromR2Sql,
@@ -152,6 +160,56 @@ const STORE_FROM =
  *  wrote -- a wrong answer with a valid shape. */
 const BLOCKS_SEAM_TABLES = ["blocks_head", "chain_detail_blocks"] as const;
 
+/** Rows above the seam from the chain core, newest first: the store leg's
+ * filters and cursor, plus the spec version and event floor it can answer
+ * because it holds them. The caller never sends it an author filter, which it
+ * cannot answer and leaves to the lakehouse rather than answering empty. */
+async function chainCoreHeadRows(
+  core: ChainViewsStore,
+  query: BlockFeedQuery,
+  cursor: BlockFeedCursor | null,
+  seam: number,
+  want: number,
+): Promise<Record<string, unknown>[] | null> {
+  const where: string[] = ["network_id = ?", "block_number > ?"];
+  const params: unknown[] = [chainCoreNetwork(DEFAULT_CHAIN_NETWORK), seam];
+  if (cursor) {
+    if (cursor.mode === "observed") {
+      where.push("(observed_at, block_number) < (?, ?)");
+      params.push(cursor.observed, cursor.height);
+    } else if (cursor.height === null) {
+      return [];
+    } else {
+      where.push("block_number < ?");
+      params.push(cursor.height);
+    }
+  }
+  for (const [value, clause] of [
+    [query.blockStart, "block_number >= ?"],
+    [query.blockEnd, "block_number <= ?"],
+    [query.from, "observed_at >= ?"],
+    [query.to, "observed_at <= ?"],
+    [query.minExtrinsics, "extrinsic_count >= ?"],
+    [query.specVersion, "spec_version = ?"],
+    [query.minEvents, "chain_event_count >= ?"],
+  ] as [unknown, string][]) {
+    if (value == null) continue;
+    const n = safeBlockNumber(value);
+    if (n === null) return null;
+    where.push(clause);
+    params.push(n);
+  }
+  try {
+    const rows = await core.query<BlockSeamRow>(
+      chainCoreBlockFeedSql(where, cursor?.mode === "observed"),
+      [...params, want],
+    );
+    return rows.map((row) => ({ ...row }));
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Whether the store leg can honour this query at all. Filters over columns the
  * leg cannot evaluate for EVERY row in its range must NOT be silently
@@ -187,6 +245,8 @@ async function storeHeadRows(
   seam: number,
   want: number,
 ): Promise<Record<string, unknown>[] | null> {
+  const core = chainViewsStore(env);
+  if (core) return chainCoreHeadRows(core, query, cursor, seam, want);
   const db = readStore(env, BLOCKS_SEAM_TABLES);
   if (!db?.query || want <= 0) return null;
 
@@ -284,7 +344,8 @@ export async function loadBlockFeedColdTier(
   const head =
     network === DEFAULT_CHAIN_NETWORK &&
     (hi === null || hi > seam) &&
-    storeCanServe(query)
+    (storeCanServe(query) ||
+      (chainViewsStore(env) !== null && query.author == null))
       ? ((await storeHeadRows(env, query, cursor, seam, want)) ?? [])
       : [];
 
@@ -381,6 +442,33 @@ export async function loadBlockColdTier(
   // a source switch, so the same 0 meant the right thing there.
   const aboveSeam =
     network === DEFAULT_CHAIN_NETWORK && asNumber !== null && asNumber > seam;
+  const core = network === DEFAULT_CHAIN_NETWORK ? chainViewsStore(env) : null;
+  if (
+    core &&
+    (aboveSeam || (asHash !== null && /^0x[0-9a-f]{64}$/.test(asHash)))
+  ) {
+    try {
+      // A hash resolves through the base table's own index: the view renders
+      // the hash as text, which no index of it can answer.
+      const rows = await core.query<BlockSeamRow>(
+        asNumber !== null
+          ? CHAIN_CORE_BLOCK_BY_HEIGHT
+          : CHAIN_CORE_BLOCK_BY_HASH,
+        asNumber !== null
+          ? [chainCoreNetwork(network), asNumber]
+          : [
+              chainCoreNetwork(network),
+              chainCoreNetwork(network),
+              asHash!.slice(2),
+            ],
+      );
+      const row = rows[0];
+      if (row) return buildBlock(recordOrNull(row), ref);
+    } catch {
+      if (aboveSeam) return declineBlock(ref);
+    }
+    if (aboveSeam) return buildBlock(undefined, ref);
+  }
   if (db?.query && (aboveSeam || asHash !== null)) {
     try {
       const predicate =
