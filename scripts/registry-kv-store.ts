@@ -385,6 +385,46 @@ export async function collectRegistryKv(
 
 /** Provider adapter: paced REST calls, bounded responses, partial-write checks,
  * and no namespace creation or R2 operations. */
+/** The store a publication targets. Cloudflare KV by default; with
+ * METAGRAPH_KV_API_BASE_URL set, a store that serves the same KV REST calls at
+ * that origin, authenticated by its own METAGRAPH_KV_API_TOKEN. The Cloudflare
+ * token is never the fallback there: a credential goes only to the host it was
+ * issued for. */
+export function configuredRegistryKvStore(
+  namespace: string,
+  env: Record<string, string | undefined> = process.env,
+): RegistryKvStore {
+  const configured = env.METAGRAPH_KV_API_BASE_URL;
+  const accountId = env.CLOUDFLARE_ACCOUNT_ID;
+  if (!configured) {
+    const apiToken = env.CLOUDFLARE_API_TOKEN;
+    if (!accountId || !apiToken)
+      throw new Error(
+        "CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN are required for Cloudflare storage access.",
+      );
+    return cloudflareRegistryKvStore(accountId, apiToken, namespace);
+  }
+  let origin: URL;
+  try {
+    origin = new URL(configured);
+  } catch {
+    throw new Error("METAGRAPH_KV_API_BASE_URL is not a URL");
+  }
+  if (origin.protocol !== "https:" || origin.search || origin.hash)
+    throw new Error("METAGRAPH_KV_API_BASE_URL must be a plain https URL");
+  const apiToken = env.METAGRAPH_KV_API_TOKEN;
+  if (!accountId || !apiToken)
+    throw new Error(
+      "CLOUDFLARE_ACCOUNT_ID and METAGRAPH_KV_API_TOKEN are required with METAGRAPH_KV_API_BASE_URL.",
+    );
+  return cloudflareRegistryKvStore(
+    accountId,
+    apiToken,
+    namespace,
+    origin.href.replace(/\/+$/, ""),
+  );
+}
+
 export function cloudflareRegistryKvStore(
   account: string,
   token: string,

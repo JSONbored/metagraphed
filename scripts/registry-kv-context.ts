@@ -1,15 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { registryObjectKey } from "../src/registry-kv.ts";
 import { stripJsonComments } from "./lib.ts";
-import { requireCloudflareCredentials } from "./r2-rest.ts";
 import {
-  cloudflareRegistryKvStore,
+  configuredRegistryKvStore,
   readRegistryManifest,
   registryDigest,
 } from "./registry-kv-store.ts";
 
 async function configuredRegistryStore() {
-  const { accountId, apiToken } = requireCloudflareCredentials();
   const config = JSON.parse(
     stripJsonComments(
       await readFile(new URL("../wrangler.jsonc", import.meta.url), "utf8"),
@@ -21,7 +19,7 @@ async function configuredRegistryStore() {
       ?.id;
   if (!namespace)
     throw new Error("Existing METAGRAPH_CONTROL namespace is required");
-  return cloudflareRegistryKvStore(accountId, apiToken, namespace);
+  return configuredRegistryKvStore(namespace);
 }
 
 export async function readPublishedRegistryJson(
