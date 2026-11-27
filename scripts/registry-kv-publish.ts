@@ -12,9 +12,8 @@ import {
   repoRoot,
   stableStringify,
 } from "./lib.ts";
-import { requireCloudflareCredentials } from "./r2-rest.ts";
 import {
-  cloudflareRegistryKvStore,
+  configuredRegistryKvStore,
   collectRegistryKv,
   KV_BURST_GRACE_MS,
   publishRegistryKv,
@@ -97,8 +96,7 @@ export async function publishRegistryMain(
     throw new Error(
       "METAGRAPH_KV_NAMESPACE_ID and METAGRAPH_ALLOW_KV_WRITE=1 are required",
     );
-  const { accountId, apiToken } = requireCloudflareCredentials();
-  const store = cloudflareRegistryKvStore(accountId, apiToken, namespace);
+  const store = configuredRegistryKvStore(namespace);
   const summary: Record<string, unknown> = await readJson(
     artifactFilePath("build-summary.json"),
   );

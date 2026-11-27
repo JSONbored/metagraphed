@@ -138,6 +138,9 @@ jobs:
           # snapshot from the restored registry/ tree. Absent credentials, the
           # build falls back to the committed seed -- never a failure.
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Optional: a store serving the same KV REST calls, with its own token.
+          METAGRAPH_KV_API_BASE_URL: ${{ vars.METAGRAPH_KV_API_BASE_URL }}
+          METAGRAPH_KV_API_TOKEN: ${{ secrets.METAGRAPH_KV_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           # scripts/build.ts spawns its child steps with `...process.env`, so
           # this reaches the two instrumented steps in the production build
@@ -352,6 +355,9 @@ jobs:
           fi
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Optional: a store serving the same KV REST calls, with its own token.
+          METAGRAPH_KV_API_BASE_URL: ${{ vars.METAGRAPH_KV_API_BASE_URL }}
+          METAGRAPH_KV_API_TOKEN: ${{ secrets.METAGRAPH_KV_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
           PUBLISH_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_mode || 'publish' }}
@@ -366,6 +372,9 @@ jobs:
         run: npm run changelog:publish
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Optional: a store serving the same KV REST calls, with its own token.
+          METAGRAPH_KV_API_BASE_URL: ${{ vars.METAGRAPH_KV_API_BASE_URL }}
+          METAGRAPH_KV_API_TOKEN: ${{ secrets.METAGRAPH_KV_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       # Build the deprecated surface-id alias map from the same previous R2
@@ -376,6 +385,9 @@ jobs:
         run: npm run surface-aliases:publish
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Optional: a store serving the same KV REST calls, with its own token.
+          METAGRAPH_KV_API_BASE_URL: ${{ vars.METAGRAPH_KV_API_BASE_URL }}
+          METAGRAPH_KV_API_TOKEN: ${{ secrets.METAGRAPH_KV_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       # changelog:publish and surface-aliases:publish overwrite staged R2-only
@@ -391,6 +403,9 @@ jobs:
         run: npm run r2:upload
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Optional: a store serving the same KV REST calls, with its own token.
+          METAGRAPH_KV_API_BASE_URL: ${{ vars.METAGRAPH_KV_API_BASE_URL }}
+          METAGRAPH_KV_API_TOKEN: ${{ secrets.METAGRAPH_KV_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           METAGRAPH_ALLOW_R2_UPLOAD: "1"
           METAGRAPH_R2_UPLOAD_HISTORY: "1"
@@ -400,6 +415,9 @@ jobs:
         run: npm run kv:publish
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Optional: a store serving the same KV REST calls, with its own token.
+          METAGRAPH_KV_API_BASE_URL: ${{ vars.METAGRAPH_KV_API_BASE_URL }}
+          METAGRAPH_KV_API_TOKEN: ${{ secrets.METAGRAPH_KV_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
           METAGRAPH_ALLOW_KV_WRITE: "1"
@@ -447,6 +465,9 @@ jobs:
         run: node scripts/r2-registry-gc.ts --write
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Optional: a store serving the same KV REST calls, with its own token.
+          METAGRAPH_KV_API_BASE_URL: ${{ vars.METAGRAPH_KV_API_BASE_URL }}
+          METAGRAPH_KV_API_TOKEN: ${{ secrets.METAGRAPH_KV_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           METAGRAPH_KV_NAMESPACE_ID: ${{ secrets.METAGRAPH_KV_NAMESPACE_ID }}
           METAGRAPH_R2_GC_PUBLISH_LOCK: "1"
@@ -456,6 +477,9 @@ jobs:
         run: node scripts/r2-history-gc.ts --write
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          # Optional: a store serving the same KV REST calls, with its own token.
+          METAGRAPH_KV_API_BASE_URL: ${{ vars.METAGRAPH_KV_API_BASE_URL }}
+          METAGRAPH_KV_API_TOKEN: ${{ secrets.METAGRAPH_KV_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           METAGRAPH_R2_GC_PUBLISH_LOCK: "1"
 

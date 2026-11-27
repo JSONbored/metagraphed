@@ -15,6 +15,7 @@ import {
   registryDigest,
   RegistryStorageBudgetError,
   cloudflareRegistryKvStore,
+  configuredRegistryKvStore,
 } from "../scripts/registry-kv-store.ts";
 
 type RegistryKvStore = Parameters<typeof publishRegistryKv>[0];
@@ -537,6 +538,70 @@ test("provider adapter uses native bulk APIs and checks partial-write failures",
     store.remove(["metagraph:latest"]),
     /Invalid registry collection keys/,
   );
+});
+
+test("a configured store origin takes its own token and never the Cloudflare one", async () => {
+  const calls: { url: string; init: RequestInit }[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string, init: RequestInit) => {
+      calls.push({ url, init });
+      return new Response(new Uint8Array(hotBytes).buffer);
+    }),
+  );
+  const cloudflare = {
+    CLOUDFLARE_ACCOUNT_ID: "account",
+    CLOUDFLARE_API_TOKEN: "cloudflare-token",
+  };
+  await configuredRegistryKvStore("namespace", cloudflare).read("k");
+  assert.equal(
+    calls[0]!.url,
+    "https://api.cloudflare.com/client/v4/accounts/account/storage/kv/namespaces/namespace/values/k",
+  );
+  await configuredRegistryKvStore("namespace", {
+    ...cloudflare,
+    METAGRAPH_KV_API_BASE_URL: "https://store.invalid/",
+    METAGRAPH_KV_API_TOKEN: "store-token",
+  }).read("k");
+  assert.equal(
+    calls[1]!.url,
+    "https://store.invalid/accounts/account/storage/kv/namespaces/namespace/values/k",
+  );
+  assert.deepEqual(
+    calls.map(
+      ({ init }) => (init.headers as Record<string, string>).Authorization,
+    ),
+    ["Bearer cloudflare-token", "Bearer store-token"],
+  );
+  // Without its own token the configured origin is refused: the Cloudflare
+  // credential is not sent to another host.
+  assert.throws(
+    () =>
+      configuredRegistryKvStore("namespace", {
+        ...cloudflare,
+        METAGRAPH_KV_API_BASE_URL: "https://store.invalid",
+      }),
+    /METAGRAPH_KV_API_TOKEN/,
+  );
+  for (const origin of [
+    "http://store.invalid",
+    "not a url",
+    "https://store.invalid/?x=1",
+  ])
+    assert.throws(
+      () =>
+        configuredRegistryKvStore("namespace", {
+          ...cloudflare,
+          METAGRAPH_KV_API_BASE_URL: origin,
+          METAGRAPH_KV_API_TOKEN: "store-token",
+        }),
+      /METAGRAPH_KV_API_BASE_URL/,
+    );
+  assert.throws(
+    () => configuredRegistryKvStore("namespace", {}),
+    /CLOUDFLARE_ACCOUNT_ID/,
+  );
+  assert.equal(calls.length, 2);
 });
 
 test("a budget overflow fails typed, and the burst floor reclaims only mid-grace ballast", async () => {
