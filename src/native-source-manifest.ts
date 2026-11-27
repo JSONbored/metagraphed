@@ -172,9 +172,25 @@ export const NATIVE_SOURCE_RELATIONS = Object.freeze({
     "extrinsics",
     "networks",
   ]),
+  // The chain core's rows in the shapes the API's formatters read
+  // (migration 0058): views, so a read-only source of their own.
+  chain_views: Object.freeze([
+    "account_event_rows",
+    "block_rows",
+    "chain_event_rows",
+    "extrinsic_rows",
+  ]),
 });
 export type NativeSourceName = keyof typeof NATIVE_SOURCE_RELATIONS;
-export type NativeSchemaName = Exclude<NativeSourceName, "retained_views">;
+/** A `_views` source is the read-only views of the schema its name begins with. */
+export type NativeSchemaName = Exclude<
+  NativeSourceName,
+  "retained_views" | "chain_views"
+>;
+const VIEW_SOURCES: Readonly<Record<string, NativeSchemaName>> = Object.freeze({
+  retained_views: "retained",
+  chain_views: "chain",
+});
 export type NativeSourceOwners = Readonly<Record<NativeSchemaName, string>>;
 
 /** Which credential a composed process presents (infra#882). "trusted" is the
@@ -289,22 +305,19 @@ export function nativeSourceDefinitions(
   }
   return Object.freeze(
     Object.entries(NATIVE_SOURCE_RELATIONS).map(([name, relations]) => {
-      const schema = (
-        name === "retained_views" ? "retained" : name
-      ) as NativeSchemaName;
-      const writes =
-        name === "retained_views"
-          ? []
-          : profile === "trusted"
-            ? relations
-            : profile === "serving"
-              ? NATIVE_SERVING_WRITES[schema]
-              : relations.filter(
-                  (relation) =>
-                    !(NATIVE_SINGLE_WRITER_SERVING[schema] ?? []).includes(
-                      relation,
-                    ),
-                );
+      const schema = (VIEW_SOURCES[name] ?? name) as NativeSchemaName;
+      const writes = Object.hasOwn(VIEW_SOURCES, name)
+        ? []
+        : profile === "trusted"
+          ? relations
+          : profile === "serving"
+            ? NATIVE_SERVING_WRITES[schema]
+            : relations.filter(
+                (relation) =>
+                  !(NATIVE_SINGLE_WRITER_SERVING[schema] ?? []).includes(
+                    relation,
+                  ),
+              );
       return Object.freeze({
         name,
         schema,

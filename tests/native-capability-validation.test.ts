@@ -130,6 +130,7 @@ test("sequence readiness follows the declared write set", async () => {
     "retained",
     "retained_views",
     "search",
+    "chain_views",
   ])
     sources.set(name, {
       ...base,
@@ -152,6 +153,7 @@ test("a read source that can run its schema's owner-authority functions refuses 
     "app",
     "auth",
     "chain",
+    "chain_views",
     "jobs",
     "realtime",
     "retained",
@@ -165,7 +167,9 @@ test("a read source that can run its schema's owner-authority functions refuses 
       map.set(name, {
         ...definition({
           name,
-          schema: name === "retained_views" ? "retained" : name,
+          schema: name.endsWith("_views")
+            ? name.slice(0, -"_views".length)
+            : name,
           // The serving split: app, auth and jobs write; the rest only read.
           ...(["app", "auth", "jobs"].includes(name)
             ? {}
@@ -193,6 +197,7 @@ test("a read source that can run its schema's owner-authority functions refuses 
     ["retained"],
     ["retained"],
     ["search"],
+    ["chain"],
     ["chain"],
   ]);
 });
