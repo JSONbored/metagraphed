@@ -31,6 +31,7 @@ import {
   TABLE_FRESHNESS_LANE,
   type FreshnessExpectation,
 } from "../src/table-freshness-watchdog.ts";
+import { nativeReadTables } from "../src/read-store.ts";
 // Imported, not spelled as a literal: the registry cluster's `coveredBy` has to
 // stay pinned to the lane the producer actually writes, so renaming that lane
 // breaks this test instead of silently orphaning four tables (#10657).
@@ -1090,6 +1091,41 @@ describe("runTableFreshnessWatchdog", () => {
     // Names the table, not a batch count -- "7 of 12 batches unreadable" gave
     // nobody anything to go and fix.
     assert.match(String(spy.written[0].detail), /1 unreadable: a/);
+  });
+
+  test("a native deployment reads the tables it owns and names the rest", async () => {
+    // One store, owning b..e. A request naming `a` as well is refused whole by
+    // readStore, which used to leave the census with nothing read at all.
+    const spy = fakeDb({ ...fresh, e: NOW });
+    const out = await runTableFreshnessWatchdog(
+      {
+        NATIVE_READ_STORE: {
+          tables: ["b", "c", "d", "e"],
+          store: { ...spy.db, first: async () => null },
+        },
+      },
+      { laneHealthDb: spy.db, now: () => NOW, spec },
+    );
+    assert.equal(out.checked, 4, "the four owned tables are read");
+    assert.match(String(spy.written[0].detail), /1 unreadable: a/);
+    assert.equal(spy.written[0].verdict, "unknown");
+  });
+
+  test("the native table set is null when unselected and refused when malformed", () => {
+    assert.equal(nativeReadTables(null), null);
+    assert.equal(nativeReadTables({}), null);
+    assert.deepEqual(
+      nativeReadTables({ NATIVE_READ_STORE: { tables: ["a", "b"] } }),
+      ["a", "b"],
+    );
+    // A selected store that does not say what it owns is never read as
+    // "owns nothing": that would report every table unreadable and hide the
+    // misconfiguration behind an ordinary-looking verdict.
+    for (const selected of [null, {}, { tables: "a" }, { tables: ["a", 1] }])
+      assert.throws(
+        () => nativeReadTables({ NATIVE_READ_STORE: selected }),
+        /Selected native read store is invalid/,
+      );
   });
 
   test("an unreadable table makes the verdict unknown, never ok (#9866)", async () => {

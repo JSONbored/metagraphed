@@ -384,6 +384,22 @@ export function hyperdriveConnectionString(env: unknown): string | null {
     : null;
 }
 
+/** The tables a selected native read store owns, or null when none is
+ * selected. For a caller that reads a census of tables and must know which of
+ * them this deployment holds before asking -- readStore itself refuses a
+ * request that names any table outside the set. */
+export function nativeReadTables(env: unknown): readonly string[] | null {
+  const native = recordOrNull(env)?.NATIVE_READ_STORE;
+  if (native === undefined) return null;
+  const owned = recordOrNull(native)?.tables;
+  if (
+    !Array.isArray(owned) ||
+    !owned.every((table) => typeof table === "string")
+  )
+    throw new TypeError("Selected native read store is invalid");
+  return owned;
+}
+
 export function readStore(
   // Deliberately loose: callers hand in an `Env`, a bag, or `unknown`, and a
   // narrower type would push a cast to every one of them.
