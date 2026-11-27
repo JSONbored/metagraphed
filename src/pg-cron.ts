@@ -408,9 +408,64 @@ export function createPgCronDispatcher(
       scheduled(event: NativeCronEvent, signal?: AbortSignal): Promise<unknown>;
     }
   >,
+  report: (note: NativeCronOutcomeNote) => void = (note) =>
+    console.warn(JSON.stringify(note)),
 ) {
-  return () =>
-    scheduler.run((owner, event, signal) =>
+  return async () => {
+    const run = await scheduler.run((owner, event, signal) =>
       processes[owner].scheduled(event, signal),
     );
+    const note = nativeCronOutcomeNote(run);
+    if (note) report(note);
+    return run;
+  };
+}
+
+/** What a run that did not succeed leaves for an operator to read.
+ *
+ * `jobs.cron_runs` keeps a run's state and its two flags, deliberately nothing
+ * else of the result: a handler's return value is arbitrary and may hold a
+ * credential. That left a declined run with no stated cause anywhere -- a lane
+ * could decline every tick for days and the only evidence was a count. This is
+ * the narrow thing that is safe to say: the handler's own short `reason` code
+ * when it is one (a bounded string of plain characters), and an error's class
+ * name, never its message. */
+export interface NativeCronOutcomeNote {
+  event: "native-cron-outcome";
+  owner: NativeCronOwner;
+  cron: string;
+  outcome: Exclude<NativeCronOutcome, "succeeded">;
+  reason?: string;
+  error?: string;
+}
+
+const NOTE_REASON = /^[A-Za-z0-9][A-Za-z0-9 _.:,()/=-]{0,159}$/;
+
+export function nativeCronOutcomeNote(
+  run: unknown,
+): NativeCronOutcomeNote | null {
+  if (run === null || typeof run !== "object") return null;
+  const value = run as Record<string, unknown>;
+  const outcome = value.outcome;
+  if (
+    typeof outcome !== "string" ||
+    outcome === "succeeded" ||
+    typeof value.owner !== "string" ||
+    typeof value.cron !== "string"
+  )
+    return null;
+  const note: NativeCronOutcomeNote = {
+    event: "native-cron-outcome",
+    owner: value.owner as NativeCronOwner,
+    cron: value.cron,
+    outcome: outcome as NativeCronOutcomeNote["outcome"],
+  };
+  const result = value.result;
+  if (result !== null && typeof result === "object") {
+    const reason = (result as Record<string, unknown>).reason;
+    if (typeof reason === "string" && NOTE_REASON.test(reason))
+      note.reason = reason;
+  }
+  if (value.error instanceof Error) note.error = value.error.name;
+  return note;
 }

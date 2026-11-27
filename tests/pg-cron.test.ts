@@ -4,6 +4,7 @@ import { afterAll, beforeAll, beforeEach, test, vi } from "vitest";
 import {
   createPgCronDispatcher,
   createPgCronScheduler,
+  nativeCronOutcomeNote,
 } from "../src/pg-cron.ts";
 import { NativeScheduledBackgroundError } from "../src/native-api-process.ts";
 import { parseNativeCron } from "../src/native-cron.ts";
@@ -364,15 +365,26 @@ test("owner dispatcher forwards the exact event, signal and result to each suppl
       },
     ]),
   );
+  const notes: unknown[] = [];
   const dispatch = createPgCronDispatcher(
     f.scheduler,
     processes as Parameters<typeof createPgCronDispatcher>[1],
+    (note) => notes.push(note),
   );
   for (let index = 0; index < 3; index++) {
     const result = await dispatch();
     assert.ok("outcome" in result);
     assert.equal(result.outcome, "declined");
   }
+  // Every declined run says so, once, where an operator can read it.
+  assert.equal(notes.length, 3);
+  for (const note of notes)
+    assert.deepEqual(Object.keys(note as object).sort(), [
+      "cron",
+      "event",
+      "outcome",
+      "owner",
+    ]);
   assert.deepEqual(calls.sort(), ["api", "data", "registry"]);
   const closing = f.scheduler.close();
   assert.equal(f.scheduler.close(), closing);
@@ -416,4 +428,46 @@ test("construction snapshots configuration and definitions before the caller can
   });
   release.resolve();
   await running;
+});
+
+test("a run's note carries a reason code and an error's class, never content", () => {
+  const run = (extra: Record<string, unknown>) => ({
+    status: "completed",
+    owner: "api",
+    cron: "5 * * * *",
+    ...extra,
+  });
+  assert.equal(nativeCronOutcomeNote(run({ outcome: "succeeded" })), null);
+  assert.equal(nativeCronOutcomeNote({ status: "idle" }), null);
+  assert.equal(nativeCronOutcomeNote(null), null);
+  assert.deepEqual(
+    nativeCronOutcomeNote(
+      run({
+        outcome: "declined",
+        result: { ok: false, reason: "no store bound", token: "secret-value" },
+      }),
+    ),
+    {
+      event: "native-cron-outcome",
+      owner: "api",
+      cron: "5 * * * *",
+      outcome: "declined",
+      reason: "no store bound",
+    },
+  );
+  // A reason that is not a short plain code is not repeated.
+  for (const reason of ["x".repeat(200), "line\nbreak", '{"k":"v"}', 7])
+    assert.equal(
+      nativeCronOutcomeNote(run({ outcome: "declined", result: { reason } }))
+        ?.reason,
+      undefined,
+    );
+  const failed = nativeCronOutcomeNote(
+    run({
+      outcome: "handler-failed",
+      error: new TypeError("private-message-must-not-be-logged"),
+    }),
+  );
+  assert.equal(failed?.error, "TypeError");
+  assert.ok(!JSON.stringify(failed).includes("private-message"));
 });
