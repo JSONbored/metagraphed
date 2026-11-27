@@ -176,6 +176,25 @@ test("settings reject missing credentials, unknown objects and disabled active f
   );
 });
 
+test("the GitHub read tokens are optional, and are carried when supplied", () => {
+  // Their readers fall back to unauthenticated reads of public repositories.
+  // A required token forces a placeholder, and GitHub answers a placeholder
+  // 401, which is worse than sending none.
+  for (const key of ["GITHUB_TOKEN", "GITHUB_SIGNALS_TOKEN"] as const) {
+    assert(
+      !(NATIVE_REQUIRED_SECRETS.api as readonly string[]).includes(key),
+      `${key} must not be a required credential`,
+    );
+    const without = nativeRuntimeSettings("api", credentials("api"));
+    assert.equal(without[key], undefined);
+    const supplied = nativeRuntimeSettings("api", {
+      ...credentials("api"),
+      [key]: "fixture-token",
+    });
+    assert.equal(supplied[key], "fixture-token");
+  }
+});
+
 test("native owners require credentials used by active entrypoint gates", () => {
   for (const [owner, filename] of [
     ["api", "api.ts"],
