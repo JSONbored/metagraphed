@@ -704,4 +704,25 @@ describe("the chain core's shadow write (ADR 0029 phase 1a)", () => {
       logged.join("\n"),
     );
   });
+
+  test("a chain core that throws a non-Error is reported by its value", async () => {
+    const logged: string[] = [];
+    const spy = vi
+      .spyOn(console, "error")
+      .mockImplementation((line: unknown) => void logged.push(String(line)));
+    try {
+      const res = await postWith({
+        write: async () => {
+          throw "chain core offline";
+        },
+      });
+      assert.equal(res.status, 200);
+    } finally {
+      spy.mockRestore();
+    }
+    assert.ok(
+      logged.some((line) => line.includes('"reason":"chain core offline"')),
+      logged.join("\n"),
+    );
+  });
 });

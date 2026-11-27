@@ -214,6 +214,18 @@ async function dimension(
   return ids;
 }
 
+/** A nullable value as the text a SQL array element casts from. */
+const text = (value: unknown): string | null =>
+  value === null || value === undefined ? null : String(value);
+
+/** A three-valued flag: an unknown outcome stays unknown. */
+const flag = (value: unknown): boolean | null =>
+  value === null || value === undefined ? null : Boolean(value);
+
+/** Decoded arguments: the producer's JSON text, or none. */
+const jsonText = (value: unknown): string | null =>
+  typeof value === "string" ? value : null;
+
 function required<T>(map: Map<string, T>, key: string, what: string): T {
   const value = map.get(key);
   if (value === undefined) throw new Error(`unresolved ${what}: ${key}`);
@@ -245,14 +257,13 @@ export async function writeChainCoreBatch(
     String(last),
   ]);
 
-  // Accounts.
+  // Accounts, each first seen at the lowest block that names it.
   const addresses = resolveAddresses(rows);
   const firstSeen = new Map<string, number>();
   const see = (value: unknown, block: unknown) => {
     if (typeof value !== "string") return;
     const at = Number(block);
-    if (!firstSeen.has(value) || at < firstSeen.get(value)!)
-      firstSeen.set(value, at);
+    firstSeen.set(value, Math.min(at, firstSeen.get(value) ?? at));
   };
   for (const row of rows.extrinsicRows) see(row.signer, row.block_number);
   for (const row of rows.accountEventRows) {
@@ -271,7 +282,7 @@ export async function writeChainCoreBatch(
         network,
         ss58.map((s) => addresses.get(s)!.key),
         ss58,
-        ss58.map((s) => String(firstSeen.get(s) ?? first)),
+        ss58.map((s) => String(firstSeen.get(s))),
       ],
     );
     const held = await tx.query<{ account: string | number; ss58: string }>(
@@ -296,6 +307,10 @@ export async function writeChainCoreBatch(
     "kind",
     pairs(rows.chainEventRows, "pallet", "method"),
   );
+  const callOf = (row: Row) =>
+    typeof row.call_module === "string" && typeof row.call_function === "string"
+      ? required(calls, `${row.call_module}.${row.call_function}`, "call")
+      : null;
 
   // Blocks, with the per-block facts the rows below total to.
   const extrinsicsByBlock = new Map<number, Row[]>();
@@ -312,7 +327,9 @@ export async function writeChainCoreBatch(
     list
       .reduce((sum, row) => sum + BigInt(decimalToRao(row[key]) ?? "0"), 0n)
       .toString();
-  const blockHashes = blocks.map((row) => hexBytes(row.block_hash)!);
+  const blockHashes = blocks.map((row) => hexBytes(row.block_hash));
+  const of = (row: Row) =>
+    extrinsicsByBlock.get(Number(row.block_number)) ?? [];
   await tx.query(
     `INSERT INTO chain.blocks (network_id, block_number, block_hash, spec_version, produced_at,
        extrinsic_count, event_count, fee_rao, tip_rao, observed_at)
@@ -325,21 +342,13 @@ export async function writeChainCoreBatch(
       numbers.map(String),
       blockHashes,
       blocks.map((row) => String(row.spec_version)),
-      blocks.map((row) =>
-        producedAtMs(extrinsicsByBlock.get(Number(row.block_number)) ?? []),
-      ),
-      blocks.map((row) =>
-        String(extrinsicsByBlock.get(Number(row.block_number))?.length ?? 0),
-      ),
+      blocks.map((row) => producedAtMs(of(row))),
+      blocks.map((row) => String(of(row).length)),
       blocks.map((row) =>
         String(eventCount.get(Number(row.block_number)) ?? 0),
       ),
-      blocks.map((row) =>
-        total(extrinsicsByBlock.get(Number(row.block_number)) ?? [], "fee_tao"),
-      ),
-      blocks.map((row) =>
-        total(extrinsicsByBlock.get(Number(row.block_number)) ?? [], "tip_tao"),
-      ),
+      blocks.map((row) => total(of(row), "fee_tao")),
+      blocks.map((row) => total(of(row), "tip_tao")),
       blocks.map((row) => String(row.observed_at)),
     ],
   );
@@ -369,32 +378,12 @@ export async function writeChainCoreBatch(
         xt.map((row) => String(row.block_number)),
         xt.map((row) => String(row.extrinsic_index)),
         xt.map((row) => hexBytes(row.extrinsic_hash)),
-        xt.map((row) => {
-          const id = account(row.signer);
-          return id === null ? null : String(id);
-        }),
-        xt.map((row) =>
-          typeof row.call_module === "string" &&
-          typeof row.call_function === "string"
-            ? String(
-                required(
-                  calls,
-                  `${row.call_module}.${row.call_function}`,
-                  "call",
-                ),
-              )
-            : null,
-        ),
-        xt.map((row) =>
-          row.success === null || row.success === undefined
-            ? null
-            : Boolean(row.success),
-        ),
+        xt.map((row) => text(account(row.signer))),
+        xt.map((row) => text(callOf(row))),
+        xt.map((row) => flag(row.success)),
         xt.map((row) => decimalToRao(row.fee_tao)),
         xt.map((row) => decimalToRao(row.tip_tao)),
-        xt.map((row) =>
-          typeof row.call_args === "string" ? row.call_args : null,
-        ),
+        xt.map((row) => jsonText(row.call_args)),
       ],
     );
 
@@ -406,6 +395,12 @@ export async function writeChainCoreBatch(
       `${row.block_number}:${row.event_index}`,
       required(kinds, `${row.pallet}.${row.method}`, "event kind"),
     );
+  const phase = (value: unknown) => {
+    const known = PHASES[String(value)];
+    if (known === undefined)
+      throw new TypeError(`unknown phase: ${String(value)}`);
+    return String(known);
+  };
   if (ev.length > 0)
     await tx.query(
       `INSERT INTO chain.events (network_id, block_number, event_index, kind, phase, extrinsic_index, args)
@@ -420,28 +415,23 @@ export async function writeChainCoreBatch(
         ev.map((row) =>
           String(eventKind.get(`${row.block_number}:${row.event_index}`)),
         ),
-        ev.map((row) => {
-          const phase = PHASES[String(row.phase)];
-          if (phase === undefined)
-            throw new TypeError(`unknown phase: ${String(row.phase)}`);
-          return String(phase);
-        }),
-        ev.map((row) =>
-          row.extrinsic_index === null || row.extrinsic_index === undefined
-            ? null
-            : String(row.extrinsic_index),
-        ),
-        ev.map((row) => (typeof row.args === "string" ? row.args : null)),
+        ev.map((row) => phase(row.phase)),
+        ev.map((row) => text(row.extrinsic_index)),
+        ev.map((row) => jsonText(row.args)),
       ],
     );
 
-  // The account index, without pallet accounts' fee and emission bookkeeping.
+  // The account index: rows that name an account, without pallet accounts'
+  // fee and emission bookkeeping.
   const indexed = rows.accountEventRows.filter((row) => {
-    if (!PALLET_BOOKKEEPING.has(String(row.event_kind))) return true;
     const keys = [row.coldkey, row.hotkey].filter(
       (value): value is string => typeof value === "string",
     );
-    return !keys.every((value) => addresses.get(value)?.pallet);
+    if (keys.length === 0) return false;
+    return !(
+      PALLET_BOOKKEEPING.has(String(row.event_kind)) &&
+      keys.every((value) => addresses.get(value)!.pallet)
+    );
   });
   if (indexed.length > 0)
     await tx.query(
@@ -455,11 +445,7 @@ export async function writeChainCoreBatch(
         network,
         indexed.map((row) => String(row.block_number)),
         indexed.map((row) => String(row.event_index)),
-        indexed.map((row) =>
-          row.extrinsic_index === null || row.extrinsic_index === undefined
-            ? null
-            : String(row.extrinsic_index),
-        ),
+        indexed.map((row) => text(row.extrinsic_index)),
         indexed.map((row) =>
           String(
             required(
@@ -469,22 +455,10 @@ export async function writeChainCoreBatch(
             ),
           ),
         ),
-        indexed.map((row) => {
-          const id = account(row.coldkey);
-          return id === null ? null : String(id);
-        }),
-        indexed.map((row) => {
-          const id = account(row.hotkey);
-          return id === null ? null : String(id);
-        }),
-        indexed.map((row) =>
-          row.netuid === null || row.netuid === undefined
-            ? null
-            : String(row.netuid),
-        ),
-        indexed.map((row) =>
-          row.uid === null || row.uid === undefined ? null : String(row.uid),
-        ),
+        indexed.map((row) => text(account(row.coldkey))),
+        indexed.map((row) => text(account(row.hotkey))),
+        indexed.map((row) => text(row.netuid)),
+        indexed.map((row) => text(row.uid)),
         indexed.map((row) => decimalToRao(row.amount_tao)),
         indexed.map((row) => decimalToRao(row.alpha_amount)),
       ],
@@ -509,11 +483,13 @@ export async function writeChainCoreBatch(
       },
     ]),
   );
-  let coverage: Contiguous | null = null;
+  const coverage = mergeCoverage(existing.get("blocks") ?? null, numbers)!;
   for (const family of CHAIN_CORE_FAMILIES) {
-    const merged = mergeCoverage(existing.get(family) ?? null, numbers);
-    if (!merged) continue;
-    if (family === "blocks") coverage = merged;
+    // Retention moves a family's start on its own; a batch extends each.
+    const merged =
+      family === "blocks"
+        ? coverage
+        : mergeCoverage(existing.get(family) ?? null, numbers)!;
     await tx.query(
       `INSERT INTO chain.coverage (network_id, family, complete_from, complete_through)
        VALUES (?, ?, ?, ?)

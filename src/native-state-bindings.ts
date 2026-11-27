@@ -120,9 +120,7 @@ export function createNativeStateBindings(
     CHAIN_CONCENTRATION_STORE: createPgChainConcentrationStore(app, decoder),
     AXON_TRANSITION_STORE: createPgAxonTransition(app),
     RETAINED_BLOCKS_STORE: createPgRetainedBlocks(retained),
-    CHAIN_CORE_STORE: createPgChainCore({
-      transaction: (callback) => chain.transaction((scope) => callback(scope)),
-    }),
+    CHAIN_CORE_STORE: createPgChainCore(chain),
     NATIVE_RAW_CAPTURE: createPgRawCapture(app),
     RAW_CAPTURE_STORAGE: "postgresql",
     NATIVE_RETENTION_STORE: createPgRetentionStore(app),

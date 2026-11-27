@@ -351,15 +351,16 @@ describe("data-api's bundle boundary", () => {
     // contract about data PostgreSQL cannot store is the wrong place to
     // economise. Keep 2,512 source bytes of margin.
     // The chain core's shadow write (ADR 0029 phase 1, #13287) rises it again,
-    // +1,250 source bytes, for 4,961,519: the hook that writes every
-    // chain-detail batch into the typed chain tables as well. Its writer is
-    // a type-only import here (the state bindings build it), so nothing new
-    // enters the graph. Same 2,512 bytes of margin.
+    // +1,212 source bytes in src/chain-detail-neon-write.ts, for 4,961,481:
+    // the mirror both of the lane's writers come through also writes each
+    // stored batch into the typed chain tables. Its writer is a type-only
+    // import there (the state bindings build it), so nothing new enters the
+    // graph. Same 2,512 bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_964_031,
+      firstParty < 4_963_993,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

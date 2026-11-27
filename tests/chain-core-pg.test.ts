@@ -459,3 +459,214 @@ test("the partition helpers are callable only by a role granted EXECUTE", async 
     assert.equal(await can("chain_writer", fn), true, fn);
   }
 });
+
+test("what the decoder could not say lands as NULL, and an account event naming no account is not indexed", async () => {
+  const rows = batch([200]);
+  rows.extrinsicRows.push({
+    block_number: 200,
+    extrinsic_index: 2,
+    extrinsic_hash: null,
+    signer: null,
+    call_module: null,
+    call_function: null,
+    success: null,
+    fee_tao: null,
+    tip_tao: null,
+    call_args: null,
+    observed_at: MS,
+  } as never);
+  rows.chainEventRows.push({
+    block_number: 200,
+    event_index: 3,
+    pallet: "System",
+    method: "Remarked",
+    args: null,
+    phase: "Finalization",
+    extrinsic_index: undefined,
+    observed_at: MS,
+  } as never);
+  rows.accountEventRows.push(
+    {
+      block_number: 200,
+      event_index: 3,
+      extrinsic_index: undefined,
+      event_kind: "Remarked",
+      hotkey: null,
+      coldkey: null,
+      netuid: null,
+      uid: null,
+      amount_tao: null,
+      alpha_amount: null,
+      observed_at: MS,
+    } as never,
+    // BOB first appears at block 199 here, below the batch's other mention.
+  );
+  const outcome = await core.write("finney", rows);
+  assert.equal(outcome.extrinsics, 3);
+  assert.equal(outcome.accountEvents, 2);
+  const unknown = await one<{
+    extrinsic_hash: unknown;
+    signer: unknown;
+    call: unknown;
+    success: unknown;
+    args: unknown;
+    fee_rao: unknown;
+  }>(
+    "SELECT extrinsic_hash, signer, call, success, args, fee_rao FROM chain.extrinsics WHERE block_number = 200 AND extrinsic_index = 2",
+  );
+  assert.deepEqual(unknown, {
+    extrinsic_hash: null,
+    signer: null,
+    call: null,
+    success: null,
+    args: null,
+    fee_rao: null,
+  });
+  const event = await one<{
+    phase: number;
+    extrinsic_index: unknown;
+    args: unknown;
+  }>(
+    "SELECT phase, extrinsic_index, args FROM chain.events WHERE block_number = 200 AND event_index = 3",
+  );
+  assert.deepEqual(event, { phase: 2, extrinsic_index: null, args: null });
+});
+
+test("an account is first seen at the lowest block that names it", async () => {
+  const rows = batch([301, 300]);
+  await core.write("finney", rows);
+  assert.equal(
+    (
+      await one<{ first_block: string }>(
+        "SELECT first_block::text FROM chain.accounts WHERE ss58 = $1",
+        [ALICE],
+      )
+    ).first_block,
+    "300",
+  );
+});
+
+test("an empty batch writes nothing, and a block alone writes only the block", async () => {
+  assert.deepEqual(
+    await core.write("finney", {
+      blockRows: [],
+      extrinsicRows: [],
+      chainEventRows: [],
+      accountEventRows: [],
+    }),
+    {
+      blocks: 0,
+      extrinsics: 0,
+      events: 0,
+      accountEvents: 0,
+      accounts: 0,
+      coverage: null,
+    },
+  );
+  const bare = batch([400]);
+  const outcome = await core.write("finney", {
+    blockRows: bare.blockRows,
+    extrinsicRows: [],
+    chainEventRows: [],
+    accountEventRows: [],
+  });
+  assert.deepEqual(
+    { ...outcome, coverage: outcome.coverage },
+    {
+      blocks: 1,
+      extrinsics: 0,
+      events: 0,
+      accountEvents: 0,
+      accounts: 0,
+      coverage: { from: 400, through: 400 },
+    },
+  );
+  const block = await one<{
+    produced_at: unknown;
+    fee_rao: string;
+    extrinsic_count: number;
+    event_count: number;
+  }>(
+    "SELECT produced_at, fee_rao::text, extrinsic_count, event_count FROM chain.blocks WHERE block_number = 400",
+  );
+  assert.deepEqual(block, {
+    produced_at: null,
+    fee_rao: "0",
+    extrinsic_count: 0,
+    event_count: 0,
+  });
+});
+
+test("every malformed input refuses the batch before anything lands", async () => {
+  const refuse = async (rows: ChainDetailSyncRows, pattern: RegExp) => {
+    await assert.rejects(core.write("finney", rows), pattern);
+    assert.equal(
+      (await one<{ n: number }>("SELECT count(*)::int n FROM chain.blocks")).n,
+      0,
+    );
+  };
+  const bad = batch([500]);
+  await refuse(
+    { ...bad, blockRows: [{ ...bad.blockRows[0], block_hash: "0xzz" }] },
+    /hash must be 0x \+ 64 hex/,
+  );
+  await refuse(
+    {
+      ...bad,
+      extrinsicRows: [{ ...bad.extrinsicRows[1], signer: "not-an-address" }],
+    },
+    /not an SS58 account address/,
+  );
+  await refuse(
+    { ...bad, extrinsicRows: [{ ...bad.extrinsicRows[1], signer: 7 }] },
+    /address must be text/,
+  );
+  await refuse(
+    {
+      ...bad,
+      chainEventRows: bad.chainEventRows.map((row) => ({
+        ...row,
+        phase: "Sometime",
+      })),
+    },
+    /unknown phase: Sometime/,
+  );
+  await refuse(
+    { ...bad, chainEventRows: bad.chainEventRows.slice(0, 1) },
+    /unresolved account event's chain event/,
+  );
+  await refuse(
+    {
+      ...bad,
+      accountEventRows: [{ ...bad.accountEventRows[1], amount_tao: 5 }],
+    },
+    /amount must be a string/,
+  );
+});
+
+test("the rao and block-time parsers hold their edges", () => {
+  assert.equal(decimalToRao("-0"), "0");
+  assert.equal(decimalToRao(undefined), null);
+  assert.throws(() => decimalToRao(1), /amount must be a string/);
+  const set = (args: unknown) => [
+    {
+      call_module: "Timestamp",
+      call_function: "set",
+      call_args: JSON.stringify(args),
+    },
+  ];
+  assert.equal(
+    producedAtMs(set([{ name: "now", value: "1795783140000" }])),
+    "1795783140000",
+  );
+  assert.equal(producedAtMs(set([{ name: "now", value: -1 }])), null);
+  assert.equal(producedAtMs(set([{ name: "now", value: "soon" }])), null);
+  assert.equal(producedAtMs(set([{ name: "later", value: 1 }])), null);
+  assert.equal(producedAtMs(set({ now: 1 })), null);
+  assert.equal(
+    producedAtMs([
+      { call_module: "Timestamp", call_function: "set", call_args: null },
+    ]),
+    null,
+  );
+});

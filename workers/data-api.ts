@@ -10,7 +10,6 @@ import {
 import { safeBlockNumber } from "../src/history-readers.ts";
 import { classifyLaneHealthWriteError } from "../src/lane-health-write-diagnostics.ts";
 import { readChainDetailSyncBody } from "../src/chain-detail-sync-body.ts";
-import type { ChainCoreRows, ChainCoreStore } from "../src/chain-core-pg.ts";
 import { createAccountIdentitySyncReporter } from "../src/account-identity-sync-diagnostics.ts";
 const reportAccountIdentitySyncFailure = createAccountIdentitySyncReporter();
 import {
@@ -1171,7 +1170,6 @@ async function handleChainDetailSync(
     );
     return writeJson({ error: "neon write failed" }, 502);
   }
-  await shadowChainCore(env, batch.rows);
 
   return writeJson({
     ok: true,
@@ -1184,41 +1182,6 @@ async function handleChainDetailSync(
       selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES) ? "d1" : "neon",
     ],
   });
-}
-
-/** The network the chain-detail lane reads (its producer's archive). */
-const CHAIN_DETAIL_NETWORK = "finney";
-
-/**
- * ADR 0029 phase 1: every chain-detail batch is also written to the chain
- * core (migration 0057). It is a shadow until the chain routes read it, so
- * its failure is reported and never fails the lane: the store that serves
- * today keeps its producer whatever the new writer does.
- */
-async function shadowChainCore(
-  env: DataApiEnv,
-  rows: ChainCoreRows,
-): Promise<void> {
-  const store = (env as { CHAIN_CORE_STORE?: ChainCoreStore }).CHAIN_CORE_STORE;
-  if (!store) return;
-  try {
-    const outcome = await store.write(CHAIN_DETAIL_NETWORK, rows);
-    console.log(
-      JSON.stringify({ event: "chain-core-write", ok: true, ...outcome }),
-    );
-  } catch (err) {
-    console.error(
-      JSON.stringify({
-        event: "chain-core-write",
-        ok: false,
-        reason: (err instanceof Error ? err.message : String(err)).slice(
-          0,
-          300,
-        ),
-      }),
-    );
-    await captureDataApiError(err, "chain-core-shadow", env);
-  }
 }
 
 // --- GET /api/v1/internal/chain-detail-sync/head (#9208) --------------------
@@ -10730,7 +10693,6 @@ export default {
         // block whose data never landed, so surface it to the queue retry.
         if (failed)
           throw new Error(`chain-detail store write failed: ${failed.reason}`);
-        await shadowChainCore(env, rows);
         return {
           statements: results.reduce(
             (sum, result) => sum + result.statements,
