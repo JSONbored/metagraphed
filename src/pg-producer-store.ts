@@ -48,6 +48,11 @@ const laneTables: Readonly<Record<string, readonly string[]>> = Object.freeze({
     "nominator_scan_receipts",
   ],
   [TAO_USD_INDEX_NEON_LANE]: ["tao_usd_index"],
+  // The daily deregistration ranking's append-only archive. Named by its
+  // literals rather than the lane module's constants so this inventory does
+  // not import a lane; tests/subnet-deregistration-daily.test.ts holds the two
+  // spellings equal.
+  "subnet-deregistration-daily": ["subnet_deregistration_daily"],
 });
 
 /** Complete supported write inventory for the native application composer. */

@@ -20,7 +20,9 @@ import {
   runSubnetDeregistrationDailyLane,
   snapshotDateFor,
   SUBNET_DEREGISTRATION_DAILY_LANE,
+  SUBNET_DEREGISTRATION_DAILY_TABLE,
 } from "../src/subnet-deregistration-daily.ts";
+import { NATIVE_PRODUCER_LANES } from "../src/pg-producer-store.ts";
 
 const MIGRATIONS = ["migrations/neon/0015_subnet_deregistration_daily.sql"].map(
   (f) => fs.readFileSync(path.join(process.cwd(), f), "utf8"),
@@ -343,6 +345,38 @@ describe("the lane", () => {
       now: () => T,
     });
     assert.equal(verdicts().length, 1, "an unbound store must still report");
+  });
+
+  test("a native deployment writes through its own lane runner", async () => {
+    // No D1 and no Hyperdrive: the native application binds neither, and a
+    // lane that looked only for those found no store on every tick.
+    const out = await runSubnetDeregistrationDailyLane(
+      {
+        ...(env as object),
+        NATIVE_WRITE_RUNNERS: { [SUBNET_DEREGISTRATION_DAILY_LANE]: sql },
+      },
+      {
+        readEconomics: async () => blob(DEREGISTRATION_DAILY_COVERAGE_FLOOR),
+        laneHealthDb,
+        now: () => T,
+      },
+    );
+    assert.equal(out.ok, true);
+    const written = await db.query(
+      "SELECT count(*)::int AS n FROM subnet_deregistration_daily",
+    );
+    assert.equal(
+      (written.rows[0] as { n: number }).n,
+      DEREGISTRATION_DAILY_COVERAGE_FLOOR,
+    );
+  });
+
+  test("the native write inventory names this lane and its table", () => {
+    assert.ok(NATIVE_PRODUCER_LANES.includes(SUBNET_DEREGISTRATION_DAILY_LANE));
+    assert.equal(
+      SUBNET_DEREGISTRATION_DAILY_TABLE,
+      "subnet_deregistration_daily",
+    );
   });
 
   test("the lane name is stable", () => {

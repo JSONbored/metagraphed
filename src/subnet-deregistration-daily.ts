@@ -31,6 +31,7 @@
 // blob must project at all, and it must cover a plausible number of subnets.
 
 import { selectedD1Store } from "./d1-store.ts";
+import { selectedNativeWriteRunner } from "./native-producer-store.ts";
 import type { ProducerStatement } from "./producer-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
@@ -244,8 +245,15 @@ export async function runSubnetDeregistrationDailyLane(
   const d1 = deps.sql
     ? null
     : selectedD1Store(env, [SUBNET_DEREGISTRATION_DAILY_TABLE]);
+  // The native application binds neither of those: its write lanes each get
+  // a runner over the process's own PostgreSQL. Without this the lane found
+  // no store on every tick there and the archive never took a row.
+  const native = deps.sql
+    ? undefined
+    : selectedNativeWriteRunner(env, SUBNET_DEREGISTRATION_DAILY_LANE);
   const sql =
     deps.sql ??
+    native ??
     (!d1 && hyperdrive?.connectionString
       ? createPgSql(hyperdrive, deps.ctx ?? { waitUntil: () => {} })
       : null);
