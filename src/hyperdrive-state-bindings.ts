@@ -100,6 +100,7 @@ function hyperdriveStateEntry(connectionString: string): HyperdriveStateEntry {
   const definitions = nativeSourceDefinitions({
     app: owner,
     auth: owner,
+    chain: owner,
     jobs: owner,
     realtime: owner,
     retained: owner,
