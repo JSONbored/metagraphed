@@ -126,6 +126,38 @@ function fixture(
   return { env, index, inference, calls, control, readArtifact, vectors };
 }
 
+test("a native deployment with an unconfigured provider reads as AI absent", () => {
+  const f = fixture();
+  assert.equal(aiConfigured(f.env), true);
+  for (const leg of ["embedding", "completion"] as const) {
+    const inference = createNativeAiInference({
+      identity: {
+        embedding: {
+          provider: leg === "embedding" ? "unconfigured" : "self_hosted",
+          model: "local-embedding",
+          dimensions: 3,
+        },
+        completion: {
+          provider: leg === "completion" ? "unconfigured" : "self_hosted",
+          model: "local-answer",
+        },
+      },
+      embedding: { baseUrl: "http://127.0.0.1:9/v1/" },
+      completion: { baseUrl: "http://127.0.0.1:9/v1/" },
+      maxConcurrent: 1,
+      maxRequestBytes: 65536,
+      maxResponseBytes: 65536,
+      maxOutputTokens: 16,
+      executionTimeoutMillis: 1000,
+      drainTimeoutMillis: 1000,
+    });
+    owners.push(inference);
+    // The routes then answer 503 ai_unavailable instead of calling the
+    // placeholder endpoint and answering 502.
+    assert.equal(aiConfigured({ ...f.env, AI_INFERENCE: inference }), false);
+  }
+});
+
 test("normal sync, semantic and grounded-answer callers use native inference and native KV", async () => {
   const f = fixture();
   assert.equal(aiConfigured(f.env), true);
