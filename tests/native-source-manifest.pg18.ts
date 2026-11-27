@@ -36,6 +36,7 @@ let created = false;
 const owners = {
   app: url.username,
   auth: url.username,
+  chain: url.username,
   jobs: url.username,
   realtime: url.username,
   retained: url.username,

@@ -159,6 +159,19 @@ export const NATIVE_SOURCE_RELATIONS = Object.freeze({
   ]),
   retained_views: Object.freeze(["history_block_rows"]),
   search: Object.freeze(["indexes", "vectors"]),
+  // The chain core (ADR 0029, migration 0057): finalized chain facts, written
+  // by the producer profile's chain-detail lane and read by everything else.
+  chain: Object.freeze([
+    "account_events",
+    "accounts",
+    "blocks",
+    "calls",
+    "coverage",
+    "event_kinds",
+    "events",
+    "extrinsics",
+    "networks",
+  ]),
 });
 export type NativeSourceName = keyof typeof NATIVE_SOURCE_RELATIONS;
 export type NativeSchemaName = Exclude<NativeSourceName, "retained_views">;
@@ -225,6 +238,7 @@ export const NATIVE_SERVING_WRITES: Readonly<
   ]),
   retained: Object.freeze([]),
   search: Object.freeze([]),
+  chain: Object.freeze([]),
 });
 
 /** Relations with exactly ONE writing composition (infra#882 condition 1):
@@ -251,6 +265,7 @@ export function nativeSourceDefinitions(
   const schemas: NativeSchemaName[] = [
     "app",
     "auth",
+    "chain",
     "jobs",
     "realtime",
     "retained",
@@ -314,6 +329,36 @@ export function nativeSource(
   const source = sources.get(name);
   if (!source) throw new Error(`Native ${name} source is unavailable`);
   return source;
+}
+
+/** A source a process only reads must not reach its schema's owner authority:
+ * a SECURITY DEFINER function runs as the schema's owner, so EXECUTE on one
+ * (chain.drop_partitions_below drops partitions) is a write the read-only
+ * credential would otherwise hold. The deployment grants EXECUTE to its
+ * writers alone; a serving process that can still call one refuses to start. */
+export async function assertNativeDefinerPrivileges(
+  sources: ReadonlyMap<string, NativeSource>,
+): Promise<void> {
+  for (const name of Object.keys(
+    NATIVE_SOURCE_RELATIONS,
+  ) as NativeSourceName[]) {
+    const source = nativeSource(sources, name);
+    if (source.access !== "read") continue;
+    const callable = await source.read.query<{ name: string }>(
+      `SELECT p.proname AS name FROM pg_catalog.pg_proc p
+       JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+       WHERE n.nspname = $1 AND p.prosecdef
+         AND has_function_privilege(current_user, p.oid, 'EXECUTE')
+       ORDER BY 1`,
+      [source.schema],
+    );
+    if (callable.length > 0)
+      throw new Error(
+        `Native ${name} source can run owner-authority functions: ${callable
+          .map((row) => row.name)
+          .join(", ")}`,
+      );
+  }
 }
 
 /** Table grants alone do not establish permission to allocate a generated ID. */

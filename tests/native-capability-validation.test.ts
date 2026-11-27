@@ -8,7 +8,10 @@ import {
   type NativeSourceDefinition,
   type NativeStore,
 } from "../src/native-api-process.ts";
-import { assertNativeSequencePrivileges } from "../src/native-source-manifest.ts";
+import {
+  assertNativeDefinerPrivileges,
+  assertNativeSequencePrivileges,
+} from "../src/native-source-manifest.ts";
 import type { NativeSource } from "../src/native-api-process.ts";
 
 interface PrivilegeRow {
@@ -121,6 +124,7 @@ test("sequence readiness follows the declared write set", async () => {
   for (const name of [
     "app",
     "auth",
+    "chain",
     "jobs",
     "realtime",
     "retained",
@@ -141,4 +145,54 @@ test("sequence readiness follows the declared write set", async () => {
     });
   await assertNativeSequencePrivileges(sources);
   assert.deepEqual(calls, [["app", ["user_state"]]]);
+});
+
+test("a read source that can run its schema's owner-authority functions refuses to start", async () => {
+  const names = [
+    "app",
+    "auth",
+    "chain",
+    "jobs",
+    "realtime",
+    "retained",
+    "retained_views",
+    "search",
+  ];
+  const sources = (callable: string[]) => {
+    const calls: unknown[][] = [];
+    const map = new Map<string, NativeSource>();
+    for (const name of names)
+      map.set(name, {
+        ...definition({
+          name,
+          schema: name === "retained_views" ? "retained" : name,
+          // The serving split: app, auth and jobs write; the rest only read.
+          ...(["app", "auth", "jobs"].includes(name)
+            ? {}
+            : { access: "read" as const, writable: undefined }),
+        }),
+        ...stubStore(
+          (name === "chain"
+            ? callable.map((fn) => ({ name: fn }))
+            : []) as never,
+          calls,
+        ),
+      } as unknown as NativeSource);
+    return { map, calls };
+  };
+  const held = sources(["drop_partitions_below"]);
+  await assert.rejects(
+    assertNativeDefinerPrivileges(held.map),
+    /Native chain source can run owner-authority functions: drop_partitions_below/,
+  );
+  const clean = sources([]);
+  await assertNativeDefinerPrivileges(clean.map);
+  // Only the read sources are asked, each about its own schema.
+  assert.deepEqual(clean.calls, [
+    ["realtime"],
+    ["retained"],
+    ["retained"],
+    ["search"],
+    ["chain"],
+  ]);
 });

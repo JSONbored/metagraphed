@@ -5,6 +5,7 @@ import {
 import {
   nativeSourceDefinitions,
   nativeSource,
+  assertNativeDefinerPrivileges,
   assertNativeSequencePrivileges,
   type NativeProcessProfile,
   type NativeSourceOwners,
@@ -231,6 +232,7 @@ export async function createNativeEnvironment(
       },
       async compose(providers) {
         await assertNativeSequencePrivileges(providers.sources);
+        await assertNativeDefinerPrivileges(providers.sources);
         const pending: (() => Promise<void>)[] = [];
         const own = (cleanup: () => Promise<void>) => {
           pending.push(cleanup);

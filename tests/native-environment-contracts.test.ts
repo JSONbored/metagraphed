@@ -23,6 +23,7 @@ import { NATIVE_CONFORMANCE_CONTRACT } from "../src/native-conformance-contract.
 const owners = {
   app: "owner",
   auth: "owner",
+  chain: "owner",
   jobs: "owner",
   realtime: "owner",
   retained: "owner",

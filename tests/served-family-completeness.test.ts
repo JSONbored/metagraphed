@@ -201,6 +201,27 @@ const FAMILY_ANCHORS: Readonly<Record<string, Family>> = {
   // Drop-only: retires the 0010 identity staging twins per infra#820 -- the
   // producer tree owns the identity plane. Creates nothing, so no anchors.
   "0056_identity_plane_handoff.sql": { tables: [], anchors: [] },
+  // The chain core (ADR 0029 phase 1a): the writer is its surface until the
+  // chain-history routes read it (phase 1b), and the native source declares
+  // every relation the process verifies at start.
+  "0057_chain_core.sql": {
+    tables: [
+      "chain.networks",
+      "chain.accounts",
+      "chain.calls",
+      "chain.event_kinds",
+      "chain.blocks",
+      "chain.extrinsics",
+      "chain.events",
+      "chain.account_events",
+      "chain.coverage",
+    ],
+    anchors: [
+      { file: "src/chain-core-pg.ts", symbol: "chain.account_events" },
+      { file: "src/chain-core-pg.ts", symbol: "chain.coverage" },
+      { file: "src/native-source-manifest.ts", symbol: '"event_kinds"' },
+    ],
+  },
 };
 
 /** The legacy-port files that predate the gate, pinned exactly. Shrink-only:

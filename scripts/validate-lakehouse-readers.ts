@@ -54,8 +54,16 @@ export function tablesReadInSql(files: readonly string[]): Map<string, string> {
   return found;
 }
 
+/** The PostgreSQL `chain` schema's own modules (ADR 0029): their `chain.`
+ * names a database schema, not the lakehouse namespace, so they hold no
+ * lakehouse snapshot to check. The prefix is the declaration; the lakehouse
+ * readers, and this check with them, retire in the ADR's phase 8. */
+const CHAIN_CORE_MODULE = /(^|\/)src\/chain-core-[a-z0-9-]+\.ts$/;
+
 function main(): void {
-  const files = sourceFiles(["src", "workers"], repoRoot);
+  const files = sourceFiles(["src", "workers"], repoRoot).filter(
+    (file) => !CHAIN_CORE_MODULE.test(file.split(path.sep).join("/")),
+  );
   const read = tablesReadInSql(files);
   const declared = new Set<string>(TABLES);
   const missing = [...read.entries()].filter(([t]) => !declared.has(t));

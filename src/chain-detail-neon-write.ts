@@ -12,6 +12,7 @@
 // write returns, never instead of it, and never throws past its own boundary.
 // While D1 is still the store the routes read, a Neon failure costs a mirror
 // and a lane verdict and nothing else.
+import type { ChainCoreStore } from "./chain-core-pg.ts";
 import { laneHealthStore } from "./lane-health-store.ts";
 import { selectedNativeWriteRunner } from "./native-producer-store.ts";
 import {
@@ -328,5 +329,39 @@ export async function mirrorChainDetailToNeon(
     now(),
     buffered,
   );
+  if (failed.length === 0) await shadowChainCore(env, input);
   return { attempted: true, results };
+}
+
+/** The network the chain-detail lane reads (its producer's archive). */
+const CHAIN_DETAIL_NETWORK = "finney";
+
+/**
+ * ADR 0029 phase 1: a stored batch is also written to the chain core
+ * (migration 0057), from here because both of the lane's writers -- the HTTP
+ * sync and the queue consumer -- come through this mirror. It is a shadow
+ * until the chain routes read it, so its failure is reported and never
+ * fails the lane: the store that serves today keeps its producer.
+ */
+async function shadowChainCore(
+  env: unknown,
+  input: ChainDetailMirrorInput,
+): Promise<void> {
+  const store = (env as { CHAIN_CORE_STORE?: ChainCoreStore } | null)
+    ?.CHAIN_CORE_STORE;
+  if (!store) return;
+  try {
+    const outcome = await store.write(CHAIN_DETAIL_NETWORK, input);
+    console.log(
+      JSON.stringify({ event: "chain-core-write", ok: true, ...outcome }),
+    );
+  } catch (err) {
+    console.error(
+      JSON.stringify({
+        event: "chain-core-write",
+        ok: false,
+        reason: String(err instanceof Error ? err.message : err).slice(0, 300),
+      }),
+    );
+  }
 }
