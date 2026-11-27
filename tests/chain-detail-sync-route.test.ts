@@ -651,3 +651,57 @@ describe("the workers/api.ts proxy", () => {
     }
   });
 });
+
+describe("the chain core's shadow write (ADR 0029 phase 1a)", () => {
+  function postWith(store: unknown) {
+    return dataApi.fetch(
+      new Request("https://d/api/v1/internal/chain-detail-sync", {
+        method: "POST",
+        headers: { "content-type": "application/json", [HEADER]: SECRET },
+        body: JSON.stringify(body()),
+      }),
+      { ...(env as object), CHAIN_CORE_STORE: store } as never,
+      CTX,
+    );
+  }
+
+  test("a stored batch is also written to the chain core, as finney", async () => {
+    const writes: { network: string; blocks: number }[] = [];
+    const res = await postWith({
+      write: async (network: string, rows: { blockRows: unknown[] }) => {
+        writes.push({ network, blocks: rows.blockRows.length });
+        return { blocks: rows.blockRows.length };
+      },
+    });
+    assert.equal(res.status, 200);
+    assert.deepEqual(writes, [{ network: "finney", blocks: 1 }]);
+  });
+
+  test("a failing chain core write is reported and never fails the lane", async () => {
+    const logged: string[] = [];
+    const spy = vi
+      .spyOn(console, "error")
+      .mockImplementation((line: unknown) => void logged.push(String(line)));
+    try {
+      const res = await postWith({
+        write: async () => {
+          throw new Error("chain core unavailable");
+        },
+      });
+      // The store that serves today still acks its producer.
+      assert.equal(res.status, 200);
+      assert.equal(((await res.json()) as { ok: boolean }).ok, true);
+    } finally {
+      spy.mockRestore();
+    }
+    assert.ok(
+      logged.some(
+        (line) =>
+          line.includes('"event":"chain-core-write"') &&
+          line.includes('"ok":false') &&
+          line.includes("chain core unavailable"),
+      ),
+      logged.join("\n"),
+    );
+  });
+});
