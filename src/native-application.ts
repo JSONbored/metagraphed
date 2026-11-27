@@ -218,7 +218,12 @@ export async function createNativeApplication(
   };
   for (const [name, maximum] of Object.entries({
     maxConcurrent: 100,
-    maxBufferBytes: 64 * 1024 * 1024,
+    // An admission bound, not an allocation: 3 x (request + response) x
+    // concurrency must fit it. At 64 MiB a deployment with the default 1 MiB
+    // request and 4 MiB response could admit four calls at once, and a
+    // public API proxies every data route through one -- the fourth
+    // concurrent page degraded to an empty answer under ordinary load.
+    maxBufferBytes: 512 * 1024 * 1024,
     maxCalls: 10000,
     maxDepth: 16,
     timeoutMillis: 30000,

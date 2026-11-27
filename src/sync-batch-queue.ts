@@ -360,6 +360,9 @@ export function packSyncBatchMessages(input: {
   rows: Record<string, unknown>[];
   maxBytes?: number;
   maxRows?: number;
+  /** The transport's own cap on one message: Cloudflare's 128 KB by default,
+   * or what the queue binding states (pg-queue's maxMessageBytes). */
+  maxMessageBytes?: number;
   /** Overridable so the "listed as pruning, no key declared" guard below is
    * reachable from a test. PRUNING_LANES and PRUNING_LANE_KEYS are deliberately
    * NOT one list -- a lane can have a known prune key while its producer cannot
@@ -376,6 +379,7 @@ export function packSyncBatchMessages(input: {
     maxBytes = SYNC_BATCH_MAX_BYTES,
     maxRows = SYNC_BATCH_MAX_ROWS,
     pruningKeys = PRUNING_LANE_KEYS,
+    maxMessageBytes = QUEUE_MESSAGE_MAX_BYTES,
   } = input;
   if (rows.length === 0) return [];
 
@@ -438,10 +442,10 @@ export function packSyncBatchMessages(input: {
     // costume of a flaky one. Measured here, at the boundary, where the failure
     // names itself.
     const bytes = JSON.stringify(message).length;
-    if (bytes > QUEUE_MESSAGE_MAX_BYTES) {
+    if (bytes > maxMessageBytes) {
       throw new Error(
         `sync-batches: ${lane} message of ${current.length} row(s) is ` +
-          `${bytes} bytes, over the ${QUEUE_MESSAGE_MAX_BYTES}-byte transport ` +
+          `${bytes} bytes, over the ${maxMessageBytes}-byte transport ` +
           `cap. A single ${keyColumn ?? "row"} group this large cannot be ` +
           `split without breaking key_complete, so the PRODUCER must reduce it.`,
       );
@@ -476,10 +480,7 @@ export function packSyncBatchMessages(input: {
       // brings a 722-position group from 141 KB under the 128 KB cap. The
       // consumer re-injects before writing, so the writer never sees the
       // difference.
-      if (
-        keyColumn &&
-        groupBytes > QUEUE_MESSAGE_MAX_BYTES - ENVELOPE_HEADROOM
-      ) {
+      if (keyColumn && groupBytes > maxMessageBytes - ENVELOPE_HEADROOM) {
         hoistKey = keyColumn;
       }
       flush();
@@ -544,6 +545,8 @@ export interface SyncBatchQueue {
   /** Returns `unknown` rather than `void` so the real `Queue<T>` binding, whose
    * `send` resolves a `QueueSendResponse`, satisfies this structurally. */
   send(body: SyncBatchMessage): Promise<unknown>;
+  /** The transport's cap on one message, where the binding states one. */
+  readonly maxMessageBytes?: number;
 }
 
 /**
@@ -571,7 +574,10 @@ export async function enqueueSyncBatch(
     rows: Record<string, unknown>[];
   },
 ): Promise<number> {
-  const messages = packSyncBatchMessages(input);
+  const messages = packSyncBatchMessages({
+    ...input,
+    maxMessageBytes: queue.maxMessageBytes,
+  });
   await Promise.all(messages.map((message) => queue.send(message)));
   return messages.length;
 }

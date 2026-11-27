@@ -83,6 +83,14 @@ const readySql = `SELECT COUNT(*) = 2 AND bool_and(tgenabled IN ('O','A')) AS re
  FROM pg_catalog.pg_trigger WHERE tgrelid = to_regclass('jobs.messages') AND NOT tgisinternal
  AND tgname IN ('queue_payload_capacity','queue_payload_immutable')`;
 
+/** One message and one batch on the native queue. Cloudflare Queues cap a message at
+ * 128 KB and a batch at 256 KB; a message here is a PostgreSQL row, so the bound
+ * is the queue's own capacity (limits.maxBytes), and these leave a single
+ * indivisible sync group room to grow: nominator-positions' largest coldkey
+ * reached 1,338 positions, 228 KB, on 2026-11-27. */
+export const NATIVE_QUEUE_MESSAGE_MAX_BYTES = 1024 * 1024;
+export const NATIVE_QUEUE_BATCH_MAX_BYTES = 8 * 1024 * 1024;
+
 function encode(body: unknown, type: ContentType): Buffer {
   let result: Buffer;
   if (type === "json") {
@@ -97,8 +105,8 @@ function encode(body: unknown, type: ContentType): Buffer {
   } else if (type === "bytes" && body instanceof ArrayBuffer) {
     result = Buffer.from(new Uint8Array(body));
   } else throw new TypeError("Queue content type does not match its body");
-  if (result.length > 131072)
-    throw new RangeError("Queue body exceeds 128 KiB");
+  if (result.length > NATIVE_QUEUE_MESSAGE_MAX_BYTES)
+    throw new RangeError("Queue body exceeds 1 MiB");
   return result;
 }
 function decode(row: StoredMessage): unknown {
@@ -246,8 +254,8 @@ export async function createPgQueueTransport(
           );
         const body = encode(message.body, type);
         size += body.length;
-        if (size > 262144)
-          throw new RangeError("Queue sendBatch exceeds 256 KiB");
+        if (size > NATIVE_QUEUE_BATCH_MAX_BYTES)
+          throw new RangeError("Queue sendBatch exceeds 8 MiB");
         rows.push({
           id: randomUUID(),
           body,
@@ -403,6 +411,10 @@ export async function createPgQueueTransport(
     binding(queue: PgQueueName) {
       policyFor(queue);
       return {
+        // What one message may carry here, for a producer that packs to it
+        // (sync-batch-queue.ts enqueueSyncBatch). Cloudflare's binding has no
+        // such property, and its producers keep Cloudflare's 128 KB.
+        maxMessageBytes: NATIVE_QUEUE_MESSAGE_MAX_BYTES,
         send: (body: unknown, options?: PgQueueSendOptions) =>
           enqueue(queue, [{ body, ...options }]),
         sendBatch: (

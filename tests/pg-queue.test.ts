@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { PGlite } from "@electric-sql/pglite";
 import { afterAll, beforeAll, beforeEach, test, vi } from "vitest";
-import { createPgQueueTransport, type PgQueueName } from "../src/pg-queue.ts";
+import {
+  createPgQueueTransport,
+  NATIVE_QUEUE_MESSAGE_MAX_BYTES,
+  type PgQueueName,
+} from "../src/pg-queue.ts";
 import { queueDeferred, queueFixture } from "./helpers/queue-fixture.ts";
 
 let db: PGlite;
@@ -157,7 +161,7 @@ test("validates bodies, batch totals, finite iterables and send delays before an
     [1, { contentType: "text" }],
     ["bytes", { contentType: "bytes" }],
     ["x", { contentType: "v8" }],
-    ["x".repeat(131073), { contentType: "text" }],
+    ["x".repeat(NATIVE_QUEUE_MESSAGE_MAX_BYTES + 1), { contentType: "text" }],
   ] as const)
     await assert.rejects(queue.send(body, options as never));
   await assert.rejects(queue.send({}, { delaySeconds: -1 }));
@@ -167,12 +171,12 @@ test("validates bodies, batch totals, finite iterables and send delays before an
   );
   await assert.rejects(
     queue.sendBatch(
-      Array.from({ length: 3 }, () => ({
-        body: "x".repeat(100000),
+      Array.from({ length: 9 }, () => ({
+        body: "x".repeat(1000000),
         contentType: "text",
       })),
     ),
-    /256 KiB/,
+    /8 MiB/,
   );
   await assert.rejects(
     queue.sendBatch([{ body: {} }], { delaySeconds: 86401 }),
