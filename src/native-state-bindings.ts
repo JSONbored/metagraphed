@@ -74,6 +74,7 @@ export function createNativeStateBindings(
   const app = nativeSource(sources, "app");
   const retained = nativeSource(sources, "retained");
   const chain = nativeSource(sources, "chain");
+  const chainViews = nativeSource(sources, "chain_views");
   const capture = createPgNeuronCaptureStore(app, decoder, limits.capture);
   onStartupCleanup(() => capture.close());
   const rpcUsage = createPgRpcUsageStore(app, limits.rpcUsage);
@@ -121,6 +122,10 @@ export function createNativeStateBindings(
     AXON_TRANSITION_STORE: createPgAxonTransition(app),
     RETAINED_BLOCKS_STORE: createPgRetainedBlocks(retained),
     CHAIN_CORE_STORE: createPgChainCore(chain),
+    NATIVE_CHAIN_READ_STORE: Object.freeze({
+      tables: chainViews.relations,
+      store: chainViews.read,
+    }),
     NATIVE_RAW_CAPTURE: createPgRawCapture(app),
     RAW_CAPTURE_STORAGE: "postgresql",
     NATIVE_RETENTION_STORE: createPgRetentionStore(app),
