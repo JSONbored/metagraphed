@@ -154,7 +154,8 @@ test("a native deployment with an unconfigured provider reads as AI absent", () 
     owners.push(inference);
     // The routes then answer 503 ai_unavailable instead of calling the
     // placeholder endpoint and answering 502.
-    assert.equal(aiConfigured({ ...f.env, AI_INFERENCE: inference }), false);
+    const env = Object.assign({}, f.env, { AI_INFERENCE: inference });
+    assert.equal(aiConfigured(env), false);
   }
 });
 
