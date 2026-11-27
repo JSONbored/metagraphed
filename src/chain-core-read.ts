@@ -14,13 +14,18 @@ export interface ChainViewsStore {
  * the native application binds them, or null. A reader that gets null keeps
  * the source it had before the chain core existed.
  */
-export function chainViewsStore(env: unknown): ChainViewsStore | null {
-  const store = recordOrNull(
-    recordOrNull(recordOrNull(env)?.NATIVE_CHAIN_READ_STORE)?.store,
+function isChainViewsStore(value: unknown): value is ChainViewsStore {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "query" in value &&
+    typeof value.query === "function"
   );
-  return store && typeof store.query === "function"
-    ? (store as unknown as ChainViewsStore)
-    : null;
+}
+
+export function chainViewsStore(env: unknown): ChainViewsStore | null {
+  const store = recordOrNull(recordOrNull(env)?.NATIVE_CHAIN_READ_STORE)?.store;
+  return isChainViewsStore(store) ? store : null;
 }
 
 /** The chain core keys a network by its chain's own name. */
