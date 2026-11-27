@@ -986,3 +986,31 @@ describe("multi-family messages (metagraphed-infra#359)", () => {
     );
   });
 });
+
+test("an indivisible group larger than Cloudflare's cap goes whole on a queue that takes it", () => {
+  // nominator-positions' largest coldkey reached 1,338 positions (228 KB with
+  // its key hoisted) on 2026-11-27: over Cloudflare's 128 KB, which refused it,
+  // and well inside the native queue's 1 MiB.
+  const rows = Array.from({ length: 1338 }, (_, i) => ({
+    coldkey: "5C".padEnd(48, "c"),
+    hotkey: "5H".padEnd(48, String(i % 10)),
+    netuid: i % 128,
+    share_fraction: 0.0123456789,
+    shares: "1844674407370955161600000000",
+    captured_at: 1795772859640,
+  }));
+  const input = {
+    lane: "nominator-positions" as const,
+    capturedAt: 1795772859640,
+    passTotal: rows.length,
+    rows,
+  };
+  assert.throws(() => packSyncBatchMessages(input), /transport cap/);
+  const messages = packSyncBatchMessages({
+    ...input,
+    maxMessageBytes: 1024 * 1024,
+  });
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0]!.rows.length, rows.length);
+  assert.ok(JSON.stringify(messages[0]).length <= 1024 * 1024);
+});
