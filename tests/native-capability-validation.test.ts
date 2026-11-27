@@ -201,3 +201,35 @@ test("a read source that can run its schema's owner-authority functions refuses 
     ["chain"],
   ]);
 });
+
+test("a views source beside its schema's writer is not held to the read-only rule", async () => {
+  const calls: unknown[][] = [];
+  const map = new Map<string, NativeSource>();
+  for (const name of [
+    "app",
+    "auth",
+    "chain",
+    "chain_views",
+    "jobs",
+    "realtime",
+    "retained",
+    "retained_views",
+    "search",
+  ])
+    map.set(name, {
+      ...definition({
+        name,
+        schema: name.endsWith("_views")
+          ? name.slice(0, -"_views".length)
+          : name,
+        // The trusted split: every table source writes; only the views read.
+        ...(name.endsWith("_views")
+          ? { access: "read" as const, writable: undefined }
+          : {}),
+      }),
+      ...stubStore([{ name: "drop_partitions_below" }] as never, calls),
+    } as unknown as NativeSource);
+  // The writer's EXECUTE is held through the chain source, so its views are not asked.
+  await assertNativeDefinerPrivileges(map);
+  assert.deepEqual(calls, []);
+});

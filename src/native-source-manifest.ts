@@ -352,11 +352,20 @@ export function nativeSource(
 export async function assertNativeDefinerPrivileges(
   sources: ReadonlyMap<string, NativeSource>,
 ): Promise<void> {
+  // A schema the same process also writes (a `_views` source beside its
+  // table source, in the trusted profile) holds its writer's EXECUTE by
+  // right; only a schema it reads alone must not reach owner authority.
+  const written = new Set(
+    (Object.keys(NATIVE_SOURCE_RELATIONS) as NativeSourceName[])
+      .map((name) => nativeSource(sources, name))
+      .filter((source) => source.access === "read-write")
+      .map((source) => source.schema),
+  );
   for (const name of Object.keys(
     NATIVE_SOURCE_RELATIONS,
   ) as NativeSourceName[]) {
     const source = nativeSource(sources, name);
-    if (source.access !== "read") continue;
+    if (source.access !== "read" || written.has(source.schema)) continue;
     const callable = await source.read.query<{ name: string }>(
       `SELECT p.proname AS name FROM pg_catalog.pg_proc p
        JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
