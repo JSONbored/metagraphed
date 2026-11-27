@@ -200,10 +200,11 @@ async function chainCoreHeadRows(
     params.push(n);
   }
   try {
-    return await core.query<Record<string, unknown>>(
+    const rows = await core.query<BlockSeamRow>(
       chainCoreBlockFeedSql(where, cursor?.mode === "observed"),
       [...params, want],
     );
+    return rows.map((row) => ({ ...row }));
   } catch {
     return null;
   }
