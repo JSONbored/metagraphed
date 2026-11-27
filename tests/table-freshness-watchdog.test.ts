@@ -1092,6 +1092,24 @@ describe("runTableFreshnessWatchdog", () => {
     assert.match(String(spy.written[0].detail), /1 unreadable: a/);
   });
 
+  test("a native deployment reads the tables it owns and names the rest", async () => {
+    // One store, owning b..e. A request naming `a` as well is refused whole by
+    // readStore, which used to leave the census with nothing read at all.
+    const spy = fakeDb({ ...fresh, e: NOW });
+    const out = await runTableFreshnessWatchdog(
+      {
+        NATIVE_READ_STORE: {
+          tables: ["b", "c", "d", "e"],
+          store: { ...spy.db, first: async () => null },
+        },
+      },
+      { laneHealthDb: spy.db, now: () => NOW, spec },
+    );
+    assert.equal(out.checked, 4, "the four owned tables are read");
+    assert.match(String(spy.written[0].detail), /1 unreadable: a/);
+    assert.equal(spy.written[0].verdict, "unknown");
+  });
+
   test("an unreadable table makes the verdict unknown, never ok (#9866)", async () => {
     // THE BUG: `failed` reached the detail STRING and never the verdict, so a
     // sweep that read 5 of 12 batches still published `ok` -- and lane-alarm

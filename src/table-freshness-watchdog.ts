@@ -32,7 +32,7 @@
 
 import { laneHealthStore } from "./lane-health-store.ts";
 import { recordLaneVerdict, type LaneHealthDb } from "./lane-health.ts";
-import { readStore } from "./read-store.ts";
+import { nativeReadTables, readStore } from "./read-store.ts";
 import { partitionStoreTables, selectedD1Store } from "./d1-store.ts";
 import { missedTicksMs, type ProducerLane } from "./producer-cadence.ts";
 // DERIVED, not quoted. This read "RAW_CAPTURE_CRON every 5 min" until #11402
@@ -1155,7 +1155,21 @@ export async function runTableFreshnessWatchdog(
   // two that happen to differ.
   // The D1 retirement reversed that split (#10051). Restore it for the
   // explicitly selected destinations so a mixed-store census remains readable.
-  const partitions = partitionStoreTables(env, tables);
+  //
+  // A NATIVE deployment has one store, and it owns a declared set of tables.
+  // readStore refuses a request naming any table outside that set -- correctly,
+  // a selected store never falls through to another -- so one watched table the
+  // native source does not hold made the whole census a single refused read and
+  // the verdict "no table could be read", on every tick. The owned tables are
+  // read; the rest are reported unreadable by name, like any other table the
+  // sweep cannot reach.
+  const nativeOwned = nativeReadTables(env);
+  const partitions =
+    nativeOwned === null
+      ? partitionStoreTables(env, tables)
+      : [tables.filter((table) => nativeOwned.includes(table))].filter(
+          (partition) => partition.length > 0,
+        );
 
   const newest = new Map<string, number>();
   const readBatch = async (
@@ -1177,7 +1191,10 @@ export async function runTableFreshnessWatchdog(
   // Tables the sweep could not read, BY NAME. #9866 counted failed BATCHES,
   // which was both imprecise (one bad table condemned four) and unactionable
   // ("7 of 12 batches unreadable" names nothing to go and fix).
-  const unreadable: string[] = [];
+  const unreadable: string[] =
+    nativeOwned === null
+      ? []
+      : tables.filter((table) => !nativeOwned.includes(table));
   for (const partition of partitions) {
     let db = deps.db;
     try {
