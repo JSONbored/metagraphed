@@ -220,8 +220,13 @@ export const NATIVE_REQUIRED_SECRETS = Object.freeze({
     "RPC_USAGE_SYNC_SECRET",
     "WEBHOOK_DISPATCH_SECRET",
     "METAGRAPH_WEBHOOK_SUBSCRIPTION_TOKEN",
-    "GITHUB_TOKEN",
-    "GITHUB_SIGNALS_TOKEN",
+    // GITHUB_TOKEN and GITHUB_SIGNALS_TOKEN are deliberately NOT required.
+    // Every reader of them treats a missing token as "read unauthenticated"
+    // (the registry lanes, the upgrade radar, link status), which works for
+    // the public repositories they read. Requiring them forced a deployment
+    // with no token to supply a placeholder, and a placeholder is worse than
+    // nothing: GitHub answers 401 to it, so the registry lanes reported
+    // "could not resolve head" on every tick.
     "WALLET_SESSION_SECRET",
     "WATCH_TRIGGER_TOKEN_SECRET",
     "ALERT_TRIGGER_CREATE_TOKEN",
