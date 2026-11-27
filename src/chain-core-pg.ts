@@ -332,10 +332,14 @@ export async function writeChainCoreBatch(
     extrinsicsByBlock.get(Number(row.block_number)) ?? [];
   await tx.query(
     `INSERT INTO chain.blocks (network_id, block_number, block_hash, spec_version, produced_at,
-       extrinsic_count, event_count, fee_rao, tip_rao, observed_at)
-     SELECT ?, n, decode(h, 'hex'), v, to_timestamp(p::numeric / 1000), x, e, f, tp, to_timestamp(o::numeric / 1000)
+       extrinsic_count, event_count, fee_rao, tip_rao, observed_at, account_event_count,
+       native_transfer_rao, stake_flow_rao, issuance_rao, subnet_ids, economics_complete, synced_at)
+     SELECT ?, n, decode(h, 'hex'), v, to_timestamp(p::numeric / 1000), x, e, f, tp, to_timestamp(o::numeric / 1000),
+       ae, nt, sf, iss, CASE WHEN s IS NULL THEN NULL ELSE ARRAY(SELECT jsonb_array_elements_text(s::jsonb)::integer) END,
+       ec, to_timestamp(sy::numeric / 1000)
      FROM unnest(?::bigint[], ?::text[], ?::integer[], ?::bigint[], ?::integer[], ?::integer[],
-       ?::bigint[], ?::bigint[], ?::bigint[]) AS t(n, h, v, p, x, e, f, tp, o)
+       ?::bigint[], ?::bigint[], ?::bigint[], ?::integer[], ?::bigint[], ?::bigint[], ?::bigint[], ?::text[],
+       ?::boolean[], ?::bigint[]) AS t(n, h, v, p, x, e, f, tp, o, ae, nt, sf, iss, s, ec, sy)
      ON CONFLICT (network_id, block_number) DO NOTHING`,
     [
       network,
@@ -350,6 +354,15 @@ export async function writeChainCoreBatch(
       blocks.map((row) => total(of(row), "fee_tao")),
       blocks.map((row) => total(of(row), "tip_tao")),
       blocks.map((row) => String(row.observed_at)),
+      // The economics the sync parser summarised from the whole batch
+      // (block-economics.ts): null for a category it could not complete.
+      blocks.map((row) => text(row.account_event_count)),
+      blocks.map((row) => decimalToRao(row.native_transfer_tao)),
+      blocks.map((row) => decimalToRao(row.stake_flow_tao)),
+      blocks.map((row) => decimalToRao(row.issuance_tao)),
+      blocks.map((row) => jsonText(row.subnet_ids)),
+      blocks.map((row) => flag(row.economics_complete)),
+      blocks.map((row) => text(row.synced_at)),
     ],
   );
   const disagreeing = await tx.query<{ block_number: string | number }>(

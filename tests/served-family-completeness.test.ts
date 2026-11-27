@@ -222,6 +222,9 @@ const FAMILY_ANCHORS: Readonly<Record<string, Family>> = {
       { file: "src/native-source-manifest.ts", symbol: '"event_kinds"' },
     ],
   },
+  // ALTER and views only: block economics on chain.blocks and the views the
+  // chain_views source reads (ADR 0029 phase 1b). Creates no table.
+  "0058_chain_core_reads.sql": { tables: [], anchors: [] },
 };
 
 /** The legacy-port files that predate the gate, pinned exactly. Shrink-only:

@@ -17,6 +17,10 @@ const migration = readFileSync(
   new URL("../migrations/postgres/0057_chain_core.sql", import.meta.url),
   "utf8",
 );
+const reads = readFileSync(
+  new URL("../migrations/postgres/0058_chain_core_reads.sql", import.meta.url),
+  "utf8",
+);
 
 const key = (fill: number) => new Uint8Array(32).fill(fill);
 const pallet = (() => {
@@ -161,6 +165,7 @@ let core: ReturnType<typeof createPgChainCore>;
 beforeEach(async () => {
   db = new PGlite();
   await db.exec(migration);
+  await db.exec(reads);
   const database: ChainCoreDatabase = {
     transaction: (callback) =>
       db.transaction((tx) =>
@@ -667,6 +672,104 @@ test("the rao and block-time parsers hold their edges", () => {
     producedAtMs([
       { call_module: "Timestamp", call_function: "set", call_args: null },
     ]),
+    null,
+  );
+});
+
+test("the views serve the typed tables in the row shapes the formatters read", async () => {
+  const rows = batch([600]);
+  rows.blockRows[0] = {
+    ...rows.blockRows[0],
+    account_event_count: 3,
+    synced_at: MS + 1,
+    native_transfer_tao: "1.5",
+    stake_flow_tao: "21000000.123456789",
+    issuance_tao: null,
+    subnet_ids: "[1,7]",
+    economics_complete: false,
+  };
+  await core.write("finney", rows);
+  const block = await one<Record<string, unknown>>(
+    "SELECT * FROM chain.block_rows WHERE network_id = 'finney' AND block_number = 600",
+  );
+  assert.deepEqual(
+    {
+      ...block,
+      observed_at: String(block.observed_at),
+      synced_at: String(block.synced_at),
+      produced_at: String(block.produced_at),
+    },
+    {
+      network_id: "finney",
+      block_number: 600,
+      block_hash: hash(600),
+      spec_version: 490,
+      extrinsic_count: 2,
+      chain_event_count: 3,
+      account_event_count: 3,
+      observed_at: String(MS + 600),
+      synced_at: String(MS + 1),
+      native_transfer_tao: "1.5",
+      stake_flow_tao: "21000000.123456789",
+      economic_activity_tao: "21000001.623456789",
+      fee_tao: "0.00010432",
+      tip_tao: "0",
+      issuance_tao: null,
+      subnet_ids: "[1,7]",
+      economics_complete: false,
+      produced_at: String(MS + 600 * 12_000),
+    },
+  );
+  const xt = await one<Record<string, unknown>>(
+    "SELECT extrinsic_hash, signer, call_module, call_function, success, fee_tao, tip_tao, call_args FROM chain.extrinsic_rows WHERE block_number = 600 AND extrinsic_index = 1",
+  );
+  assert.deepEqual(xt, {
+    extrinsic_hash: hash(600 + 2_000_000),
+    signer: ALICE,
+    call_module: "SubtensorModule",
+    call_function: "add_stake",
+    success: true,
+    fee_tao: "0.00010432",
+    tip_tao: "0",
+    call_args: "[]",
+  });
+  const ev = await one<Record<string, unknown>>(
+    "SELECT pallet, method, phase, extrinsic_index, args FROM chain.chain_event_rows WHERE block_number = 600 AND event_index = 1",
+  );
+  assert.deepEqual(ev, {
+    pallet: "SubtensorModule",
+    method: "StakeAdded",
+    phase: "ApplyExtrinsic",
+    extrinsic_index: 1,
+    args: "[]",
+  });
+  const acct = await one<Record<string, unknown>>(
+    "SELECT event_kind, hotkey, coldkey, netuid, amount_tao, alpha_amount FROM chain.account_event_rows WHERE block_number = 600 AND event_index = 1",
+  );
+  assert.deepEqual(acct, {
+    event_kind: "StakeAdded",
+    hotkey: BOB,
+    coldkey: ALICE,
+    netuid: 7,
+    amount_tao: "21000000.123456789",
+    alpha_amount: "12.5",
+  });
+  for (const [rao, tao] of [
+    ["0", "0"],
+    ["1", "0.000000001"],
+    ["-1500000000", "-1.5"],
+    ["1000000000", "1"],
+  ] as const)
+    assert.equal(
+      (
+        await one<{ t: string }>("SELECT chain.tao_text($1::bigint) AS t", [
+          rao,
+        ])
+      ).t,
+      tao,
+    );
+  assert.equal(
+    (await one<{ t: string | null }>("SELECT chain.tao_text(NULL) AS t")).t,
     null,
   );
 });

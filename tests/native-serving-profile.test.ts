@@ -40,10 +40,9 @@ test("every declared serving write is a declared relation of its schema", () => 
 test("the serving profile reads everywhere and writes only the pinned user state", () => {
   const definitions = nativeSourceDefinitions(owners, "serving");
   for (const definition of definitions) {
-    const schema =
-      definition.name === "retained_views"
-        ? ([] as readonly string[])
-        : NATIVE_SERVING_WRITES[definition.schema as NativeSchemaName];
+    const schema = definition.name.endsWith("_views")
+      ? ([] as readonly string[])
+      : NATIVE_SERVING_WRITES[definition.schema as NativeSchemaName];
     if (schema.length === 0) {
       assert.equal(definition.access, "read", definition.name);
       assert.equal(definition.writable, undefined, definition.name);
@@ -56,7 +55,13 @@ test("the serving profile reads everywhere and writes only the pinned user state
   // neither, and the app schema's write set is a strict subset.
   const app = definitions.find((definition) => definition.name === "app")!;
   assert.ok(app.writable!.length < app.relations.length);
-  for (const readOnly of ["chain", "retained", "retained_views", "search"])
+  for (const readOnly of [
+    "chain",
+    "chain_views",
+    "retained",
+    "retained_views",
+    "search",
+  ])
     assert.equal(
       definitions.find((definition) => definition.name === readOnly)!.access,
       "read",
@@ -71,7 +76,7 @@ test("the trusted default is unchanged: full write surface, no writable pin", ()
     for (const definition of explicit) {
       assert.equal(
         definition.access,
-        definition.name === "retained_views" ? "read" : "read-write",
+        definition.name.endsWith("_views") ? "read" : "read-write",
         definition.name,
       );
       assert.equal(definition.writable, undefined, definition.name);
@@ -88,12 +93,12 @@ test("single-writer rows belong to exactly the serving profile", () => {
     const servingWrites =
       serving.find(
         (definition) =>
-          definition.schema === schema && definition.name !== "retained_views",
+          definition.schema === schema && !definition.name.endsWith("_views"),
       )!.writable ?? [];
     const producerWrites =
       producer.find(
         (definition) =>
-          definition.schema === schema && definition.name !== "retained_views",
+          definition.schema === schema && !definition.name.endsWith("_views"),
       )!.writable ?? [];
     for (const relation of relations!) {
       assert.ok(
@@ -110,7 +115,7 @@ test("single-writer rows belong to exactly the serving profile", () => {
 
 test("the producer profile writes everything except the serving-owned rows", () => {
   for (const definition of nativeSourceDefinitions(owners, "producer")) {
-    if (definition.name === "retained_views") {
+    if (definition.name.endsWith("_views")) {
       assert.equal(definition.access, "read");
       continue;
     }

@@ -309,14 +309,12 @@ test("source ownership covers runtime DDL with separate read-only retained view"
       [...declarations.get(definition.name)!].sort(),
     );
     assert.equal(definition.owner, "owner");
+    const views = definition.name.endsWith("_views");
     assert.equal(
       definition.schema,
-      definition.name === "retained_views" ? "retained" : definition.name,
+      views ? definition.name.slice(0, -"_views".length) : definition.name,
     );
-    assert.equal(
-      definition.access,
-      definition.name === "retained_views" ? "read" : "read-write",
-    );
+    assert.equal(definition.access, views ? "read" : "read-write");
   }
   for (const input of [
     null,
@@ -365,7 +363,13 @@ test("sequence readiness observes every writable source without allocating ident
   );
   assert.equal(nativeSource(sources, "app"), sources.get("app"));
   await assertNativeSequencePrivileges(sources);
-  assert.equal(calls.length, Object.keys(NATIVE_SOURCE_RELATIONS).length - 1);
+  // Every source but the read-only views sources is writable.
+  assert.equal(
+    calls.length,
+    Object.keys(NATIVE_SOURCE_RELATIONS).filter(
+      (name) => !name.endsWith("_views"),
+    ).length,
+  );
   assert(
     calls.every(
       (call) =>
