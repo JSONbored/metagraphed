@@ -512,6 +512,9 @@ const NAMESPACE_HARDCODED_READERS: Readonly<Record<string, readonly string[]>> =
  */
 const NAMESPACE_HARDCODED_NON_ROUTES: readonly string[] = [
   "src/lakehouse-seam-watchdog.ts",
+  // The PostgreSQL `chain` schema's writer (ADR 0029): a database schema that
+  // carries its network in every row, not the mainnet lakehouse namespace.
+  "src/chain-core-pg.ts",
 ];
 
 describe("readers that hardcode the mainnet namespace", () => {
