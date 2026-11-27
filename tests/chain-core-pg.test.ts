@@ -434,3 +434,28 @@ test("amounts convert exactly to rao, and the block time comes from its inherent
   );
   assert.equal(producedAtMs([]), null);
 });
+
+test("the partition helpers are callable only by a role granted EXECUTE", async () => {
+  await db.exec(
+    "CREATE ROLE chain_reader NOLOGIN; CREATE ROLE chain_writer NOLOGIN;",
+  );
+  await db.exec(
+    "GRANT EXECUTE ON FUNCTION chain.ensure_partitions(text, bigint, bigint), " +
+      "chain.drop_partitions_below(text, text, bigint) TO chain_writer;",
+  );
+  const can = async (role: string, fn: string) =>
+    (
+      await one<{ ok: boolean }>(
+        "SELECT has_function_privilege($1, $2, 'EXECUTE') AS ok",
+        [role, fn],
+      )
+    ).ok;
+  for (const fn of [
+    "chain.ensure_partitions(text, bigint, bigint)",
+    "chain.drop_partitions_below(text, text, bigint)",
+  ]) {
+    // Without the revoke PUBLIC would hold EXECUTE, and every role with it.
+    assert.equal(await can("chain_reader", fn), false, fn);
+    assert.equal(await can("chain_writer", fn), true, fn);
+  }
+});

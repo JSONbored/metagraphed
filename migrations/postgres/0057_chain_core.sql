@@ -209,6 +209,12 @@ BEGIN
   RETURN created;
 END $$;
 
+-- Owner authority behind a narrow gate. PostgreSQL grants EXECUTE on a new
+-- function to PUBLIC, which would let every login -- the read-only serving one
+-- included -- create partitions as the owner. Only a role the deployment
+-- grants EXECUTE (the chain-detail writer's) may call it.
+REVOKE ALL ON FUNCTION chain.ensure_partitions(text, bigint, bigint) FROM PUBLIC;
+
 -- Retention: drop a family's partitions that end at or below p_below, and
 -- move its coverage record's start to the first block still held. Refuses
 -- to drop the partition holding the family's newest row.
@@ -266,3 +272,7 @@ BEGIN
   END IF;
   RETURN dropped;
 END $$;
+
+-- Dropping partitions is the most destructive thing this schema can do: only
+-- a role the deployment grants EXECUTE (the retention lane's) may call it.
+REVOKE ALL ON FUNCTION chain.drop_partitions_below(text, text, bigint) FROM PUBLIC;
