@@ -376,9 +376,16 @@ export async function collectRegistryKv(
     await store.remove(candidates.slice(i, i + 1000).map(({ name }) => name));
   for (let i = 0; i < candidates.length; i += 100) {
     const keys = candidates.slice(i, i + 100).map(({ name }) => name);
-    const values = await store.readText(keys);
-    if (keys.some((key) => values[key] !== null))
-      throw new Error("Registry collection absence verification failed");
+    // A successful KV delete can still read its previous cached value, exactly
+    // as a successful write can (writeVerified above). Retry the read, never
+    // the delete; fail closed after the same bounded grace period.
+    for (let attempt = 0; ; attempt++) {
+      const values = await store.readText(keys);
+      if (!keys.some((key) => values[key] !== null)) break;
+      if (attempt === 4 || !store.waitForPropagation)
+        throw new Error("Registry collection absence verification failed");
+      await store.waitForPropagation();
+    }
   }
   return candidates.length;
 }
