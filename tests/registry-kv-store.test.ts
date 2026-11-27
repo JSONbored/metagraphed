@@ -378,6 +378,60 @@ test("collection retains selected/previous generations and young or unrelated ke
   assert.equal(values.has("registry:v1:unrecognized"), true);
 });
 
+test("collection waits out a delete that still reads its cached value, and fails closed past the grace", async () => {
+  // KV is eventually consistent for deletes as it is for writes: a removed key
+  // can read its previous value for a while. The collection once checked
+  // absence immediately and failed a production publish on exactly that.
+  const lagging = (visibleAfter: number) => {
+    const made = fixture();
+    const stale = new Map<string, string>();
+    let waits = 0;
+    made.store.remove = vi.fn(async (keys: string[]) => {
+      for (const key of keys) {
+        stale.set(key, Buffer.from(made.values.get(key)!).toString("utf8"));
+        made.values.delete(key);
+        made.metadata.delete(key);
+      }
+    });
+    made.store.readText = vi.fn(async (keys: string[]) =>
+      Object.fromEntries(
+        keys.map((key) => [
+          key,
+          made.values.has(key)
+            ? Buffer.from(made.values.get(key)!).toString("utf8")
+            : waits < visibleAfter && stale.has(key)
+              ? stale.get(key)!
+              : null,
+        ]),
+      ),
+    );
+    made.store.waitForPropagation = vi.fn(async () => {
+      waits += 1;
+    });
+    return made;
+  };
+  const obsolete = registryObjectKey("3".repeat(64));
+  const settles = lagging(2);
+  await publishRegistryKv(settles.store, input());
+  settles.put(obsolete, bytes({ obsolete: true }));
+  assert.equal(await collectRegistryKv(settles.store, NOW), 1);
+  assert.equal(vi.mocked(settles.store.remove).mock.calls.length, 1);
+  assert.equal(
+    vi.mocked(settles.store.waitForPropagation!).mock.calls.length,
+    2,
+  );
+  const never = lagging(Number.POSITIVE_INFINITY);
+  await publishRegistryKv(never.store, input());
+  never.put(obsolete, bytes({ obsolete: true }));
+  await assert.rejects(
+    collectRegistryKv(never.store, NOW),
+    /absence verification/,
+  );
+  // The delete is never repeated, and the wait is bounded.
+  assert.equal(vi.mocked(never.store.remove).mock.calls.length, 1);
+  assert.equal(vi.mocked(never.store.waitForPropagation!).mock.calls.length, 4);
+});
+
 test("collection fails closed if retained data is missing or deletes do not take effect", async () => {
   const first = fixture();
   await publishRegistryKv(first.store, input());
