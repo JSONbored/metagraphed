@@ -200,6 +200,17 @@ export function aiInputError(message: string): AiInputError {
 // which should run whenever the bindings are present.
 export function aiConfigured(env: Env): boolean {
   const native = selectedAiInference(env);
+  // A native deployment with no model to call states provider "unconfigured"
+  // (the native application binds an inference client whatever it is given).
+  // Treated as present, every search and ask tried the placeholder endpoint
+  // and answered 502; treated as absent, they answer 503 ai_unavailable, the
+  // honest "not on this deployment" a Worker without its AI binding answers.
+  if (
+    native &&
+    (native.identity.embedding.provider === "unconfigured" ||
+      native.identity.completion.provider === "unconfigured")
+  )
+    return false;
   const available = Boolean(native) || typeof env?.AI?.run === "function";
   if (available && (selectedSemanticIndex(env) || env?.VECTORIZE))
     inferenceIdentity(env);
