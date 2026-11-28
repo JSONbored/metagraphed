@@ -9617,20 +9617,26 @@ export const subnetEmissionSplitHistoryQuery = (
     staleTime: STALE_MED,
   });
 
-const DECLARED_SLOTS = ["burn", "recycle", "owner", "validator", "miner"] as const;
-
 /** One declared split as served, or null when it does not read whole: a split
- * missing a slot is not a split, and is never drawn as one. */
-export function normalizeDeclaredSplit(raw: unknown): DeclaredEmissionSplit | null {
+ * missing a slot is not a split, and is never drawn as one. The slots are the
+ * API's own fields (src/subnet-emission-split.ts owns their list). */
+function normalizeDeclaredSplit(raw: unknown): DeclaredEmissionSplit | null {
   if (!isRecord(raw)) return null;
   const validFrom = firstFiniteNumber(raw.valid_from);
-  const slots: Partial<Record<(typeof DECLARED_SLOTS)[number], number>> = {};
-  for (const slot of DECLARED_SLOTS) {
-    const share = firstFiniteNumber(raw[slot]);
-    if (share === undefined) return null;
-    slots[slot] = share;
-  }
-  if (validFrom === undefined) return null;
+  const burn = firstFiniteNumber(raw.burn);
+  const recycle = firstFiniteNumber(raw.recycle);
+  const owner = firstFiniteNumber(raw.owner);
+  const validator = firstFiniteNumber(raw.validator);
+  const miner = firstFiniteNumber(raw.miner);
+  if (
+    validFrom === undefined ||
+    burn === undefined ||
+    recycle === undefined ||
+    owner === undefined ||
+    validator === undefined ||
+    miner === undefined
+  )
+    return null;
   const gammaShares: DeclaredEmissionSplit["gamma_shares"] = [];
   for (const entry of Array.isArray(raw.gamma_shares) ? raw.gamma_shares : []) {
     const target = isRecord(entry) ? firstFiniteNumber(entry.target_netuid) : undefined;
@@ -9639,11 +9645,11 @@ export function normalizeDeclaredSplit(raw: unknown): DeclaredEmissionSplit | nu
       gammaShares.push({ target_netuid: target, share });
   }
   return {
-    burn: slots.burn ?? 0,
-    recycle: slots.recycle ?? 0,
-    owner: slots.owner ?? 0,
-    validator: slots.validator ?? 0,
-    miner: slots.miner ?? 0,
+    burn,
+    recycle,
+    owner,
+    validator,
+    miner,
     gamma_shares: gammaShares,
     is_default: raw.is_default === true,
     valid_from: validFrom,

@@ -45,13 +45,6 @@ import {
   storageAt,
 } from "./chain-storage-read.ts";
 
-/** The relations one capture writes, in one transaction. */
-export const SUBNET_EMISSION_CAPTURE_TABLES = Object.freeze([
-  "subnet_emission_splits",
-  "subnet_lifecycle_states",
-  "observations",
-] as const);
-
 /** u64::MAX: the whole of a subnet's emission, in the runtime's parts. */
 export const EMISSION_PARTS_ONE = (1n << 64n) - 1n;
 /** The runtime's InitialSubnetOwnerCut (runtime/src/lib.rs, 18%), the owner
@@ -60,14 +53,14 @@ const INITIAL_SUBNET_OWNER_CUT = 11_796n;
 const MAX_EMISSION_SLOTS = 5;
 const MAX_GAMMA_SHARES = 16;
 
-export const SUBNET_STAGES = Object.freeze([
+const SUBNET_STAGES = Object.freeze([
   "registered",
   "started",
   "pending_dissolution",
   "dissolving",
 ] as const);
 export type SubnetStage = (typeof SUBNET_STAGES)[number];
-export const EPOCH_CONSENSUS_MODES = Object.freeze(["yuma", "null"] as const);
+const EPOCH_CONSENSUS_MODES = Object.freeze(["yuma", "null"] as const);
 export type EpochConsensus = (typeof EPOCH_CONSENSUS_MODES)[number];
 
 /** The five fixed slots, in u64 parts. */
