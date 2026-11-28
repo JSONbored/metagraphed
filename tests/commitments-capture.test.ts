@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
 import {
   captureCommitments,
   commitmentChanges,
@@ -13,7 +13,8 @@ import {
   decodeReveals,
   loadCommitmentsSnapshot,
 } from "../src/commitments-capture.ts";
-import { storageAt } from "../src/chain-storage-read.ts";
+import { storageAt, storageAtBatched } from "../src/chain-storage-read.ts";
+import { rpcUrlForNetwork } from "../src/chain-network.ts";
 import {
   COMMITMENTS_WRITE_CHUNK,
   createPgCommitmentsStore,
@@ -158,7 +159,32 @@ function chain(
     }
     throw new Error(`unexpected ${method}`);
   };
-  return { rpc, calls, peak: () => peak };
+  // One HTTP request per batch, its calls answered as single calls would be.
+  let requests = 0;
+  let requestsInFlight = 0;
+  let peakRequests = 0;
+  const batch = async (
+    batchCalls: readonly { method: string; params: unknown[] }[],
+  ) => {
+    requests += 1;
+    requestsInFlight += 1;
+    peakRequests = Math.max(peakRequests, requestsInFlight);
+    try {
+      return await Promise.all(
+        batchCalls.map((call) => rpc(call.method, call.params)),
+      );
+    } finally {
+      requestsInFlight -= 1;
+    }
+  };
+  return {
+    rpc,
+    batch,
+    calls,
+    peak: () => peak,
+    requests: () => requests,
+    peakRequests: () => peakRequests,
+  };
 }
 
 describe("the Data fields decode as the chain holds them", () => {
@@ -327,6 +353,76 @@ describe("storage reads in flight", () => {
     await new Promise((resolve) => setTimeout(resolve, 5));
     assert.equal(calls, 2);
   });
+
+  test("batched: ten calls to a request, at most the stated requests in flight", async () => {
+    const storage = new Map<string, string>();
+    for (let i = 0; i < 12_000; i += 1)
+      storage.set(keyOf("0xaa", 1, hotkey(i)), "0x01");
+    const fake = chain(storage);
+    const values = await storageAtBatched(
+      fake.batch,
+      [...storage.keys()],
+      "0xf1",
+      { perRequest: 10, concurrency: 2 },
+    );
+    assert.equal(values.size, 12_000);
+    // 24 calls of 500 keys: requests of ten, ten and four.
+    assert.equal(
+      fake.calls.filter((m) => m === "state_queryStorageAt").length,
+      24,
+    );
+    assert.equal(fake.requests(), 3);
+    assert.equal(fake.peakRequests(), 2);
+    const none = await storageAtBatched(fake.batch, [], "0xf1", {
+      perRequest: 10,
+    });
+    assert.equal(none.size, 0);
+    assert.equal(fake.requests(), 3);
+  });
+
+  test("batched: a failed request, or an answer short of its calls, fails the read whole", async () => {
+    const keys = Array.from({ length: 1_000 }, (_, i) => hotkey(i));
+    await assert.rejects(
+      storageAtBatched(
+        async () => {
+          throw new Error("batch(2): HTTP 429");
+        },
+        keys,
+        "0xf1",
+        { perRequest: 10 },
+      ),
+      /HTTP 429/,
+    );
+    await assert.rejects(
+      storageAtBatched(async () => [[{ changes: [] }]], keys, "0xf1", {
+        perRequest: 10,
+      }),
+      /answered the wrong count/,
+    );
+    await assert.rejects(
+      storageAtBatched(async () => [], keys, "0xf1", { perRequest: 0 }),
+      RangeError,
+    );
+  });
+
+  test("batched: a failed request starts no more requests", async () => {
+    let requests = 0;
+    const batch = async (calls: readonly unknown[]) => {
+      requests += 1;
+      const request = requests;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      if (request === 1) throw new Error("boom");
+      return calls.map(() => [{ changes: [] }]);
+    };
+    // 50,000 keys: 100 calls, ten requests of ten.
+    const keys = Array.from({ length: 50_000 }, (_, i) => hotkey(i));
+    await assert.rejects(
+      storageAtBatched(batch, keys, "0xf1", { perRequest: 10, concurrency: 2 }),
+      /boom/,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    assert.equal(requests, 2);
+  });
 });
 
 describe("one finalized block's commitments", () => {
@@ -347,7 +443,10 @@ describe("one finalized block's commitments", () => {
 
   test("every pair, whole and in order, each with its digest", async () => {
     const s = storage();
-    const snapshot = await loadCommitmentsSnapshot("mainnet", chain(s).rpc);
+    const fake = chain(s);
+    const snapshot = await loadCommitmentsSnapshot("mainnet", fake);
+    // The values went in one batched request, not one request a call.
+    assert.equal(fake.requests(), 1);
     assert.equal(snapshot.block, 0x928461);
     assert.deepEqual(
       snapshot.commitments.map((c) => [
@@ -382,7 +481,7 @@ describe("one finalized block's commitments", () => {
       [hashed("11", 1), registration(1, [rawField("a")])],
       [hashed("22", 2), registration(1, [rawField("b")])],
     ]);
-    const snapshot = await loadCommitmentsSnapshot("mainnet", chain(s).rpc);
+    const snapshot = await loadCommitmentsSnapshot("mainnet", chain(s));
     assert.deepEqual(
       snapshot.commitments.map((c) => c.commitment?.fields[0].text),
       ["a", "b", "c"],
@@ -395,7 +494,7 @@ describe("one finalized block's commitments", () => {
     const gone = new Set([keyOf(REVEALED, 1, hotkey(1))]);
     const snapshot = await loadCommitmentsSnapshot(
       "mainnet",
-      chain(s, { gone }).rpc,
+      chain(s, { gone }),
     );
     assert.deepEqual(
       snapshot.commitments.map((c) => [c.netuid, c.hotkey]),
@@ -408,17 +507,65 @@ describe("one finalized block's commitments", () => {
     assert.equal(snapshot.undecoded, 1);
   });
 
+  test("the network's own transport: single calls for the listing, one batch for the values", async () => {
+    const fake = chain(storage());
+    const urls = new Set<string>();
+    let batches = 0;
+    let failValues = false;
+    vi.stubGlobal("fetch", async (url: unknown, init?: RequestInit) => {
+      urls.add(String(url));
+      const body = JSON.parse(String(init?.body)) as
+        | { id: number; method: string; params: unknown[] }
+        | { id: number; method: string; params: unknown[] }[];
+      const answer = async (call: {
+        id: number;
+        method: string;
+        params: unknown[];
+      }) =>
+        failValues && call.method === "state_queryStorageAt"
+          ? {
+              jsonrpc: "2.0",
+              id: call.id,
+              error: { code: -32000, message: "Upstream overloaded" },
+            }
+          : {
+              jsonrpc: "2.0",
+              id: call.id,
+              result: await fake.rpc(call.method, call.params),
+            };
+      if (Array.isArray(body)) batches += 1;
+      const payload = Array.isArray(body)
+        ? await Promise.all(body.map(answer))
+        : await answer(body);
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    try {
+      const snapshot = await loadCommitmentsSnapshot("mainnet");
+      assert.equal(snapshot.commitments.length, 3);
+      assert.equal(batches, 1);
+      assert.deepEqual([...urls], [rpcUrlForNetwork("mainnet")]);
+      // One call of the batch failing fails the read, naming that call once.
+      failValues = true;
+      await assert.rejects(
+        loadCommitmentsSnapshot("mainnet"),
+        /^Error: state_queryStorageAt: Upstream overloaded$/,
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   test("a listing past its bound, or a key naming no pair, refuses the snapshot", async () => {
     await assert.rejects(
-      loadCommitmentsSnapshot(
-        "mainnet",
-        chain(new Map(), { fullPages: true }).rpc,
-      ),
+      loadCommitmentsSnapshot("mainnet", chain(new Map(), { fullPages: true })),
       /larger than their read bound/,
     );
     const s = new Map([[COMMITMENT_OF + "0100", registration(1, [])]]);
     await assert.rejects(
-      loadCommitmentsSnapshot("mainnet", chain(s).rpc),
+      loadCommitmentsSnapshot("mainnet", chain(s)),
       /names no subnet and hotkey/,
     );
   });
@@ -605,7 +752,7 @@ describe("the capture lands in state.commitments as validity ranges", () => {
 
   const T = 1_795_900_000_000;
   const at = async (block: number, s: Map<string, string>) => ({
-    ...(await loadCommitmentsSnapshot("mainnet", chain(s).rpc)),
+    ...(await loadCommitmentsSnapshot("mainnet", chain(s))),
     block,
   });
   const fixture = () =>

@@ -22,8 +22,16 @@
 // validity ranges (migration 0061). A change is told by the chain's own
 // bytes: each pair carries a digest of its SCALE values, and only the pairs
 // whose digest moved are written.
+//
+// The public entrypoint limits a client by HTTP request, not by call. Read one
+// call to a request, the first whole read (2026-11-28 19:01Z) listed its key
+// pages and then drew HTTP 429 on its value calls, sent four at a time. At the
+// counts above that is 145 requests: two for the head, 48 key pages and 95
+// value calls. The value calls now go ten to a JSON-RPC batch, so the read
+// takes 60. Measured the same day against the entrypoint, one such batch
+// carried 5,000 values (1.9 MB) whole in 7.2 s.
 
-import { chainRpc } from "./chain-rpc.ts";
+import { chainRpc, chainRpcBatch } from "./chain-rpc.ts";
 import {
   type ChainNetworkId,
   DEFAULT_CHAIN_NETWORK,
@@ -38,8 +46,9 @@ import {
   netuidAt,
   RPC_TIMEOUT_MS,
   type Rpc,
+  type RpcBatch,
   type Scale,
-  storageAt,
+  storageAtBatched,
 } from "./chain-storage-read.ts";
 
 const prefix = (item: string) =>
@@ -50,9 +59,13 @@ const KEY = Object.freeze({
 });
 /** 100,000 keys a map, over three times finney's largest. */
 const MAX_PAGES = 100;
-/** Value reads in flight: four halves a capture's time against one endpoint
- * without becoming a burst on it. */
-const VALUE_READERS = 4;
+/** Value calls to one HTTP request, and those requests in flight: ten calls
+ * of 500 keys answered whole in 7.2 s when measured, so two requests at once
+ * keep a read near a minute without a burst on the endpoint. */
+const VALUE_CALLS_PER_REQUEST = 10;
+const VALUE_REQUESTS_IN_FLIGHT = 2;
+/** A batched request carries ten calls' values, past one call's timeout. */
+const BATCH_TIMEOUT_MS = 60_000;
 /** A Registration's field list, well past the runtime's MaxCommitFields. */
 const MAX_FIELDS = 64;
 const MAX_REVEALS = 1_024;
@@ -224,26 +237,50 @@ const byPair = (
   // No two pairs of one snapshot are equal: a map keys each pair once.
   a.netuid - b.netuid || (a.hotkey < b.hotkey ? -1 : 1);
 
+/** The network's endpoint: single calls, and JSON-RPC batches whose every
+ * call must answer. */
+function chainTransport(network: ChainNetworkId): {
+  rpc: Rpc;
+  batch: RpcBatch;
+} {
+  const url = rpcUrlForNetwork(network);
+  return {
+    rpc: (method, params) =>
+      chainRpc(url, method, params, { timeoutMs: RPC_TIMEOUT_MS }),
+    batch: async (calls) => {
+      const results = await chainRpcBatch(url, [...calls], {
+        timeoutMs: BATCH_TIMEOUT_MS,
+      });
+      // A failed call's error already names its method.
+      return results.map((result) => {
+        if (!result.ok) throw new Error(result.error);
+        return result.result;
+      });
+    },
+  };
+}
+
 /** One finalized block's commitments and reveals for every subnet. Throws on
  * an RPC failure or a map past its bound: a partial listing cannot say which
- * commitments are gone. */
+ * commitments are gone. The head and the key pages are single calls; the
+ * values go in batches. */
 export async function loadCommitmentsSnapshot(
   network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
-  rpc: Rpc = (method, params) =>
-    chainRpc(rpcUrlForNetwork(network), method, params, {
-      timeoutMs: RPC_TIMEOUT_MS,
-    }),
+  { rpc, batch }: { rpc: Rpc; batch: RpcBatch } = chainTransport(network),
 ): Promise<CommitmentsSnapshot> {
   const { at, block } = await finalizedAt(rpc);
   const commitmentKeys = await enumerate(rpc, KEY.commitments, at, MAX_PAGES);
   const revealKeys = await enumerate(rpc, KEY.reveals, at, MAX_PAGES);
   if (commitmentKeys === null || revealKeys === null)
     throw new Error("Commitments are larger than their read bound");
-  const values = await storageAt(
-    rpc,
+  const values = await storageAtBatched(
+    batch,
     [...commitmentKeys, ...revealKeys],
     at,
-    VALUE_READERS,
+    {
+      perRequest: VALUE_CALLS_PER_REQUEST,
+      concurrency: VALUE_REQUESTS_IN_FLIGHT,
+    },
   );
   type Held = CommitmentsSnapshot["unknown"][number] & {
     commitment: string | null;

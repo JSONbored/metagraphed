@@ -11,6 +11,12 @@ import { bytesToHex, storageMapPrefix } from "./twox-storage-key.ts";
 /** One JSON-RPC call: the method and its params, answering the result. */
 export type Rpc = (method: string, params: unknown[]) => Promise<unknown>;
 
+/** One JSON-RPC batch, sent as ONE HTTP request: each call's result, aligned
+ * to `calls`, or a throw when the request or any call in it failed. */
+export type RpcBatch = (
+  calls: readonly { method: string; params: unknown[] }[],
+) => Promise<unknown[]>;
+
 /** The time one RPC call may take before the capture gives up on it. */
 export const RPC_TIMEOUT_MS = 15_000;
 const KEYS_PER_PAGE = 1_000;
@@ -135,6 +141,55 @@ export async function finalizedAt(
   return { at, block };
 }
 
+/** `items` split into runs of at most `size`. */
+function runsOf<T>(items: readonly T[], size: number): (readonly T[])[] {
+  const runs: (readonly T[])[] = [];
+  for (let i = 0; i < items.length; i += size)
+    runs.push(items.slice(i, i + size));
+  return runs;
+}
+
+/** One `state_queryStorageAt` answer's changes, into `values`. */
+function absorbChanges(values: Map<string, string>, result: unknown): void {
+  const changes = Array.isArray(result)
+    ? (result[0] as { changes?: unknown } | undefined)?.changes
+    : null;
+  if (!Array.isArray(changes))
+    throw new Error("state_queryStorageAt answered no changes");
+  for (const change of changes) {
+    if (
+      Array.isArray(change) &&
+      typeof change[0] === "string" &&
+      typeof change[1] === "string"
+    )
+      values.set(change[0].toLowerCase(), change[1]);
+  }
+}
+
+/** `read` over every unit, at most `concurrency` at once. The first failure
+ * fails the whole read, and the other readers start no more units. */
+async function readEach<T>(
+  units: readonly T[],
+  concurrency: number,
+  read: (unit: T) => Promise<void>,
+): Promise<void> {
+  let next = 0;
+  const reader = async () => {
+    while (next < units.length) {
+      const unit = units[next];
+      next += 1;
+      try {
+        await read(unit);
+      } catch (error) {
+        next = units.length;
+        throw error;
+      }
+    }
+  };
+  const readers = Math.max(1, Math.min(concurrency, units.length));
+  await Promise.all(Array.from({ length: readers }, reader));
+}
+
 /** The values of `keys` at `at`, keyed in lower case. A key the block does not
  * hold is absent from the map: its runtime default, never a value. At most
  * `concurrency` calls are in flight: one unless a large read states more. */
@@ -145,41 +200,45 @@ export async function storageAt(
   concurrency = 1,
 ): Promise<Map<string, string>> {
   const values = new Map<string, string>();
-  const chunks: (readonly string[])[] = [];
-  for (let i = 0; i < keys.length; i += VALUES_PER_CALL)
-    chunks.push(keys.slice(i, i + VALUES_PER_CALL));
-  let next = 0;
-  const read = async (chunk: readonly string[]) => {
-    const result = await rpc("state_queryStorageAt", [chunk, at]);
-    const changes = Array.isArray(result)
-      ? (result[0] as { changes?: unknown } | undefined)?.changes
-      : null;
-    if (!Array.isArray(changes))
-      throw new Error("state_queryStorageAt answered no changes");
-    for (const change of changes) {
-      if (
-        Array.isArray(change) &&
-        typeof change[0] === "string" &&
-        typeof change[1] === "string"
-      )
-        values.set(change[0].toLowerCase(), change[1]);
-    }
-  };
-  const reader = async () => {
-    while (next < chunks.length) {
-      const chunk = chunks[next];
-      next += 1;
-      try {
-        await read(chunk);
-      } catch (error) {
-        // The read has failed whole: the other readers start no more calls.
-        next = chunks.length;
-        throw error;
-      }
-    }
-  };
-  const readers = Math.max(1, Math.min(concurrency, chunks.length));
-  await Promise.all(Array.from({ length: readers }, reader));
+  await readEach(runsOf(keys, VALUES_PER_CALL), concurrency, async (chunk) =>
+    absorbChanges(values, await rpc("state_queryStorageAt", [chunk, at])),
+  );
+  return values;
+}
+
+/**
+ * The values of `keys` at `at`, as `storageAt` reads them, with `perRequest`
+ * of its calls sent as one JSON-RPC batch and at most `concurrency` such
+ * requests in flight.
+ *
+ * For a read large enough to meet an endpoint's limit: the public entrypoints
+ * limit a client by HTTP request, not by call (src/raw-chain-capture.ts
+ * measured it), so a batch of ten spends a tenth of the allowance. Every call
+ * of a batch must answer: one failed call fails the read whole.
+ */
+export async function storageAtBatched(
+  batch: RpcBatch,
+  keys: readonly string[],
+  at: string,
+  { perRequest, concurrency = 1 }: { perRequest: number; concurrency?: number },
+): Promise<Map<string, string>> {
+  if (!Number.isSafeInteger(perRequest) || perRequest < 1)
+    throw new RangeError(
+      "a batched storage read needs at least one call per request",
+    );
+  const values = new Map<string, string>();
+  const requests = runsOf(runsOf(keys, VALUES_PER_CALL), perRequest);
+  await readEach(requests, concurrency, async (chunks) => {
+    const results = await batch(
+      chunks.map((chunk) => ({
+        method: "state_queryStorageAt",
+        params: [chunk, at],
+      })),
+    );
+    if (results.length !== chunks.length)
+      throw new Error("state_queryStorageAt batch answered the wrong count");
+    for (const result of results) absorbChanges(values, result);
+  });
   return values;
 }
 
