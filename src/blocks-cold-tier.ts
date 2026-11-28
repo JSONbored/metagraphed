@@ -62,7 +62,7 @@ import {
 } from "./block-feed-cursor.ts";
 import { readStore, recordOrNull } from "./read-store.ts";
 import type { HistoryReadEnv } from "./history-readers.ts";
-import { blocksSeamFloor, resolveBlocksSeam } from "./blocks-seam.ts";
+import { blocksSeamFloor, resolveReadBlocksSeam } from "./blocks-seam.ts";
 export {
   DEFAULT_BLOCKS_SEAM,
   blocksSeamFloor,
@@ -329,7 +329,7 @@ export async function loadBlockFeedColdTier(
   const seam =
     network === DEFAULT_CHAIN_NETWORK && hi !== null && hi <= floor
       ? floor
-      : await resolveBlocksSeam(env, {}, network);
+      : await resolveReadBlocksSeam(env, {}, network);
   // Cursor pages never carry an offset (the cursor already narrows past prior
   // pages), mirroring data-api. Both legs are asked for the full window and
   // the slice happens once, after they are concatenated, because the rows an
@@ -421,7 +421,7 @@ export async function loadBlockColdTier(
     return loadBlockWithEconomicsFromR2Sql(env, ref, network);
   }
   const seam = needsResolvedSeam
-    ? await resolveBlocksSeam(env, {}, network)
+    ? await resolveReadBlocksSeam(env, {}, network)
     : floor;
 
   // Mainnet-only, for the same reason the feed's head leg is.
