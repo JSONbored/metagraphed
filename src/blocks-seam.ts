@@ -105,9 +105,12 @@ export async function resolveBlocksSeam(
   // says exactly that: nothing is above the seam.
   if (network !== DEFAULT_CHAIN_NETWORK) return 0;
   const floor = blocksSeamFloor(env);
+  // The census starts inside the chain, so a synchronous throw from it is a
+  // rejection Promise.all handles, never an orphaned watermark read whose own
+  // rejection nothing awaits.
   const [watermark, retained] = await Promise.all([
     resolveDecodeWatermark(env, deps, network),
-    retainedSeamCensus(env, deps),
+    Promise.resolve().then(() => retainedSeamCensus(env, deps)),
   ]);
   return publishedBlocksSeam(
     floor,
