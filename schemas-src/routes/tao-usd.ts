@@ -112,7 +112,7 @@ export const TaoUsdOracleSchema = z
   })
   .strict()
   .describe(
-    "The chain's own TAO/USD oracle (#13164): the current SubtensorModule.TaoUsdPrice with its feeder and the TaoUsdPriceFed history behind it. Null on the card until the engine's oracle capture lands -- an absent capture is never served as a price.",
+    "The chain's own TAO/USD oracle (#13164): the current SubtensorModule.TaoUsdPrice with its feeder and the TaoUsdPriceFed history behind it. Null on the card until an oracle capture is observed -- an absent capture is never served as a price.",
   );
 
 export const TaoUsdArtifactSchema = z
@@ -165,7 +165,7 @@ export const TaoUsdArtifactSchema = z
      * has no price".
      */
     oracle: TaoUsdOracleSchema.nullable().describe(
-      "The chain's own TAO/USD oracle (SubtensorModule.TaoUsdPrice with its TaoUsdPriceFed history), labelled source `chain_oracle`. NULL until the engine's oracle capture lands (store unbound, or no feed captured): an absent capture is never served as a price.",
+      "The chain's own TAO/USD oracle (SubtensorModule.TaoUsdPrice with its TaoUsdPriceFed history), labelled source `chain_oracle`. NULL until an oracle capture is observed (store unbound, or no feed captured): an absent capture is never served as a price.",
     ),
     /** How far back the answer actually reaches -- the series began 2026-08-02,
      * so a wide window returns everything rather than the window's span. */

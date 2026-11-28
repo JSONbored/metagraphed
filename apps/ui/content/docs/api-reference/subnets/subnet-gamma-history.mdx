@@ -13,8 +13,8 @@ _openapi:
     contents:
       - content: "Fetch one subnet's Gamma capture series (#13164): the per-capture
           states behind GET /api/v1/subnets/{netuid}/gamma, newest first and
-          store-capped. Served live from the Gamma store; until the engine's
-          Gamma capture lands the series holds no rows and the response is the
+          store-capped. Served live from the Gamma store; until a Gamma capture
+          is observed the series holds no rows and the response is the
           schema-stable decline — an empty points array with point_count null,
           never 0, because an empty series is not a measured history."
 ---

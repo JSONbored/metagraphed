@@ -71,7 +71,7 @@ export const SubnetGammaArtifactSchema = z
   })
   .strict()
   .describe(
-    "One subnet's current Gamma state (#13164). Null `gamma` until the engine's Gamma capture lands. Mirrors GET /api/v1/subnets/{netuid}/gamma.",
+    "One subnet's current Gamma state (#13164). Null `gamma` until a Gamma capture is observed. Mirrors GET /api/v1/subnets/{netuid}/gamma.",
   );
 
 export const SubnetGammaHistoryArtifactSchema = z
@@ -97,5 +97,5 @@ export const SubnetGammaHistoryArtifactSchema = z
   })
   .strict()
   .describe(
-    "One subnet's Gamma capture series (#13164). Empty with a null point_count until the engine's Gamma capture lands. Mirrors GET /api/v1/subnets/{netuid}/gamma/history.",
+    "One subnet's Gamma capture series (#13164). Empty with a null point_count until a Gamma capture is observed. Mirrors GET /api/v1/subnets/{netuid}/gamma/history.",
   );

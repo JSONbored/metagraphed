@@ -25,6 +25,16 @@
 //                                     -> { url: Bytes }
 //   TaoUsdPrice                     { accepted: u64, feed: u64, fed_at: u64 }
 //   TaoUsdPriceOracle               AccountId
+//   MechanismCountCurrent           Twox64Concat(NetUid) -> MechId (u8),
+//                                     default 1
+//   MechanismEmissionSplit          Twox64Concat(NetUid) -> Option<Vec<u16>>,
+//                                     parts of u16::MAX, one per mechanism
+//   SubnetEpochConsensus            Identity(NetUid) -> EpochConsensus,
+//                                     default Yuma
+//
+// A mechanism's share is the runtime's own (`split_emissions`): the stored
+// split when it names one part per mechanism, otherwise an even split. Its
+// consensus is the subnet's epoch consensus, which every mechanism runs.
 //
 // Every per-subnet item and GammaEnabled is a ValueQuery: a key the block does
 // not hold reads as the runtime's default (false, or zero), which is a value
@@ -46,7 +56,12 @@ import {
   DEFAULT_CHAIN_NETWORK,
   rpcUrlForNetwork,
 } from "./chain-network.ts";
-import { bytesToHex, storageMapPrefix } from "./twox-storage-key.ts";
+import {
+  bytesToHex,
+  storageMapPrefix,
+  twox64ConcatU16StorageKey,
+} from "./twox-storage-key.ts";
+import { decodeEpochConsensus } from "./subnet-emission-capture.ts";
 import { encodeAccountId32 } from "./ss58.ts";
 import {
   decode,
@@ -68,6 +83,7 @@ export const CHAIN_GAMMA_CAPTURE_TABLES = Object.freeze([
   "subnet_gamma",
   "gamma_deposits",
   "subnet_services",
+  "subnet_mechanisms",
   "tao_usd_oracle",
 ] as const);
 
@@ -93,7 +109,12 @@ const KEY = Object.freeze({
   services: prefix("Services"),
   taoUsd: prefix("TaoUsdPrice"),
   oracle: prefix("TaoUsdPriceOracle"),
+  consensus: prefix("SubnetEpochConsensus"),
 });
+const mechanismKey = (item: string, netuid: number) =>
+  twox64ConcatU16StorageKey("SubtensorModule", item, netuid);
+/** u16::MAX: a whole subnet's emission in mechanism split parts. */
+const SPLIT_PARTS_ONE = 65_535;
 
 export const decodeBool = (hex: string) => decode(hex, (s) => s.bool());
 export const decodeU64 = (hex: string) =>
@@ -101,6 +122,25 @@ export const decodeU64 = (hex: string) =>
 export const decodeU128 = (hex: string) =>
   decode(hex, (s) => s.uint(16)).toString();
 export const decodeAccount = (hex: string) => decode(hex, (s) => s.account());
+/** A MechId: one byte. */
+export const decodeMechanismCount = (hex: string) =>
+  decode(hex, (s) => Number(s.uint(1)));
+/** A mechanism split: one u16 part of u16::MAX per mechanism. */
+export const decodeMechanismSplit = (hex: string) =>
+  decode(hex, (s) =>
+    Array.from({ length: s.length(256) }, () => Number(s.uint(2))),
+  );
+
+/** Each mechanism's share of its subnet's emission, as the runtime splits it:
+ * the stored split when it has one part per mechanism, else an even split. */
+export function mechanismShares(
+  count: number,
+  split: readonly number[] | null,
+): number[] {
+  if (split !== null && split.length === count)
+    return split.map((part) => part / SPLIT_PARTS_ONE);
+  return Array.from({ length: count }, () => 1 / count);
+}
 
 /** A service's URL, which the chain stores as raw bytes: refused unless it is
  * UTF-8 text, because a route serves it as a link. */
@@ -182,6 +222,16 @@ export interface ChainGammaSnapshot {
   /** null when the map could not be read whole: a partial listing must not
    * delete or close what it simply did not reach. */
   services: { netuid: number; hotkey: string; url: string }[] | null;
+  /** Every listed subnet's mechanisms, or null when one did not decode, so a
+   * capture never deletes the rows of a subnet it could not read. */
+  mechanisms:
+    | {
+        netuid: number;
+        mechid: number;
+        share: number;
+        consensus: string | null;
+      }[]
+    | null;
   deposits:
     | {
         netuid: number;
@@ -227,7 +277,14 @@ export async function loadChainGammaSnapshot(
   ] as const;
   const perNetuid = await storageAt(
     rpc,
-    maps.flatMap((item) => netuids.map((n) => item + netuidSuffix(n))),
+    [
+      ...maps.flatMap((item) => netuids.map((n) => item + netuidSuffix(n))),
+      ...netuids.map((n) => KEY.consensus + netuidSuffix(n)),
+      ...netuids.flatMap((n) => [
+        mechanismKey("MechanismCountCurrent", n),
+        mechanismKey("MechanismEmissionSplit", n),
+      ]),
+    ],
     at,
   );
 
@@ -276,6 +333,8 @@ export async function loadChainGammaSnapshot(
     };
   });
 
+  const mechanisms = mechanismsOf(netuids, perNetuid, miss);
+
   const pairs = <T>(
     keys: string[] | null,
     itemPrefix: string,
@@ -317,6 +376,7 @@ export async function loadChainGammaSnapshot(
     enabled: valueQuery(singles.get(KEY.enabled), decodeBool, false, miss),
     subnets,
     services,
+    mechanisms,
     deposits,
     oracle: price
       ? {
@@ -326,6 +386,46 @@ export async function loadChainGammaSnapshot(
       : null,
     undecoded: miss.undecoded,
   };
+}
+
+/** Each listed subnet's mechanisms from one block's reads, or null when any
+ * value did not decode (counted). */
+function mechanismsOf(
+  netuids: readonly number[],
+  values: Map<string, string>,
+  miss: { undecoded: number },
+): ChainGammaSnapshot["mechanisms"] {
+  const out: NonNullable<ChainGammaSnapshot["mechanisms"]> = [];
+  const before = miss.undecoded;
+  for (const netuid of netuids) {
+    const count = valueQuery(
+      values.get(mechanismKey("MechanismCountCurrent", netuid).toLowerCase()),
+      decodeMechanismCount,
+      1,
+      miss,
+    );
+    const splitHex = values.get(
+      mechanismKey("MechanismEmissionSplit", netuid).toLowerCase(),
+    );
+    const split =
+      splitHex === undefined
+        ? null
+        : decoded(splitHex, decodeMechanismSplit, miss);
+    const consensus = valueQuery(
+      values.get(KEY.consensus + netuidSuffix(netuid)),
+      decodeEpochConsensus,
+      "yuma",
+      miss,
+    );
+    if (count === null || count < 1 || (splitHex !== undefined && !split)) {
+      if (count !== null && count < 1) miss.undecoded += 1;
+      continue;
+    }
+    mechanismShares(count, split).forEach((share, mechid) =>
+      out.push({ netuid, mechid, share, consensus }),
+    );
+  }
+  return miss.undecoded === before ? out : null;
 }
 
 /** A ValueQuery's value: the runtime's default when the block holds no key,
@@ -378,6 +478,22 @@ export function chainGammaStatements(
     // A whole listing proves what is gone: a removed service deletes its row.
     out.push({
       text: "DELETE FROM subnet_services WHERE captured_at < ?",
+      values: [capturedAt],
+    });
+  }
+  if (snapshot.mechanisms !== null) {
+    for (const m of snapshot.mechanisms)
+      out.push({
+        text:
+          "INSERT INTO subnet_mechanisms (netuid, mechid, emission_split, consensus_mode, " +
+          "captured_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (netuid, mechid) DO UPDATE SET " +
+          "emission_split = EXCLUDED.emission_split, consensus_mode = EXCLUDED.consensus_mode, " +
+          "captured_at = EXCLUDED.captured_at",
+        values: [m.netuid, m.mechid, m.share, m.consensus, capturedAt],
+      });
+    // Every listed subnet was read: a mechanism or subnet gone deletes its row.
+    out.push({
+      text: "DELETE FROM subnet_mechanisms WHERE captured_at < ?",
       values: [capturedAt],
     });
   }

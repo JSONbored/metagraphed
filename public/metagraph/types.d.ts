@@ -1942,7 +1942,7 @@ export interface paths {
         };
         /**
          * Fetch the chain-wide Gamma state
-         * @description Fetch the chain-wide Gamma state (#13164): whether Gamma is enabled globally (SubtensorModule.GammaEnabled), beside every subnet's newest captured Gamma state — the per-subnet flags, raw price and emission counters of GET /api/v1/subnets/{netuid}/gamma — ordered by netuid and store-capped. Served live from the Gamma store; until the engine's Gamma capture lands the response is the schema-stable decline — enabled null (never a measured off-switch), an empty subnets array and subnet_count null, never 0.
+         * @description Fetch the chain-wide Gamma state (#13164): whether Gamma is enabled globally (SubtensorModule.GammaEnabled), beside every subnet's newest captured Gamma state — the per-subnet flags, raw price and emission counters of GET /api/v1/subnets/{netuid}/gamma — ordered by netuid and store-capped. Served live from the Gamma store; until a Gamma capture is observed the response is the schema-stable decline — enabled null (never a measured off-switch), an empty subnets array and subnet_count null, never 0.
          */
         get: operations["chainGamma"];
         put?: never;
@@ -3448,7 +3448,7 @@ export interface paths {
         };
         /**
          * Fetch the chain's Gamma deposits
-         * @description Fetch the chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (SubtensorModule.GammaDeposits; u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Served live from the deposits store; until the engine's GammaDeposits capture lands the state holds no rows and the response is the schema-stable decline — an empty deposits array with deposit_count null, never 0, because an empty list is not a measured deposit-free chain.
+         * @description Fetch the chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (SubtensorModule.GammaDeposits; u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Served live from the deposits store; until a GammaDeposits capture is observed the state holds no rows and the response is the schema-stable decline — an empty deposits array with deposit_count null, never 0, because an empty list is not a measured deposit-free chain.
          */
         get: operations["gammaDeposits"];
         put?: never;
@@ -3639,7 +3639,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch the TAO/USD index. The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series, labelled source `pool_composite` -- COMPOSED off-chain per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. The chain's own TaoUsdPrice (runtime v490) rides beside the index as the `oracle` block, labelled source `chain_oracle` with its TaoUsdPriceFed history (#13164); it is NULL until the engine's oracle capture lands -- an absent capture is never served as a price. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart. */
+        /** @description Fetch the TAO/USD index. The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series, labelled source `pool_composite` -- COMPOSED off-chain per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. The chain's own TaoUsdPrice (runtime v490) rides beside the index as the `oracle` block, labelled source `chain_oracle` with its TaoUsdPriceFed history (#13164); it is NULL until an oracle capture is observed -- an absent capture is never served as a price. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart. */
         get: operations["taoUsd"];
         put?: never;
         post?: never;
@@ -4538,7 +4538,7 @@ export interface paths {
         };
         /**
          * Fetch one subnet's current Gamma state
-         * @description Fetch one subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string (the engine's decode owns the scaling), and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters as u64 atomic units in decimal strings, with their capture stamp. Served live from the Gamma store; until the engine's Gamma capture lands the store holds no rows and the response is the schema-stable decline — gamma null, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. The capture series lives on /api/v1/subnets/{netuid}/gamma/history.
+         * @description Fetch one subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string (the engine's decode owns the scaling), and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters as u64 atomic units in decimal strings, with their capture stamp. Served live from the Gamma store; until a Gamma capture is observed the store holds no rows and the response is the schema-stable decline — gamma null, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. The capture series lives on /api/v1/subnets/{netuid}/gamma/history.
          */
         get: operations["subnetGamma"];
         put?: never;
@@ -4558,7 +4558,7 @@ export interface paths {
         };
         /**
          * Fetch one subnet's Gamma capture series
-         * @description Fetch one subnet's Gamma capture series (#13164): the per-capture states behind GET /api/v1/subnets/{netuid}/gamma, newest first and store-capped. Served live from the Gamma store; until the engine's Gamma capture lands the series holds no rows and the response is the schema-stable decline — an empty points array with point_count null, never 0, because an empty series is not a measured history.
+         * @description Fetch one subnet's Gamma capture series (#13164): the per-capture states behind GET /api/v1/subnets/{netuid}/gamma, newest first and store-capped. Served live from the Gamma store; until a Gamma capture is observed the series holds no rows and the response is the schema-stable decline — an empty points array with point_count null, never 0, because an empty series is not a measured history.
          */
         get: operations["subnetGammaHistory"];
         put?: never;
@@ -4839,7 +4839,7 @@ export interface paths {
         };
         /**
          * Fetch one subnet's mechanism registry
-         * @description Fetch one subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, its emission split (SubtensorModule.MechanismEmissionSplit, 0..1), its consensus mode (ConsensusByMechanism) and the capture stamp, ordered by mechid. Served live from the mechanisms store; until the engine's per-mechanism capture lands the registry holds no rows and the response is the schema-stable decline — an empty mechanisms array with mechanism_count null, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Scope the per-UID surfaces to one mechanism with their own mechid parameter (/metagraph, /neurons/{uid}, /weights).
+         * @description Fetch one subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, its emission split (SubtensorModule.MechanismEmissionSplit, 0..1, or even when none is stored), its consensus mode (the subnet's SubnetEpochConsensus, which every mechanism runs) and the capture stamp, ordered by mechid. Served live from the mechanisms store; until a mechanism capture is observed the registry holds no rows and the response is the schema-stable decline — an empty mechanisms array with mechanism_count null, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Scope the per-UID surfaces to one mechanism with their own mechid parameter (/metagraph, /neurons/{uid}, /weights).
          */
         get: operations["subnetMechanisms"];
         put?: never;
@@ -5131,7 +5131,7 @@ export interface paths {
         };
         /**
          * Fetch one subnet's on-chain service URLs
-         * @description Fetch one subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Served live from the services store; until the engine's Services capture lands the registry holds no rows and the response is the schema-stable decline — an empty services array with service_count null, never 0, because an empty registry is not a measured service-less subnet.
+         * @description Fetch one subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Served live from the services store; until a Services capture is observed the registry holds no rows and the response is the schema-stable decline — an empty services array with service_count null, never 0, because an empty registry is not a measured service-less subnet.
          */
         get: operations["subnetServices"];
         put?: never;
@@ -7775,7 +7775,7 @@ export interface components {
              */
             table: "blocks" | "extrinsics" | "chain_events" | "account_events";
         };
-        /** @description The chain-wide Gamma state (#13164). Null `enabled` and an empty subnet list with a null subnet_count until the engine's Gamma capture lands. Mirrors GET /api/v1/chain/gamma. */
+        /** @description The chain-wide Gamma state (#13164). Null `enabled` and an empty subnet list with a null subnet_count until a Gamma capture is observed. Mirrors GET /api/v1/chain/gamma. */
         ChainGammaArtifact: {
             captured_at: string | null;
             /** @description Whether Gamma is enabled globally (SubtensorModule.GammaEnabled). NULL when the store holds no capture (store unbound, or the Gamma capture has not run) -- never coalesced to false, which would claim a measured off-switch. */
@@ -9861,7 +9861,7 @@ export interface components {
             /** @description The account authorized to spend from this deposit (event GammaDepositSpenderSet). Null when no spender is set. */
             spender: string | null;
         };
-        /** @description The chain's Gamma deposit state (#13164). Empty with a null deposit_count until the engine's deposit capture lands. Mirrors GET /api/v1/gamma/deposits. */
+        /** @description The chain's Gamma deposit state (#13164). Empty with a null deposit_count until a deposit capture is observed. Mirrors GET /api/v1/gamma/deposits. */
         GammaDepositsArtifact: {
             captured_at: string | null;
             /** @description How many deposits this answer carries -- `deposits.length`. NULL when the state holds no rows (store unbound, or the deposit capture has not run): a zero count is never a measurement and is not published. */
@@ -12989,7 +12989,7 @@ export interface components {
             schema_version: 1;
             slug?: string;
         };
-        /** @description One subnet's current Gamma state (#13164). Null `gamma` until the engine's Gamma capture lands. Mirrors GET /api/v1/subnets/{netuid}/gamma. */
+        /** @description One subnet's current Gamma state (#13164). Null `gamma` until a Gamma capture is observed. Mirrors GET /api/v1/subnets/{netuid}/gamma. */
         SubnetGammaArtifact: {
             captured_at: string | null;
             /** @description The subnet's newest captured Gamma state. NULL when the store holds no capture for this subnet (store unbound, or the Gamma capture has not run): an absent state is never served as a zeroed one. */
@@ -12997,7 +12997,7 @@ export interface components {
             netuid: number;
             schema_version: number;
         };
-        /** @description One subnet's Gamma capture series (#13164). Empty with a null point_count until the engine's Gamma capture lands. Mirrors GET /api/v1/subnets/{netuid}/gamma/history. */
+        /** @description One subnet's Gamma capture series (#13164). Empty with a null point_count until a Gamma capture is observed. Mirrors GET /api/v1/subnets/{netuid}/gamma/history. */
         SubnetGammaHistoryArtifact: {
             captured_at: string | null;
             netuid: number;
@@ -13440,14 +13440,14 @@ export interface components {
         /** @description One mechanism (sub-subnet) of a subnet: its id, emission split, consensus mode and capture stamp. */
         SubnetMechanism: {
             captured_at: string | null;
-            /** @description The per-mechanism consensus variant, spelled as the chain spells it (SubtensorModule.ConsensusByMechanism). Null when not captured. */
+            /** @description The consensus this mechanism's epoch runs, spelled as the chain spells it: the subnet's SubtensorModule.SubnetEpochConsensus (`yuma` or `null`), which every mechanism of the subnet runs. Null when not captured. */
             consensus_mode: string | null;
-            /** @description This mechanism's share of the subnet's emission (0..1), from SubtensorModule.MechanismEmissionSplit. Null when the chain carried no split for it at capture time -- never fabricated as 0, which would claim a measured zero share. */
+            /** @description This mechanism's share of the subnet's emission (0..1), as the runtime splits it: its SubtensorModule.MechanismEmissionSplit part over u16::MAX, or an even share when the subnet stores no split for its mechanism count. Null when not captured -- never fabricated as 0, which would claim a measured zero share. */
             emission_split: number | null;
             /** @description The mechanism (sub-subnet) id within this subnet; 0 is the original mechanism every subnet has. */
             mechid: number;
         };
-        /** @description One subnet's mechanism (sub-subnet) registry (#13162). Empty with a null mechanism_count until the engine's per-mechanism capture lands. Mirrors GET /api/v1/subnets/{netuid}/mechanisms. */
+        /** @description One subnet's mechanism (sub-subnet) registry (#13162). Empty with a null mechanism_count until a mechanism capture is observed. Mirrors GET /api/v1/subnets/{netuid}/mechanisms. */
         SubnetMechanismsArtifact: {
             captured_at: string | null;
             /** @description How many mechanisms this subnet has -- `mechanisms.length`. NULL when the mechanism registry holds no rows for this subnet (store unbound, or the per-mechanism capture has not run): every subnet has at least mechanism 0, so a zero count is never a measurement and is not published. */
@@ -14350,7 +14350,7 @@ export interface components {
             /** @description The block the URL was last set at (event ServiceSet). Null when the capture did not carry it -- never fabricated as 0, which would claim a set at genesis. */
             set_at: number | null;
         };
-        /** @description One subnet's on-chain service-URL registry (#13164). Empty with a null service_count until the engine's Services capture lands. Mirrors GET /api/v1/subnets/{netuid}/services. */
+        /** @description One subnet's on-chain service-URL registry (#13164). Empty with a null service_count until a Services capture is observed. Mirrors GET /api/v1/subnets/{netuid}/services. */
         SubnetServicesArtifact: {
             captured_at: string | null;
             netuid: number;
@@ -15139,7 +15139,7 @@ export interface components {
             latest: components["schemas"]["TaoUsdLatest"] | null;
             /** @description How far back the answer actually reaches -- the series began 2026-08-02. */
             oldest_observed_at: string | null;
-            /** @description The chain's own TAO/USD oracle (SubtensorModule.TaoUsdPrice with its TaoUsdPriceFed history), labelled source `chain_oracle`. NULL until the engine's oracle capture lands (store unbound, or no feed captured): an absent capture is never served as a price. */
+            /** @description The chain's own TAO/USD oracle (SubtensorModule.TaoUsdPrice with its TaoUsdPriceFed history), labelled source `chain_oracle`. NULL until an oracle capture is observed (store unbound, or no feed captured): an absent capture is never served as a price. */
             oracle: components["schemas"]["TaoUsdOracle"] | null;
             point_count: number;
             points: components["schemas"]["TaoUsdPoint"][];
@@ -15170,7 +15170,7 @@ export interface components {
             price_basis: string | null;
             usd_per_tao: number | null;
         };
-        /** @description The chain's own TAO/USD oracle (#13164): the current SubtensorModule.TaoUsdPrice with its feeder and the TaoUsdPriceFed history behind it. Null on the card until the engine's oracle capture lands -- an absent capture is never served as a price. */
+        /** @description The chain's own TAO/USD oracle (#13164): the current SubtensorModule.TaoUsdPrice with its feeder and the TaoUsdPriceFed history behind it. Null on the card until an oracle capture is observed -- an absent capture is never served as a price. */
         TaoUsdOracle: {
             block_number: number;
             captured_at: string | null;

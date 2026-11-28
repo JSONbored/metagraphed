@@ -9514,9 +9514,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     description:
       "Fetch one subnet's mechanism (sub-subnet) registry (#13162): each " +
       "mechanism's mechid, its emission split (0..1, from " +
-      "SubtensorModule.MechanismEmissionSplit), its consensus mode " +
-      "(ConsensusByMechanism) and the capture stamp, ordered by mechid. " +
-      "Until the engine's per-mechanism capture lands, the registry holds no " +
+      "SubtensorModule.MechanismEmissionSplit, or even when none is stored), " +
+      "its consensus mode (the subnet's SubnetEpochConsensus, which every " +
+      "mechanism runs) and the capture stamp, ordered by mechid. " +
+      "Until a mechanism capture is observed, the registry holds no " +
       "rows and the response is the schema-stable decline: an empty " +
       "mechanisms array with mechanism_count NULL -- never 0, because every " +
       "subnet has at least mechanism 0 and a zero count would be a " +
@@ -9737,7 +9738,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "(SubtensorModule.GammaDeposits; u64 atomic units as a decimal " +
       "string), authorized spender, daily spend cap and closed-at block " +
       "with its capture stamp, largest balance first and store-capped. " +
-      "Until the engine's GammaDeposits capture lands, the state holds no " +
+      "Until a GammaDeposits capture is observed, the state holds no " +
       "rows and the response is the schema-stable decline: an empty " +
       "deposits array with deposit_count NULL -- never 0, because an empty " +
       "list is not a measured deposit-free chain. Mirrors GET " +
@@ -9759,8 +9760,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "Fetch one subnet's on-chain service-URL registry (#13164): each " +
       "hotkey's published service URL (SubtensorModule.Services; events " +
       "ServiceSet / ServiceRemoved) with the block it was set at and its " +
-      "capture stamp, ordered by hotkey. Until the engine's Services " +
-      "capture lands, the registry holds no rows and the response is the " +
+      "capture stamp, ordered by hotkey. Until a Services capture is " +
+      "observed, the registry holds no rows and the response is the " +
       "schema-stable decline: an empty services array with service_count " +
       "NULL -- never 0, because an empty registry is not a measured " +
       "service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services.",
@@ -11325,7 +11326,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
       "through an ETH/USDC anchor leg (ADR 0025). The chain's own " +
       "TaoUsdPrice (runtime v490) rides beside it as the `oracle` block, " +
       "labelled source chain_oracle with its TaoUsdPriceFed history " +
-      "(#13164); it is NULL until the engine's oracle capture lands -- an " +
+      "(#13164); it is NULL until an oracle capture is observed -- an " +
       "absent capture is never served as a price. `latest` carries the " +
       "composed price together " +
       "with price_basis, eth_usd, block_number, pool_count and the per-pool " +
@@ -11356,8 +11357,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         window: label,
         includePoints: args?.include_points === true,
         // #13164: same oracle decline contract the REST handler and the
-        // GraphQL resolver share -- null until the engine's oracle capture
-        // lands.
+        // GraphQL resolver share -- null until an oracle capture is
+        // observed.
         oracle: buildTaoUsdOracle(await loadTaoUsdOracle(ctx.env)),
       });
     },

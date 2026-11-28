@@ -90,7 +90,7 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
 - [Subnet Limit Orders](/docs/api-reference/subnets/subnet-limit-orders) — `GET /api/v1/subnets/{netuid}/limit-orders`\
   Fetch one subnet's LimitOrders order book (#13165, runtime v490): each captured order's H256 key (LimitOrders.Orders), owner, OrderType variant (spelled as the chain spells it), amount (u64 atomic units as a decimal string), raw price (canonical decimal text — the engine's decode owns the scaling) and state, newest capture first and store-capped.
 - [Subnet Mechanisms](/docs/api-reference/subnets/subnet-mechanisms) — `GET /api/v1/subnets/{netuid}/mechanisms`\
-  Fetch one subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, its emission split (SubtensorModule.MechanismEmissionSplit, 0..1), its consensus mode (ConsensusByMechanism) and the capture stamp, ordered by mechid.
+  Fetch one subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, its emission split (SubtensorModule.MechanismEmissionSplit, 0..1, or even when none is stored), its consensus mode (the subnet's SubnetEpochConsensus, which every mechanism runs) and the capture stamp, ordered by mechid.
 - [Subnet Metagraph](/docs/api-reference/subnets/subnet-metagraph) — `GET /api/v1/subnets/{netuid}/metagraph`\
   Fetch the per-UID metagraph (stake, trust, consensus, incentive, dividends, emission, validator_permit, rank, axon) for one subnet, computed live from the neurons store.
 - [Subnet Miner Fairness](/docs/api-reference/subnets/subnet-miner-fairness) — `GET /api/v1/subnets/{netuid}/miner-fairness`\

@@ -1,9 +1,9 @@
 // GET /api/v1/gamma/deposits (#13164; #13161, epic #13142). The chain's
 // Gamma deposit state, served live from app.gamma_deposits (migration 0047)
-// through the native store seam. The table's writers -- the engine's
-// SubtensorModule.GammaDeposits decode -- land separately, so until a store
-// is bound and filled this route serves the schema-stable decline below,
-// never a fabricated deposit-free chain.
+// through the native store seam. The burn tick's Gamma capture
+// (src/chain-gamma-capture.ts) fills it from SubtensorModule.GammaDeposits,
+// so until a store is bound and a capture observed this route serves the
+// schema-stable decline below, never a fabricated deposit-free chain.
 import { z } from "zod";
 
 export const GammaDepositSchema = z
@@ -70,5 +70,5 @@ export const GammaDepositsArtifactSchema = z
   })
   .strict()
   .describe(
-    "The chain's Gamma deposit state (#13164). Empty with a null deposit_count until the engine's deposit capture lands. Mirrors GET /api/v1/gamma/deposits.",
+    "The chain's Gamma deposit state (#13164). Empty with a null deposit_count until a deposit capture is observed. Mirrors GET /api/v1/gamma/deposits.",
   );

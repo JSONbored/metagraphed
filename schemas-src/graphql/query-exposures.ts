@@ -436,7 +436,7 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "subnet-mechanisms",
     returns: "SubnetMechanisms!",
     description:
-      "One subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, emission split (0..1) and consensus mode with its capture stamp, ordered by mechid. Until the engine's per-mechanism capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty mechanisms array with mechanism_count NULL, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Mirrors GET /api/v1/subnets/{netuid}/mechanisms.",
+      "One subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, emission split (0..1) and consensus mode with its capture stamp, ordered by mechid. Until a mechanism capture is observed, the registry holds no rows and this resolves to the schema-stable decline -- an empty mechanisms array with mechanism_count NULL, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Mirrors GET /api/v1/subnets/{netuid}/mechanisms.",
   },
   {
     field: "subnet_alpha_dividends",
@@ -450,7 +450,7 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "subnet-gamma",
     returns: "SubnetGamma!",
     description:
-      "One subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string, and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters (u64 atomic units as decimal strings) with their capture stamp. Until the engine's Gamma capture lands, the store holds no rows and this resolves to the schema-stable decline -- gamma NULL, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. Mirrors GET /api/v1/subnets/{netuid}/gamma.",
+      "One subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string, and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters (u64 atomic units as decimal strings) with their capture stamp. Until a Gamma capture is observed, the store holds no rows and this resolves to the schema-stable decline -- gamma NULL, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. Mirrors GET /api/v1/subnets/{netuid}/gamma.",
   },
   {
     field: "subnet_emission_split",
@@ -485,7 +485,7 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "subnet-services",
     returns: "SubnetServices!",
     description:
-      "One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until the engine's Services capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services.",
+      "One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until a Services capture is observed, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services.",
   },
   {
     field: "subnet_swap",
@@ -696,7 +696,7 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "tao-usd",
     returns: "TaoUsd!",
     description:
-      "The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- and labelled source pool_composite. The chain's own TaoUsdPrice (runtime v490) rides beside it as the `oracle` block, labelled source chain_oracle with its TaoUsdPriceFed history (#13164), and stays NULL until the engine's oracle capture lands -- an absent capture is never served as a price. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd.",
+      "The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- and labelled source pool_composite. The chain's own TaoUsdPrice (runtime v490) rides beside it as the `oracle` block, labelled source chain_oracle with its TaoUsdPriceFed history (#13164), and stays NULL until an oracle capture is observed -- an absent capture is never served as a price. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd.",
   },
   {
     field: "subnet_surface_history",
@@ -1146,7 +1146,7 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "gamma-deposits",
     returns: "GammaDeposits!",
     description:
-      "The chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Until the engine's GammaDeposits capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty deposits array with deposit_count NULL, never 0, because an empty list is not a measured deposit-free chain. Mirrors GET /api/v1/gamma/deposits.",
+      "The chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Until a GammaDeposits capture is observed, the state holds no rows and this resolves to the schema-stable decline -- an empty deposits array with deposit_count NULL, never 0, because an empty list is not a measured deposit-free chain. Mirrors GET /api/v1/gamma/deposits.",
   },
   {
     field: "accounts",

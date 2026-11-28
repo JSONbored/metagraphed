@@ -261,7 +261,7 @@ type Query {
   subnet_weights(netuid: Int!, window: String, mechid: Int): SubnetWeights!
 
   """
-  One subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, emission split (0..1) and consensus mode with its capture stamp, ordered by mechid. Until the engine's per-mechanism capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty mechanisms array with mechanism_count NULL, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Mirrors GET /api/v1/subnets/{netuid}/mechanisms.
+  One subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, emission split (0..1) and consensus mode with its capture stamp, ordered by mechid. Until a mechanism capture is observed, the registry holds no rows and this resolves to the schema-stable decline -- an empty mechanisms array with mechanism_count NULL, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Mirrors GET /api/v1/subnets/{netuid}/mechanisms.
   """
   subnet_mechanisms(netuid: Int!): SubnetMechanisms!
 
@@ -271,7 +271,7 @@ type Query {
   subnet_alpha_dividends(netuid: Int!): SubnetAlphaDividends!
 
   """
-  One subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string, and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters (u64 atomic units as decimal strings) with their capture stamp. Until the engine's Gamma capture lands, the store holds no rows and this resolves to the schema-stable decline -- gamma NULL, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. Mirrors GET /api/v1/subnets/{netuid}/gamma.
+  One subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string, and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters (u64 atomic units as decimal strings) with their capture stamp. Until a Gamma capture is observed, the store holds no rows and this resolves to the schema-stable decline -- gamma NULL, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. Mirrors GET /api/v1/subnets/{netuid}/gamma.
   """
   subnet_gamma(netuid: Int!): SubnetGamma!
 
@@ -296,7 +296,7 @@ type Query {
   subnet_hotkey_commitment(netuid: Int!, hotkey: String!): HotkeyCommitment!
 
   """
-  One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until the engine's Services capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services.
+  One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until a Services capture is observed, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services.
   """
   subnet_services(netuid: Int!): SubnetServices!
 
@@ -446,7 +446,7 @@ type Query {
   indexer_lag: IndexerLag!
 
   """
-  The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- and labelled source pool_composite. The chain's own TaoUsdPrice (runtime v490) rides beside it as the \`oracle\` block, labelled source chain_oracle with its TaoUsdPriceFed history (#13164), and stays NULL until the engine's oracle capture lands -- an absent capture is never served as a price. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd.
+  The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- and labelled source pool_composite. The chain's own TaoUsdPrice (runtime v490) rides beside it as the \`oracle\` block, labelled source chain_oracle with its TaoUsdPriceFed history (#13164), and stays NULL until an oracle capture is observed -- an absent capture is never served as a price. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd.
   """
   tao_usd(window: String, include_points: Boolean): TaoUsd!
 
@@ -756,7 +756,7 @@ type Query {
   validator_baskets: ValidatorBaskets!
 
   """
-  The chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Until the engine's GammaDeposits capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty deposits array with deposit_count NULL, never 0, because an empty list is not a measured deposit-free chain. Mirrors GET /api/v1/gamma/deposits.
+  The chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Until a GammaDeposits capture is observed, the state holds no rows and this resolves to the schema-stable decline -- an empty deposits array with deposit_count NULL, never 0, because an empty list is not a measured deposit-free chain. Mirrors GET /api/v1/gamma/deposits.
   """
   gamma_deposits: GammaDeposits!
 
@@ -2500,7 +2500,7 @@ type SubnetWeights {
 }
 
 """
-One subnet's mechanism (sub-subnet) registry (#13162). Empty with a null mechanism_count until the engine's per-mechanism capture lands. Mirrors GET /api/v1/subnets/{netuid}/mechanisms.
+One subnet's mechanism (sub-subnet) registry (#13162). Empty with a null mechanism_count until a mechanism capture is observed. Mirrors GET /api/v1/subnets/{netuid}/mechanisms.
 """
 type SubnetMechanisms {
   schema_version: Int!
@@ -2526,12 +2526,12 @@ type SubnetMechanism {
   mechid: Int!
 
   """
-  This mechanism's share of the subnet's emission (0..1), from SubtensorModule.MechanismEmissionSplit. Null when the chain carried no split for it at capture time -- never fabricated as 0, which would claim a measured zero share.
+  This mechanism's share of the subnet's emission (0..1), as the runtime splits it: its SubtensorModule.MechanismEmissionSplit part over u16::MAX, or an even share when the subnet stores no split for its mechanism count. Null when not captured -- never fabricated as 0, which would claim a measured zero share.
   """
   emission_split: Float
 
   """
-  The per-mechanism consensus variant, spelled as the chain spells it (SubtensorModule.ConsensusByMechanism). Null when not captured.
+  The consensus this mechanism's epoch runs, spelled as the chain spells it: the subnet's SubtensorModule.SubnetEpochConsensus (\`yuma\` or \`null\`), which every mechanism of the subnet runs. Null when not captured.
   """
   consensus_mode: String
   captured_at: String
@@ -2574,7 +2574,7 @@ type SubnetAlphaDividend {
 }
 
 """
-One subnet's current Gamma state (#13164). Null \`gamma\` until the engine's Gamma capture lands. Mirrors GET /api/v1/subnets/{netuid}/gamma.
+One subnet's current Gamma state (#13164). Null \`gamma\` until a Gamma capture is observed. Mirrors GET /api/v1/subnets/{netuid}/gamma.
 """
 type SubnetGamma {
   schema_version: Int!
@@ -3071,7 +3071,7 @@ type CommitmentState {
 }
 
 """
-One subnet's on-chain service-URL registry (#13164). Empty with a null service_count until the engine's Services capture lands. Mirrors GET /api/v1/subnets/{netuid}/services.
+One subnet's on-chain service-URL registry (#13164). Empty with a null service_count until a Services capture is observed. Mirrors GET /api/v1/subnets/{netuid}/services.
 """
 type SubnetServices {
   schema_version: Int!
@@ -4823,7 +4823,7 @@ type TaoUsd {
   latest: TaoUsdLatest
 
   """
-  The chain's own TAO/USD oracle (SubtensorModule.TaoUsdPrice with its TaoUsdPriceFed history), labelled source \`chain_oracle\`. NULL until the engine's oracle capture lands (store unbound, or no feed captured): an absent capture is never served as a price.
+  The chain's own TAO/USD oracle (SubtensorModule.TaoUsdPrice with its TaoUsdPriceFed history), labelled source \`chain_oracle\`. NULL until an oracle capture is observed (store unbound, or no feed captured): an absent capture is never served as a price.
   """
   oracle: TaoUsdOracle
 
@@ -4856,7 +4856,7 @@ type TaoUsdLatest {
 }
 
 """
-The chain's own TAO/USD oracle (#13164): the current SubtensorModule.TaoUsdPrice with its feeder and the TaoUsdPriceFed history behind it. Null on the card until the engine's oracle capture lands -- an absent capture is never served as a price.
+The chain's own TAO/USD oracle (#13164): the current SubtensorModule.TaoUsdPrice with its feeder and the TaoUsdPriceFed history behind it. Null on the card until an oracle capture is observed -- an absent capture is never served as a price.
 """
 type TaoUsdOracle {
   """
@@ -7232,7 +7232,7 @@ type ValidatorBasket {
 }
 
 """
-The chain's Gamma deposit state (#13164). Empty with a null deposit_count until the engine's deposit capture lands. Mirrors GET /api/v1/gamma/deposits.
+The chain's Gamma deposit state (#13164). Empty with a null deposit_count until a deposit capture is observed. Mirrors GET /api/v1/gamma/deposits.
 """
 type GammaDeposits {
   schema_version: Int!

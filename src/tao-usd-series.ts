@@ -188,7 +188,7 @@ export function buildTaoUsdSeries(
     window?: unknown;
     includePoints?: boolean;
     /** The on-chain oracle block (#13164), already built by
-     * buildTaoUsdOracle -- null until the engine's oracle capture lands. */
+     * buildTaoUsdOracle -- null until an oracle capture is observed. */
     oracle?: Row | null;
     now?: () => number;
   } = {},
@@ -244,8 +244,8 @@ export function buildTaoUsdSeries(
     // that produced it always describe the same block.
     latest: newestRow ? latestReading(newestRow) : null,
     // NULL IS THE DECLINE (#13164): the chain's own TaoUsdPrice, captured by
-    // the engine's oracle decode and handed in by the caller -- null until
-    // that capture lands, never a fabricated price.
+    // the burn tick's Gamma capture and handed in by the caller -- null until
+    // a capture is observed, never a fabricated price.
     oracle,
     oldest_observed_at: points.length
       ? points[points.length - 1].observed_at
