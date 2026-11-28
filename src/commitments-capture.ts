@@ -251,9 +251,9 @@ function chainTransport(network: ChainNetworkId): {
       const results = await chainRpcBatch(url, [...calls], {
         timeoutMs: BATCH_TIMEOUT_MS,
       });
-      return results.map((result, index) => {
-        if (!result.ok)
-          throw new Error(`${calls[index]?.method}: ${result.error}`);
+      // A failed call's error already names its method.
+      return results.map((result) => {
+        if (!result.ok) throw new Error(result.error);
         return result.result;
       });
     },

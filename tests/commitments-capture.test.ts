@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
-import { beforeEach, describe, test } from "vitest";
+import { beforeEach, describe, test, vi } from "vitest";
 import {
   captureCommitments,
   commitmentChanges,
@@ -14,6 +14,7 @@ import {
   loadCommitmentsSnapshot,
 } from "../src/commitments-capture.ts";
 import { storageAt, storageAtBatched } from "../src/chain-storage-read.ts";
+import { rpcUrlForNetwork } from "../src/chain-network.ts";
 import {
   COMMITMENTS_WRITE_CHUNK,
   createPgCommitmentsStore,
@@ -504,6 +505,57 @@ describe("one finalized block's commitments", () => {
       { netuid: 1, hotkey: "0x" + hotkey(2) },
     ]);
     assert.equal(snapshot.undecoded, 1);
+  });
+
+  test("the network's own transport: single calls for the listing, one batch for the values", async () => {
+    const fake = chain(storage());
+    const urls = new Set<string>();
+    let batches = 0;
+    let failValues = false;
+    vi.stubGlobal("fetch", async (url: unknown, init?: RequestInit) => {
+      urls.add(String(url));
+      const body = JSON.parse(String(init?.body)) as
+        | { id: number; method: string; params: unknown[] }
+        | { id: number; method: string; params: unknown[] }[];
+      const answer = async (call: {
+        id: number;
+        method: string;
+        params: unknown[];
+      }) =>
+        failValues && call.method === "state_queryStorageAt"
+          ? {
+              jsonrpc: "2.0",
+              id: call.id,
+              error: { code: -32000, message: "Upstream overloaded" },
+            }
+          : {
+              jsonrpc: "2.0",
+              id: call.id,
+              result: await fake.rpc(call.method, call.params),
+            };
+      if (Array.isArray(body)) batches += 1;
+      const payload = Array.isArray(body)
+        ? await Promise.all(body.map(answer))
+        : await answer(body);
+      return new Response(JSON.stringify(payload), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    try {
+      const snapshot = await loadCommitmentsSnapshot("mainnet");
+      assert.equal(snapshot.commitments.length, 3);
+      assert.equal(batches, 1);
+      assert.deepEqual([...urls], [rpcUrlForNetwork("mainnet")]);
+      // One call of the batch failing fails the read, naming that call once.
+      failValues = true;
+      await assert.rejects(
+        loadCommitmentsSnapshot("mainnet"),
+        /^Error: state_queryStorageAt: Upstream overloaded$/,
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   test("a listing past its bound, or a key naming no pair, refuses the snapshot", async () => {
