@@ -98,6 +98,7 @@ describe("compareQueryBindings", () => {
 });
 
 describe("the real registry", () => {
+  // 222 after MET-7365 added subnet_commitments and subnet_hotkey_commitment.
   // 220 after MET-7365 added subnet_emission_split and chain_emission_splits.
   // 218 after #13166 added account_proxies and account_multisigs.
   // 216 after #13166 added pending_coldkey_swaps and account_coldkey_swap.
@@ -112,8 +113,8 @@ describe("the real registry", () => {
   // subnet_treasury. The count is exact on purpose
   // -- it is a prompt to check that a new field carries a return type and a
   // description, not a number to widen past.
-  it("declares a return type and a description for all 220 fields", () => {
-    expect(QUERY_BINDINGS).toHaveLength(220);
+  it("declares a return type and a description for all 222 fields", () => {
+    expect(QUERY_BINDINGS).toHaveLength(222);
     for (const binding of QUERY_BINDINGS) {
       expect(binding.returns, binding.field).toMatch(/^\[?\w+!?\]?!?$/);
       expect(binding.description.length, binding.field).toBeGreaterThan(0);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EmissionSplitPoint, SubnetEconomics } from "@/lib/metagraphed/types";
 import {
+  commitmentSummary,
   declaredSplitRows,
   activityKindRail,
   categoryTotals,
@@ -346,5 +347,62 @@ describe("declaredSplitRows", () => {
     const burning = { ...split, burn: 0.11, recycle: 0.01, gamma_shares: [] };
     expect(declaredSplitRows(burning).find((row) => row.key === "burn")?.share).toBeCloseTo(0.12);
     expect(declaredSplitRows(null)).toEqual([]);
+  });
+});
+
+describe("commitmentSummary", () => {
+  const field = (kind: string, extra: Partial<{ text: string; reveal_round: number }> = {}) => ({
+    kind,
+    hex: null,
+    text: extra.text ?? null,
+    reveal_round: extra.reveal_round ?? null,
+  });
+
+  it("reads printable fields as their text, joined", () => {
+    expect(
+      commitmentSummary(
+        [field("raw", { text: "v2|model" }), field("raw", { text: "https://x" })],
+        [],
+      ),
+    ).toBe("v2|model · https://x");
+  });
+
+  it("names what every other field is", () => {
+    expect(
+      commitmentSummary(
+        [
+          field("sha256"),
+          field("timelock", { reveal_round: 42 }),
+          field("timelock"),
+          field("timelock_failed"),
+          field("reset_bonds"),
+          field("none"),
+          field("big_raw"),
+        ],
+        [],
+      ),
+    ).toBe(
+      "SHA-256 hash · timelocked until round 42 · timelocked · timelock that failed to reveal · bonds reset · big_raw bytes",
+    );
+  });
+
+  it("falls back to the newest reveal, then to empty", () => {
+    expect(
+      commitmentSummary(
+        [],
+        [
+          { block: 5, text: "old" },
+          { block: 9, text: "new" },
+        ],
+      ),
+    ).toBe("revealed: new");
+    expect(commitmentSummary([], [{ block: 1, text: null }])).toBe("revealed: binary payload");
+    expect(commitmentSummary([field("none")], [])).toBe("empty");
+  });
+
+  it("is bounded", () => {
+    const line = commitmentSummary([field("raw", { text: "x".repeat(500) })], [], 20);
+    expect(line).toHaveLength(20);
+    expect(line.endsWith("…")).toBe(true);
   });
 });

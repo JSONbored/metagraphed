@@ -932,6 +932,24 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-commitments",
+      "path": "/metagraph/subnets/{netuid}/commitments.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetCommitmentsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "subnet-hotkey-commitment",
+      "path": "/metagraph/subnets/{netuid}/commitments/{hotkey}.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/HotkeyCommitmentArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-gamma",
       "path": "/metagraph/chain/gamma.json",
       "retirement": null,
@@ -2777,7 +2795,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 193,
+    "mainnet_only_route_count": 195,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -9057,6 +9075,59 @@
         "mainnet"
       ],
       "path": "/api/v1/chain/emission-splits",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/commitments.json",
+      "cache": "short",
+      "description": "Fetch what a subnet's miners and validators have published on chain (MET-7365, runtime spec 497): each hotkey's current commitment — the deposit and Data fields it set with Commitments.set_commitment, such as model revisions, peer ids, endpoints, content hashes and timelocked payloads, each with its bytes and its text where printable — and the timelock payloads the chain has revealed for it. Most recently committed first; ?limit (<=256) / ?offset. With no capture observed, observed_block and total are null and there are no rows.",
+      "id": "subnet-commitments",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/commitments",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": [
+        {
+          "name": "limit",
+          "schema": {
+            "default": 100,
+            "maximum": 256,
+            "minimum": 1,
+            "type": "integer",
+            "x-serving-bound": true
+          }
+        },
+        {
+          "name": "offset",
+          "schema": {
+            "default": 0,
+            "maximum": 1000000,
+            "minimum": 0,
+            "type": "integer",
+            "x-serving-bound": true
+          }
+        }
+      ]
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/commitments/{hotkey}.json",
+      "cache": "short",
+      "description": "Fetch one hotkey's on-chain commitment and reveals on one subnet (MET-7365, runtime spec 497), current and as the validity ranges it has held since the capture began, newest first (at most 100). The hotkey is an SS58 address; a malformed one is a 400. With no capture observed, observed_block and exists are null and there is no state.",
+      "id": "subnet-hotkey-commitment",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/commitments/{hotkey}",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

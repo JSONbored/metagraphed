@@ -26384,6 +26384,88 @@ describe("graphql — subnet_emission_split / chain_emission_splits (MET-7365)",
   });
 });
 
+// The commitment fields (MET-7365): same loaders/builders as the REST routes
+// and the MCP tools, so the decline and the served rows match exactly.
+describe("graphql — subnet_commitments / subnet_hotkey_commitment (MET-7365)", () => {
+  const ALICE = "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY";
+  const LIST = `{ subnet_commitments(netuid: 3, limit: 300, offset: 2) {
+      schema_version netuid observed_block observed_at total limit offset
+      commitments {
+        hotkey valid_from
+        commitment { block deposit fields { kind hex text reveal_round } }
+        reveals { block hex text }
+      }
+    } }`;
+  const ONE = `{ subnet_hotkey_commitment(netuid: 3, hotkey: "${ALICE}") {
+      netuid hotkey observed_block exists
+      current { valid_from valid_to commitment { block } reveals { text } }
+      history { valid_from valid_to }
+    } }`;
+  const observation = { block_number: "300", observed_at_ms: "1795900000000" };
+  const row = {
+    hotkey: "d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+    valid_from: "300",
+    valid_to: null,
+    committed_block: "250",
+    deposit: "0",
+    fields: [{ kind: "raw", hex: "0x6869", text: "hi" }],
+    reveals: [{ block: 260, hex: "0x00" }],
+  };
+  const pages: unknown[] = [];
+  const env = {
+    COMMITMENTS_STORE: {
+      write: async () => ({ written: true, opened: 0, closed: 0 }),
+      subnet: async (_netuid: number, page: unknown) => {
+        pages.push(page);
+        return { observation, total: 1, rows: [row] };
+      },
+      hotkey: async () => ({ observation, rows: [row] }),
+    },
+  } as unknown as Env;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const list = await gql(LIST);
+    assert.equal(list.body.errors, undefined);
+    assert.equal(list.body.data.subnet_commitments.total, null);
+    assert.deepEqual(list.body.data.subnet_commitments.commitments, []);
+    const one = await gql(ONE);
+    assert.equal(one.body.errors, undefined);
+    assert.equal(one.body.data.subnet_hotkey_commitment.exists, null);
+  });
+
+  test("a bound store serves both, the page held to the route's bound", async () => {
+    const list = await gql(LIST, env);
+    assert.equal(list.body.errors, undefined);
+    const data = list.body.data.subnet_commitments;
+    assert.deepEqual([data.limit, data.offset, data.total], [256, 2, 1]);
+    assert.deepEqual(pages, [{ limit: 256, offset: 2 }]);
+    assert.equal(data.commitments[0].hotkey, ALICE);
+    assert.deepEqual(data.commitments[0].commitment.fields, [
+      { kind: "raw", hex: "0x6869", text: "hi", reveal_round: null },
+    ]);
+    const one = await gql(ONE, env);
+    assert.equal(one.body.errors, undefined);
+    assert.equal(one.body.data.subnet_hotkey_commitment.exists, true);
+    assert.equal(
+      one.body.data.subnet_hotkey_commitment.current.commitment.block,
+      250,
+    );
+  });
+
+  test("an impossible netuid or a mistyped hotkey is BAD_USER_INPUT", async () => {
+    for (const query of [
+      "{ subnet_commitments(netuid: -1) { netuid } }",
+      `{ subnet_hotkey_commitment(netuid: 3, hotkey: "${ALICE.slice(0, -1)}Z") { netuid } }`,
+    ]) {
+      const { body } = await gql(query);
+      const errors = (body.errors ?? []) as Array<{
+        extensions?: { code?: string };
+      }>;
+      assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT", query);
+    }
+  });
+});
+
 // The subnet_swap field (#13165): same loader/builder as the REST route and
 // the MCP tool, so the decline and the served state match exactly.
 describe("graphql — subnet_swap (#13165)", () => {

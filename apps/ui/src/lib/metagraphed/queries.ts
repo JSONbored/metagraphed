@@ -346,6 +346,12 @@ import type {
   ChainEmissionSplits,
   DeclaredEmissionSplit,
   SubnetDeclaredEmissionSplit,
+  CommitmentField,
+  CommitmentReveal,
+  CommitmentState,
+  HotkeyCommitmentHistory,
+  SubnetCommitmentRow,
+  SubnetCommitments,
 } from "./types";
 
 const STALE_SHORT = 30_000;
@@ -9713,6 +9719,98 @@ export const chainEmissionSplitsQuery = () =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<ChainEmissionSplits>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** One commitment state as served, or null when it does not read whole: the
+ * API already refuses a row it cannot read, so this only guards the shape. */
+function normalizeCommitmentState(raw: unknown): CommitmentState | null {
+  if (!isRecord(raw)) return null;
+  const validFrom = firstFiniteNumber(raw.valid_from);
+  if (validFrom === undefined) return null;
+  const commitment = isRecord(raw.commitment) ? raw.commitment : null;
+  const fields: CommitmentField[] = [];
+  for (const entry of Array.isArray(commitment?.fields) ? commitment.fields : []) {
+    const kind = isRecord(entry) ? coerceString(entry.kind) : undefined;
+    if (!isRecord(entry) || !kind) continue;
+    fields.push({
+      kind,
+      hex: coerceString(entry.hex) ?? null,
+      text: coerceString(entry.text) ?? null,
+      reveal_round: firstFiniteNumber(entry.reveal_round) ?? null,
+    });
+  }
+  const reveals: CommitmentReveal[] = [];
+  for (const entry of Array.isArray(raw.reveals) ? raw.reveals : []) {
+    const block = isRecord(entry) ? firstFiniteNumber(entry.block) : undefined;
+    if (!isRecord(entry) || block === undefined) continue;
+    reveals.push({ block, text: coerceString(entry.text) ?? null });
+  }
+  return {
+    valid_from: validFrom,
+    valid_to: firstFiniteNumber(raw.valid_to) ?? null,
+    block: firstFiniteNumber(commitment?.block) ?? null,
+    fields,
+    reveals,
+  };
+}
+
+/** One page of a subnet's on-chain commitments (MET-7365), most recently
+ * committed first. */
+export const subnetCommitmentsQuery = (netuid: number, page: { limit: number; offset: number }) =>
+  queryOptions({
+    queryKey: k("subnet-commitments", netuid, page.limit, page.offset),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(`/api/v1/subnets/${netuid}/commitments`, {
+        signal,
+        params: { limit: page.limit, offset: page.offset },
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const rows = (Array.isArray(d.commitments) ? d.commitments : [])
+        .map((raw): SubnetCommitmentRow | null => {
+          const state = normalizeCommitmentState(raw);
+          const hotkey = isRecord(raw) ? coerceString(raw.hotkey) : undefined;
+          return state && hotkey ? { ...state, hotkey } : null;
+        })
+        .filter((row): row is SubnetCommitmentRow => row !== null);
+      return {
+        data: {
+          netuid: firstFiniteNumber(d.netuid) ?? netuid,
+          observed_block: firstFiniteNumber(d.observed_block) ?? null,
+          total: firstFiniteNumber(d.total) ?? null,
+          rows,
+        },
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetCommitments>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** One hotkey's commitment history on one subnet (MET-7365), newest first. */
+export const subnetHotkeyCommitmentQuery = (netuid: number, hotkey: string) =>
+  queryOptions({
+    queryKey: k("subnet-hotkey-commitment", netuid, hotkey),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/subnets/${netuid}/commitments/${ss58PathSegment(hotkey)}`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const history = (Array.isArray(d.history) ? d.history : [])
+        .map(normalizeCommitmentState)
+        .filter((row): row is CommitmentState => row !== null);
+      return {
+        data: {
+          netuid: firstFiniteNumber(d.netuid) ?? netuid,
+          hotkey: coerceString(d.hotkey) ?? hotkey,
+          observed_block: firstFiniteNumber(d.observed_block) ?? null,
+          history,
+        },
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<HotkeyCommitmentHistory>;
     },
     staleTime: STALE_MED,
   });

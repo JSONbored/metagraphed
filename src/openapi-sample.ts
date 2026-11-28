@@ -56,6 +56,10 @@ function valueForPattern(pattern: string, name = ""): string {
       // u64 parts of u64::MAX in canonical decimal (an emission split's slots
       // and gamma shares, MET-7365): 10%, SN3's real share to SN51's gamma.
       return "1844674407370955161";
+    case "^0x(?:[0-9a-f]{2})*$":
+      // Whole bytes as 0x-prefixed lowercase hex (a commitment's Data field
+      // or reveal, MET-7365): "hi", the shortest printable raw field.
+      return "0x6869";
     case "^[1-9A-HJ-NP-Za-km-z]{47,48}$":
       return /counterparty|^to$|address/.test(n)
         ? SAMPLE_COUNTERPARTY_SS58

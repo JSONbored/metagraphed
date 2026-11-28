@@ -112,8 +112,9 @@ describe("checkQueryArguments", () => {
     // #13166 adds two more (account_proxies, account_multisigs), the same
     // way.
     // MET-7365 adds two more (subnet_emission_split, chain_emission_splits),
-    // the same way.
-    assert.equal(report.exact, 223);
+    // the same way, and two more again (subnet_commitments,
+    // subnet_hotkey_commitment).
+    assert.equal(report.exact, 225);
     assert.equal(report.skipped, 0);
   });
 

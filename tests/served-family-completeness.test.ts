@@ -249,6 +249,22 @@ const FAMILY_ANCHORS: Readonly<Record<string, Family>> = {
       { file: "src/pg-subnet-emission.ts", symbol: "FROM observations" },
     ],
   },
+  // Every hotkey's commitment on every subnet (ADR 0029 phase 2, MET-7365),
+  // as validity ranges, read by the commitment routes.
+  "0061_subnet_commitments.sql": {
+    tables: ["state.commitments"],
+    anchors: [
+      {
+        file: "schemas-src/routes/subnet-commitments.ts",
+        symbol: "SubnetCommitmentsArtifactSchema",
+      },
+      {
+        file: "schemas-src/routes/subnet-commitments.ts",
+        symbol: "HotkeyCommitmentArtifactSchema",
+      },
+      { file: "src/pg-commitments.ts", symbol: "FROM commitments" },
+    ],
+  },
 };
 
 /** The legacy-port files that predate the gate, pinned exactly. Shrink-only:

@@ -286,6 +286,16 @@ type Query {
   chain_emission_splits: ChainEmissionSplits!
 
   """
+  A subnet's current on-chain commitments (MET-7365, runtime spec 497): each hotkey's deposit and Data fields from Commitments.set_commitment, with their bytes and printable text, and the timelock payloads the chain has revealed, most recently committed first and paged. With no capture observed, observed_block and total are null and there are no rows. Mirrors GET /api/v1/subnets/{netuid}/commitments.
+  """
+  subnet_commitments(netuid: Int!, limit: Int, offset: Int): SubnetCommitments!
+
+  """
+  One hotkey's on-chain commitment and reveals on one subnet (MET-7365, runtime spec 497), current and as validity ranges since the capture began, newest first. With no capture observed, observed_block and exists are null. Mirrors GET /api/v1/subnets/{netuid}/commitments/{hotkey}.
+  """
+  subnet_hotkey_commitment(netuid: Int!, hotkey: String!): HotkeyCommitment!
+
+  """
   One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until the engine's Services capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services.
   """
   subnet_services(netuid: Int!): SubnetServices!
@@ -2903,6 +2913,161 @@ type ChainEmissionSplitEntry {
   SubnetCreatedViaLease: the subnet was registered through a lease. Such a subnet may not set its owner slot below the default.
   """
   created_via_lease: Boolean!
+}
+
+"""
+A subnet's current on-chain commitments and reveals from chain storage (runtime spec 497). Mirrors GET /api/v1/subnets/{netuid}/commitments.
+"""
+type SubnetCommitments {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  The newest finalized block the capture read every subnet's commitments at. Null when no capture has been observed (store unbound, or the capture has not run): the response then carries no commitments at all.
+  """
+  observed_block: Int
+
+  """When that capture ran, as an ISO timestamp."""
+  observed_at: String
+
+  """
+  How many hotkeys hold a commitment or reveals on this subnet at the observed block. Null with no observation.
+  """
+  total: Int
+  limit: Int!
+  offset: Int!
+
+  """
+  One page of them, the most recently committed first (hotkeys with only reveals last), then by public key.
+  """
+  commitments: [SubnetCommitmentEntry!]!
+}
+
+"""One hotkey's current commitment and reveals on the subnet."""
+type SubnetCommitmentEntry {
+  """The committing hotkey, SS58."""
+  hotkey: String!
+
+  """
+  The first capture block at which this state was observed. The capture is hourly, so the change happened in the 300 or so blocks before it; \`commitment.block\` is the chain's own.
+  """
+  valid_from: Int!
+
+  """
+  The commitment, or null when the hotkey holds reveals but no commitment.
+  """
+  commitment: Commitment
+
+  """
+  The hotkey's revealed timelock commitments on this subnet, in the chain's order. Empty when it has none.
+  """
+  reveals: [CommitmentReveal!]!
+}
+
+"""A hotkey's commitment on one subnet (Commitments.CommitmentOf)."""
+type Commitment {
+  """The block the chain stamped the commitment with when it was set."""
+  block: Int!
+
+  """
+  The deposit reserved for it, in rao (u64 atomic units as a decimal string).
+  """
+  deposit: String!
+
+  """Its Data fields, in the order they were committed."""
+  fields: [CommitmentField!]!
+}
+
+"""One Data field of a commitment, as the chain holds it."""
+type CommitmentField {
+  """
+  The Data variant: \`raw\` (up to 128 bytes) and \`big_raw\` bytes; a BLAKE2-256, SHA-256, Keccak-256 or SHA3-256 hash; a \`timelock\` ciphertext the chain reveals at its drand round, or one whose reveal failed; the bonds-reset flag; or \`none\`.
+  """
+  kind: String!
+
+  """
+  The field's bytes as 0x-prefixed lowercase hex. Null for \`none\` and \`reset_bonds\`, which carry none.
+  """
+  hex: String
+
+  """
+  The bytes as UTF-8 text, when they are printable. Null for binary bytes and for fields with none.
+  """
+  text: String
+
+  """A timelock's drand round. Null for every other kind."""
+  reveal_round: Int
+}
+
+"""One revealed timelock commitment."""
+type CommitmentReveal {
+  """The block the chain revealed it at."""
+  block: Int!
+
+  """The revealed payload as the chain keeps it, 0x-prefixed hex."""
+  hex: String!
+
+  """
+  The revealed payload as UTF-8 text, when it is printable. The chain keeps a reveal as SCALE bytes, so this is the payload inside them.
+  """
+  text: String
+}
+
+"""
+One hotkey's on-chain commitment on one subnet, with its history (runtime spec 497). Mirrors GET /api/v1/subnets/{netuid}/commitments/{hotkey}.
+"""
+type HotkeyCommitment {
+  schema_version: Int!
+  netuid: Int!
+
+  """The hotkey, SS58."""
+  hotkey: String!
+
+  """
+  The newest finalized block the capture read every subnet's commitments at. Null when no capture has been observed (store unbound, or the capture has not run): the response then carries no commitments at all.
+  """
+  observed_block: Int
+
+  """When that capture ran, as an ISO timestamp."""
+  observed_at: String
+
+  """
+  Whether the chain held a commitment or reveals for this hotkey on this subnet at the observed block. Null with no observation.
+  """
+  exists: Boolean
+
+  """
+  Its current commitment and reveals, or null when the chain holds none at the observed block.
+  """
+  current: CommitmentState
+
+  """
+  Every state it has had on this subnet since the capture began, newest first, at most 100.
+  """
+  history: [CommitmentState!]!
+}
+
+"""One hotkey's commitment and reveals with their validity range."""
+type CommitmentState {
+  """
+  The first capture block at which this state was observed. The capture is hourly, so the change happened in the 300 or so blocks before it; \`commitment.block\` is the chain's own.
+  """
+  valid_from: Int!
+
+  """
+  The first capture block at which another state was observed, or none (exclusive). Null while it is current.
+  """
+  valid_to: Int
+
+  """
+  The commitment, or null when the hotkey holds reveals but no commitment.
+  """
+  commitment: Commitment
+
+  """
+  The hotkey's revealed timelock commitments on this subnet, in the chain's order. Empty when it has none.
+  """
+  reveals: [CommitmentReveal!]!
 }
 
 """

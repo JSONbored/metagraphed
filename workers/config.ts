@@ -740,6 +740,15 @@ export const SUBNET_EMISSION_SPLIT_PATH_PATTERN =
 // Every subnet's emission split and lifecycle state (MET-7365), live from the
 // state store.
 export const CHAIN_EMISSION_SPLITS_PATH = "/api/v1/chain/emission-splits";
+// A subnet's current on-chain commitments (MET-7365), live from the state
+// store.
+export const SUBNET_COMMITMENTS_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/commitments$/;
+// One hotkey's commitment on one subnet (MET-7365), live from the state store.
+// Only an SS58-SHAPED segment matches; its checksum is refused at dispatch as
+// a 400, the way the account routes' is.
+export const SUBNET_HOTKEY_COMMITMENT_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/commitments\/([1-9A-HJ-NP-Za-km-z]{47,48})$/;
 // One subnet's current balancer-based Swap state (#13165), live from the
 // swap store, no static file.
 export const SUBNET_SWAP_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/swap$/;

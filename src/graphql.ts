@@ -71,6 +71,16 @@ import {
   loadChainEmissionSplits,
   loadSubnetEmissionSplit,
 } from "./subnet-emission-split.ts";
+import {
+  buildHotkeyCommitment,
+  buildSubnetCommitments,
+  loadHotkeyCommitmentBySs58,
+  loadSubnetCommitments,
+} from "./subnet-commitments.ts";
+import {
+  SUBNET_COMMITMENTS_LIMIT_DEFAULT,
+  SUBNET_COMMITMENTS_LIMIT_MAX,
+} from "./route-limits.ts";
 import { buildSubnetSwap, loadSubnetSwap } from "./subnet-swap.ts";
 import {
   buildSubnetAlphaAssets,
@@ -3803,6 +3813,49 @@ const rootValue = {
 
   async chain_emission_splits(_args: unknown, context: GqlContext) {
     return buildChainEmissionSplits(await loadChainEmissionSplits(context.env));
+  },
+
+  async subnet_commitments(
+    {
+      netuid,
+      limit,
+      offset,
+    }: { netuid: number; limit?: number | null; offset?: number | null },
+    context: GqlContext,
+  ) {
+    assertNetuidArgument(netuid);
+    // The route's own page bounds, so a GraphQL caller cannot ask for a wider
+    // page than REST allows; the same loader and builder, so an unbound or
+    // unfilled state store is a schema-stable card, never a GraphQL error.
+    const page = {
+      limit: clampLimit(limit, {
+        defaultLimit: SUBNET_COMMITMENTS_LIMIT_DEFAULT,
+        maxLimit: SUBNET_COMMITMENTS_LIMIT_MAX,
+      }),
+      offset: clampOffset(offset),
+    };
+    return buildSubnetCommitments(
+      await loadSubnetCommitments(context.env, netuid, page),
+      netuid,
+      page,
+    );
+  },
+
+  async subnet_hotkey_commitment(
+    { netuid, hotkey }: { netuid: number; hotkey: string },
+    context: GqlContext,
+  ) {
+    assertNetuidArgument(netuid);
+    if (!isFinneySs58Address(hotkey)) {
+      throw new GraphQLError("hotkey must be a valid SS58 address.", {
+        extensions: { code: "BAD_USER_INPUT" },
+      });
+    }
+    return buildHotkeyCommitment(
+      await loadHotkeyCommitmentBySs58(context.env, netuid, hotkey),
+      netuid,
+      hotkey,
+    );
   },
 
   async subnet_swap({ netuid }: { netuid: number }, context: GqlContext) {

@@ -141,6 +141,12 @@ import {
   loadChainEmissionSplits,
   loadSubnetEmissionSplit,
 } from "../../src/subnet-emission-split.ts";
+import {
+  buildHotkeyCommitment,
+  buildSubnetCommitments,
+  loadHotkeyCommitmentBySs58,
+  loadSubnetCommitments,
+} from "../../src/subnet-commitments.ts";
 import { buildSubnetSwap, loadSubnetSwap } from "../../src/subnet-swap.ts";
 import {
   buildSubnetAlphaAssets,
@@ -3598,6 +3604,66 @@ export async function handleChainEmissionSplits(request: Request, env: Env) {
     "short",
   );
   return current === null
+    ? markDataApiTierFallbackResponse(response)
+    : response;
+}
+
+// GET /api/v1/subnets/{netuid}/commitments (MET-7365): one page of a subnet's
+// current on-chain commitments, read through the native state store seam. No
+// store bound or a failed read is the same schema-stable decline:
+// `observed_block: null`, `total: null` and no rows -- never an empty list
+// that would say the subnet's hotkeys published nothing -- marked as a tier
+// fallback.
+export async function handleSubnetCommitments(
+  request: Request,
+  env: Env,
+  netuid: number,
+  url: URL,
+) {
+  // The router already parsed and rejected against the route's schema.
+  const { limit, offset } = resolvePage(url);
+  const page = await loadSubnetCommitments(env, netuid, { limit, offset });
+  const data = buildSubnetCommitments(page, netuid, { limit, offset });
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/commitments.json`,
+        data.observed_at as string | null,
+      ),
+    },
+    "short",
+  );
+  return page === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/commitments/{hotkey} (MET-7365): one hotkey's
+// commitment and reveals on one subnet, current and as validity ranges,
+// through the same seam and the same decline. Dispatch has already refused an
+// address that does not decode.
+export async function handleSubnetHotkeyCommitment(
+  request: Request,
+  env: Env,
+  netuid: number,
+  hotkey: string,
+) {
+  const history = await loadHotkeyCommitmentBySs58(env, netuid, hotkey);
+  const data = buildHotkeyCommitment(history, netuid, hotkey);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/commitments/${hotkey}.json`,
+        data.observed_at as string | null,
+      ),
+    },
+    "short",
+  );
+  return history === null
     ? markDataApiTierFallbackResponse(response)
     : response;
 }

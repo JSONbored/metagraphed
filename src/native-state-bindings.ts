@@ -27,6 +27,7 @@ import { createPgSubnetGammaStore } from "./pg-subnet-gamma.ts";
 import { createPgGammaDepositsStore } from "./pg-gamma-deposits.ts";
 import { createPgSubnetServicesStore } from "./pg-subnet-services.ts";
 import { createPgSubnetEmissionStore } from "./pg-subnet-emission.ts";
+import { createPgCommitmentsStore } from "./pg-commitments.ts";
 import { createPgSubnetSwapStore } from "./pg-subnet-swap.ts";
 import { createPgSubnetAlphaAssetsStore } from "./pg-subnet-alpha-assets.ts";
 import { createPgSubnetLimitOrdersStore } from "./pg-subnet-limit-orders.ts";
@@ -109,6 +110,7 @@ export function createNativeStateBindings(
     GAMMA_DEPOSITS_STORE: createPgGammaDepositsStore(app),
     SUBNET_SERVICES_STORE: createPgSubnetServicesStore(app),
     SUBNET_EMISSION_STORE: createPgSubnetEmissionStore(state),
+    COMMITMENTS_STORE: createPgCommitmentsStore(state),
     SUBNET_SWAP_STORE: createPgSubnetSwapStore(app),
     SUBNET_ALPHA_ASSETS_STORE: createPgSubnetAlphaAssetsStore(app),
     SUBNET_LIMIT_ORDERS_STORE: createPgSubnetLimitOrdersStore(app),

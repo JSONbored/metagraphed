@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnalyticsSection, DataTable, MarkerRail, type DataTableColumn } from "@jsonbored/ui-kit";
 import { subnetSurfacesQuery, subnetUptimeQuery } from "@/lib/metagraphed/queries";
@@ -50,7 +50,16 @@ const COLUMNS: DataTableColumn<Surface & { uptime: number | null }>[] = [
  * surface at 62% next to five at 100% is the whole finding, and a column of
  * percentages makes you compute it yourself.
  */
-export function SurfacesSection({ netuid, name }: { netuid: number; name?: string }) {
+export function SurfacesSection({
+  netuid,
+  name,
+  children,
+}: {
+  netuid: number;
+  name?: string;
+  /** Evidence that belongs to this question (MET-7365: on-chain commitments). */
+  children?: ReactNode;
+}) {
   const [expanded, setExpanded] = useState(false);
   const { ref, nearViewport } = useNearViewport();
   const surfaces = useQuery({
@@ -146,6 +155,7 @@ export function SurfacesSection({ netuid, name }: { netuid: number; name?: strin
           `90d · ${formatNumber(measured)} of ${formatNumber(rows.length)} probed`
         )
       }
+      after={children}
     >
       {expanded ? (
         <DataTable

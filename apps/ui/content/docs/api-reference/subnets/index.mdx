@@ -3,7 +3,7 @@ title: Subnets
 description: Every Subnets endpoint in the metagraphed API, with its method and path.
 ---
 
-79 endpoints.
+81 endpoints.
 
 - [Deregistration Ranking](/docs/api-reference/subnets/deregistration-ranking) — `GET /api/v1/chain/deregistration-ranking`\
   Fetch the order in which the chain would deregister subnets to make room for a new registration (#10285) — 'how close is this subnet to being pruned', answered with the pallet's own rule rather than a proxy for it.
@@ -33,6 +33,8 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
   Network-scoped form of /api/v1/subnets/\{netuid}/burn — prefix the route with a network to choose which chain answers it.
 - [Subnet Burn History](/docs/api-reference/subnets/subnet-burn-history) — `GET /api/v1/subnets/{netuid}/burn/history`\
   Fetch one subnet's registration-cost series.
+- [Subnet Commitments](/docs/api-reference/subnets/subnet-commitments) — `GET /api/v1/subnets/{netuid}/commitments`\
+  Fetch what a subnet's miners and validators have published on chain (MET-7365, runtime spec 497): each hotkey's current commitment — the deposit and Data fields it set with Commitments.set_commitment, such as model revisions, peer ids, endpoints, content hashes and timelocked payloads, each with its bytes and its text where printable — and the timelock payloads the chain has revealed for it.
 - [Subnet Concentration](/docs/api-reference/subnets/subnet-concentration) — `GET /api/v1/subnets/{netuid}/concentration`\
   Fetch stake & emission concentration metrics (Gini, HHI, Nakamoto coefficient, top-percentile shares, entropy) for one subnet across per-UID, per-entity (coldkeys collapsed), and validator-only consensus-power lenses (computed live from the neurons store).
 - [Subnet Concentration History](/docs/api-reference/subnets/subnet-concentration-history) — `GET /api/v1/subnets/{netuid}/concentration/history`\
@@ -67,6 +69,8 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
   Fetch a subnet's per-day aggregate history (neuron/validator counts + stake/emission totals) for sparklines, computed live from the neuron_daily rollup tier.
 - [Subnet Holders](/docs/api-reference/subnets/subnet-holders) — `GET /api/v1/subnets/{netuid}/holders`\
   Fetch who owns one subnet's alpha (#9557) — the top coldkeys by alpha held on that netuid, with each holder's share of the subnet total, how many hotkeys they hold it through, and whole-subnet aggregates (distinct holder count, total measured alpha, top5/top10/top20 concentration).
+- [Subnet Hotkey Commitment](/docs/api-reference/subnets/subnet-hotkey-commitment) — `GET /api/v1/subnets/{netuid}/commitments/{hotkey}`\
+  Fetch one hotkey's on-chain commitment and reveals on one subnet (MET-7365, runtime spec 497), current and as the validity ranges it has held since the capture began, newest first (at most 100).
 - [Subnet Hyperparameters](/docs/api-reference/subnets/subnet-hyperparameters) — `GET /api/v1/subnets/{netuid}/hyperparameters`\
   Fetch one subnet's consensus, economic, and governance hyperparameters (kappa, weight/activity settings, burn cost, liquid alpha, commit-reveal, yuma version, and more), refreshed daily and computed live from the subnet_hyperparams tier.
 - [Subnet Hyperparameters History](/docs/api-reference/subnets/subnet-hyperparameters-history) — `GET /api/v1/subnets/{netuid}/hyperparameters/history`\

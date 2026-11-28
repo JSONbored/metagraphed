@@ -378,8 +378,18 @@ describe("data-api's bundle boundary", () => {
     // src/artifact-storage.ts (+354) and the parts pattern's sample in
     // src/openapi-sample.ts (+227). The store, the builders and the capture
     // stay out of data-api's graph. Same 2,512 bytes of margin.
-    // Each day's own split since runtime 497 (MET-7385): +12,976 source bytes,
-    // for 4,996,891 -- the per-day split resolver and its measured rationale
+    // The commitments family (MET-7365, runtime spec 497): +5,112 source
+    // bytes, for 4,989,027, all of it declarations -- the two routes' and
+    // artifacts' contract entries and their mainnet-only listing in
+    // src/contracts.ts (+3,087), the page query and the no-query listing in
+    // schemas-src/route-queries.ts (+699), the page bounds in
+    // src/route-limits.ts (+508), the path patterns in workers/config.ts
+    // (+509) and the two computed-tier patterns in src/artifact-storage.ts
+    // (+309). The bounds live in route-limits.ts so the store seam stays out
+    // of the graph with the store, the builders and the capture. Same 2,512
+    // bytes of margin.
+    // Each day's own split since runtime 497 (MET-7385): +13,366 source bytes,
+    // for 5,002,393 -- the per-day split resolver and its measured rationale
     // in src/emission-split.ts, owner capture reading it, the two route
     // schemas' new fields, the store seam src/subnet-emission-store.ts the
     // handlers now read the splits through, and the handlers' store reads in
@@ -389,7 +399,7 @@ describe("data-api's bundle boundary", () => {
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_999_403,
+      firstParty < 5_004_905,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

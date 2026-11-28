@@ -3348,6 +3348,50 @@ export interface ChainEmissionSplits {
   subnets: ChainEmissionSplitRow[];
 }
 
+/** One Data field of an on-chain commitment (MET-7365), as the API serves it. */
+export interface CommitmentField {
+  kind: string;
+  hex: string | null;
+  text: string | null;
+  reveal_round: number | null;
+}
+
+/** One timelocked payload the chain has revealed. */
+export interface CommitmentReveal {
+  block: number;
+  text: string | null;
+}
+
+/** One hotkey's commitment state with its validity range. */
+export interface CommitmentState {
+  valid_from: number;
+  valid_to: number | null;
+  /** Null when the hotkey holds reveals but no commitment. */
+  block: number | null;
+  fields: CommitmentField[];
+  reveals: CommitmentReveal[];
+}
+
+export interface SubnetCommitmentRow extends CommitmentState {
+  hotkey: string;
+}
+
+export interface SubnetCommitments {
+  netuid: number;
+  /** Null when no capture has been observed: then there are no rows. */
+  observed_block: number | null;
+  total: number | null;
+  rows: SubnetCommitmentRow[];
+}
+
+export interface HotkeyCommitmentHistory {
+  netuid: number;
+  hotkey: string;
+  observed_block: number | null;
+  /** Newest first. */
+  history: CommitmentState[];
+}
+
 /**
  * Miner fairness (#10931). DESCRIPTIVE ONLY — there is no score field here and
  * the render must not invent one.
