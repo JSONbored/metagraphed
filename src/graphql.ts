@@ -3788,10 +3788,10 @@ const rootValue = {
 
   async subnet_services({ netuid }: { netuid: number }, context: GqlContext) {
     assertNetuidArgument(netuid);
-    // #13164: same loadSubnetServices -> buildSubnetServices decline contract
-    // the REST handler and the MCP tool share -- an unbound or unfilled
-    // services store is a schema-stable card with service_count null, never a
-    // GraphQL error.
+    // #13164: same loadSubnetServices -> buildSubnetServices contract the
+    // REST handler and the MCP tool share -- a measured 0 after a whole read,
+    // and for an unbound or unfilled store a schema-stable card with
+    // service_count null, never a GraphQL error.
     return buildSubnetServices(
       await loadSubnetServices(context.env, netuid),
       netuid,

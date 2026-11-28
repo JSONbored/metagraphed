@@ -8,6 +8,10 @@
 export interface SubnetServicesStore {
   /** One subnet's service-URL rows, ordered by hotkey. */
   rows(netuid: number): Promise<Record<string, unknown>[]>;
+  /** When the registry was last read whole, as epoch-ms text: every row of
+   * a whole capture carries its stamp. Null when no row does. A store
+   * without it serves rows alone, and an empty subnet then declines. */
+  observedAt?(): Promise<string | null>;
 }
 
 export function selectedSubnetServicesStore(

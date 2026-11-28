@@ -4320,7 +4320,7 @@ export type Query = {
   subnet_registrations: SubnetRegistrations;
   /** One subnet's external revenue against the TAO the network emits to it. ALWAYS read provenance and verification.verified: only chain-verified and probe-derived figures reach the headline, and revenue_usd/coverage_ratio/subsidy_multiple are NULL whenever revenue is unobserved -- the normal case, true of 127 of 129 subnets. NULL MEANS NOT OBSERVED, NEVER ZERO: rendering an unmeasured subnet as '0% covered' is a false claim about it. A declared surface that did not reach the headline is still reported in sources, with excluded_reason saying why. Never errors for a subnet with no revenue data. Mirrors GET /api/v1/subnets/{netuid}/revenue Takes ?window=1d|7d|30d (default 1d): a surface contributes only when the window is a whole number of its declared grain's periods, so a monthly figure needs 30d and is invisible at 1d. */
   subnet_revenue: SubnetRevenueCard;
-  /** One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until a Services capture is observed, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services. */
+  /** One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. A subnet the last whole read found no binding for is a measured service_count 0; with no whole read observed this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0 from absence. Mirrors GET /api/v1/subnets/{netuid}/services. */
   subnet_services: SubnetServices;
   /** Per-subnet axon-serving activity over a 7d/30d window (distinct servers, AxonServed announcement count, and announcements per server); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/serving. */
   subnet_serving: SubnetServing;
@@ -8467,7 +8467,7 @@ export type SubnetServices = {
   captured_at?: Maybe<Scalars['String']['output']>;
   netuid: Scalars['Int']['output'];
   schema_version: Scalars['Int']['output'];
-  /** How many service bindings this subnet carries -- `services.length`. NULL when the registry holds no rows for this subnet (store unbound, or the service capture has not run): a zero count is never a measurement and is not published. */
+  /** How many service bindings this subnet carries -- `services.length`. 0 when the Gamma capture read the registry whole and found this subnet none; NULL when no whole read is observed (store unbound, or the registry empty), never 0 from absence. */
   service_count?: Maybe<Scalars['Int']['output']>;
   /** The subnet's service bindings, ordered by hotkey. */
   services: Array<SubnetService>;

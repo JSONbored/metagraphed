@@ -247,6 +247,9 @@ describe("pg gamma schema and stores", { concurrency: false }, () => {
       store.rows(-1),
       /Invalid native subnet services identity/,
     );
+    // The newest stamp across every subnet's rows, as text: the last whole
+    // read, which makes subnet 66's empty list a measured 0.
+    assert.equal(await store.observedAt!(), "1763000000001");
   });
 
   it("refuses a service row without a URL or with a bad set_at", async () => {
