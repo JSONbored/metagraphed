@@ -101,7 +101,11 @@ export function CommitmentsSection({ netuid }: { netuid: number }) {
       question="What this subnet's miners and validators publish on chain."
       visualRef={ref}
       visual={
-        isError ? (
+        // Nothing server-rendered before the section nears the viewport: the
+        // page's HTML ratchet (tests/e2e/indexable-routes.spec.ts) has no room
+        // for a skeleton table the reader may never scroll to, and the table
+        // mounts with its data the moment they do.
+        !nearViewport ? null : isError ? (
           <ErrorState error={error} onRetry={() => void refetch()} context="on-chain commitments" />
         ) : (
           <DataTable
@@ -110,7 +114,7 @@ export function CommitmentsSection({ netuid }: { netuid: number }) {
             rowKey={(row) => row.hotkey}
             caption={`Subnet ${netuid} commitments`}
             source={`sn-${netuid}-commitments`}
-            loading={!nearViewport || loading}
+            loading={loading}
             total={total ?? undefined}
             page={page}
             onPage={setPage}

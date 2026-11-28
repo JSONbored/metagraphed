@@ -221,8 +221,8 @@ const byPair = (
   a: CommitmentsSnapshot["unknown"][number],
   b: CommitmentsSnapshot["unknown"][number],
 ) =>
-  a.netuid - b.netuid ||
-  (a.hotkey < b.hotkey ? -1 : a.hotkey > b.hotkey ? 1 : 0);
+  // No two pairs of one snapshot are equal: a map keys each pair once.
+  a.netuid - b.netuid || (a.hotkey < b.hotkey ? -1 : 1);
 
 /** One finalized block's commitments and reveals for every subnet. Throws on
  * an RPC failure or a map past its bound: a partial listing cannot say which

@@ -1491,8 +1491,7 @@ import {
 import {
   buildHotkeyCommitment,
   buildSubnetCommitments,
-  hotkeyPublicKey,
-  loadHotkeyCommitment,
+  loadHotkeyCommitmentBySs58,
   loadSubnetCommitments,
 } from "./subnet-commitments.ts";
 import {
@@ -9879,11 +9878,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     ) {
       const netuid = requireNetuid(args);
       const hotkey = requireHotkey(args);
-      const publicKey = hotkeyPublicKey(hotkey);
       return buildHotkeyCommitment(
-        publicKey === null
-          ? null
-          : await loadHotkeyCommitment(ctx.env, netuid, publicKey),
+        await loadHotkeyCommitmentBySs58(ctx.env, netuid, hotkey),
         netuid,
         hotkey,
       );

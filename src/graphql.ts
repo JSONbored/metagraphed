@@ -74,8 +74,7 @@ import {
 import {
   buildHotkeyCommitment,
   buildSubnetCommitments,
-  hotkeyPublicKey,
-  loadHotkeyCommitment,
+  loadHotkeyCommitmentBySs58,
   loadSubnetCommitments,
 } from "./subnet-commitments.ts";
 import {
@@ -3852,11 +3851,8 @@ const rootValue = {
         extensions: { code: "BAD_USER_INPUT" },
       });
     }
-    const publicKey = hotkeyPublicKey(hotkey);
     return buildHotkeyCommitment(
-      publicKey === null
-        ? null
-        : await loadHotkeyCommitment(context.env, netuid, publicKey),
+      await loadHotkeyCommitmentBySs58(context.env, netuid, hotkey),
       netuid,
       hotkey,
     );

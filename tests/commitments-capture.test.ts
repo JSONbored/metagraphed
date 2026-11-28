@@ -223,6 +223,7 @@ describe("the Data fields decode as the chain holds them", () => {
           "00",
           rawField(""),
           rawField("tab\tok"),
+          rawField("two\r\nlines"),
         ],
         18_446_744_073_709_551_615n,
       ),
@@ -237,6 +238,11 @@ describe("the Data fields decode as the chain holds them", () => {
       { kind: "none" },
       { kind: "raw", hex: "0x" },
       { kind: "raw", hex: "0x" + utf8("tab\tok"), text: "tab\tok" },
+      {
+        kind: "raw",
+        hex: "0x" + utf8("two\r\nlines"),
+        text: "two\r\nlines",
+      },
     ]);
   });
 
@@ -365,6 +371,22 @@ describe("one finalized block's commitments", () => {
     );
     assert.deepEqual(snapshot.unknown, []);
     assert.equal(snapshot.undecoded, 0);
+  });
+
+  test("pairs come out by hotkey whatever order their hashed keys list in", async () => {
+    // On chain the Twox64 of the hotkey orders the keys, not the hotkey.
+    const hashed = (twox: string, key: number) =>
+      COMMITMENT_OF + le(5, 2) + twox.repeat(8) + hotkey(key);
+    const s = new Map([
+      [hashed("00", 3), registration(1, [rawField("c")])],
+      [hashed("11", 1), registration(1, [rawField("a")])],
+      [hashed("22", 2), registration(1, [rawField("b")])],
+    ]);
+    const snapshot = await loadCommitmentsSnapshot("mainnet", chain(s).rpc);
+    assert.deepEqual(
+      snapshot.commitments.map((c) => c.commitment?.fields[0].text),
+      ["a", "b", "c"],
+    );
   });
 
   test("a pair gone between listing and read, or unreadable, is unknown whole", async () => {
@@ -502,6 +524,20 @@ describe("the capture's verdict", () => {
       },
     );
     assert.equal(failedRead.reason, "chain_read_failed: rpc down");
+    // A rejection that is no Error is named by its own value.
+    const thrownText = await captureCommitments(
+      {},
+      { store: store(), load: async () => Promise.reject("timeout") },
+    );
+    assert.equal(thrownText.reason, "chain_read_failed: timeout");
+    const writeText = await captureCommitments(
+      {},
+      {
+        store: { write: async () => Promise.reject("locked") },
+        load: async () => empty,
+      },
+    );
+    assert.equal(writeText.reason, "write_failed: locked");
     const failedWrite = await captureCommitments(
       {},
       {
@@ -736,6 +772,20 @@ describe("the capture lands in state.commitments as validity ranges", () => {
       (await store.subnet(1, { limit: 1, offset: 0 })).observation,
       null,
     );
+  });
+
+  test("a count the database does not answer reads as none", async () => {
+    const store = createPgCommitmentsStore({
+      read: { query: async () => [] },
+      transaction: async () => {
+        throw new Error("not reached");
+      },
+    });
+    assert.deepEqual(await store.subnet(1, { limit: 1, offset: 0 }), {
+      observation: null,
+      total: 0,
+      rows: [],
+    });
   });
 
   test("the emission families keep their own watermark beside the commitments'", async () => {

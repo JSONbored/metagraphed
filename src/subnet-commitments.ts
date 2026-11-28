@@ -234,3 +234,16 @@ export async function loadHotkeyCommitment(
     return null;
   }
 }
+
+/** One hotkey's commitment and its history, by its SS58 address, or null --
+ * for an address that does not decode as for a store that cannot answer. */
+export async function loadHotkeyCommitmentBySs58(
+  env: unknown,
+  netuid: number,
+  ss58: string,
+): Promise<HotkeyCommitmentHistory | null> {
+  const publicKey = hotkeyPublicKey(ss58);
+  return publicKey === null
+    ? null
+    : loadHotkeyCommitment(env, netuid, publicKey);
+}

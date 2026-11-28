@@ -144,8 +144,7 @@ import {
 import {
   buildHotkeyCommitment,
   buildSubnetCommitments,
-  hotkeyPublicKey,
-  loadHotkeyCommitment,
+  loadHotkeyCommitmentBySs58,
   loadSubnetCommitments,
 } from "../../src/subnet-commitments.ts";
 import { buildSubnetSwap, loadSubnetSwap } from "../../src/subnet-swap.ts";
@@ -3650,11 +3649,7 @@ export async function handleSubnetHotkeyCommitment(
   netuid: number,
   hotkey: string,
 ) {
-  const publicKey = hotkeyPublicKey(hotkey);
-  const history =
-    publicKey === null
-      ? null
-      : await loadHotkeyCommitment(env, netuid, publicKey);
+  const history = await loadHotkeyCommitmentBySs58(env, netuid, hotkey);
   const data = buildHotkeyCommitment(history, netuid, hotkey);
   const response = await envelopeResponse(
     request,
