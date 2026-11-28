@@ -98,7 +98,12 @@ function hexBytes(hex: string): Uint8Array {
  * read as unknown rather than as a wrong number. */
 class Scale {
   private offset = 0;
-  constructor(private readonly buffer: Uint8Array) {}
+  // A plain field, not a parameter property: the native build and its tests
+  // run this module through Node's strip-only TypeScript, which has none.
+  private readonly buffer: Uint8Array;
+  constructor(buffer: Uint8Array) {
+    this.buffer = buffer;
+  }
   private take(n: number): Uint8Array {
     if (this.offset + n > this.buffer.length)
       throw new RangeError("SCALE value is truncated");
