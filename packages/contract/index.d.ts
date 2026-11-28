@@ -31567,11 +31567,11 @@ export interface operations {
                      *           "miner": 0.5,
                      *           "owner": 0.5,
                      *           "parts": {
-                     *             "burn": "example",
-                     *             "miner": "example",
-                     *             "owner": "example",
-                     *             "recycle": "example",
-                     *             "validator": "example"
+                     *             "burn": "1844674407370955161",
+                     *             "miner": "1844674407370955161",
+                     *             "owner": "1844674407370955161",
+                     *             "recycle": "1844674407370955161",
+                     *             "validator": "1844674407370955161"
                      *           },
                      *           "recycle": 0.5,
                      *           "validator": 0.5
@@ -31588,7 +31588,7 @@ export interface operations {
                      *             "epoch_consensus": "yuma",
                      *             "gamma_shares": [
                      *               {
-                     *                 "parts": "example",
+                     *                 "parts": "1844674407370955161",
                      *                 "share": 0.5,
                      *                 "target_netuid": 7
                      *               }
@@ -31598,11 +31598,11 @@ export interface operations {
                      *             "netuid": 7,
                      *             "owner": 0.5,
                      *             "parts": {
-                     *               "burn": "example",
-                     *               "miner": "example",
-                     *               "owner": "example",
-                     *               "recycle": "example",
-                     *               "validator": "example"
+                     *               "burn": "1844674407370955161",
+                     *               "miner": "1844674407370955161",
+                     *               "owner": "1844674407370955161",
+                     *               "recycle": "1844674407370955161",
+                     *               "validator": "1844674407370955161"
                      *             },
                      *             "recycle": 0.5,
                      *             "stage": "registered",
@@ -48633,7 +48633,7 @@ export interface operations {
                      *             "burn": 0.5,
                      *             "gamma_shares": [
                      *               {
-                     *                 "parts": "example",
+                     *                 "parts": "1844674407370955161",
                      *                 "share": 0.5,
                      *                 "target_netuid": 7
                      *               }
@@ -48642,11 +48642,11 @@ export interface operations {
                      *             "miner": 0.5,
                      *             "owner": 0.5,
                      *             "parts": {
-                     *               "burn": "example",
-                     *               "miner": "example",
-                     *               "owner": "example",
-                     *               "recycle": "example",
-                     *               "validator": "example"
+                     *               "burn": "1844674407370955161",
+                     *               "miner": "1844674407370955161",
+                     *               "owner": "1844674407370955161",
+                     *               "recycle": "1844674407370955161",
+                     *               "validator": "1844674407370955161"
                      *             },
                      *             "recycle": 0.5,
                      *             "valid_from": 1,
@@ -48678,7 +48678,7 @@ export interface operations {
                      *           "burn": 0.5,
                      *           "gamma_shares": [
                      *             {
-                     *               "parts": "example",
+                     *               "parts": "1844674407370955161",
                      *               "share": 0.5,
                      *               "target_netuid": 7
                      *             }
@@ -48687,11 +48687,11 @@ export interface operations {
                      *           "miner": 0.5,
                      *           "owner": 0.5,
                      *           "parts": {
-                     *             "burn": "example",
-                     *             "miner": "example",
-                     *             "owner": "example",
-                     *             "recycle": "example",
-                     *             "validator": "example"
+                     *             "burn": "1844674407370955161",
+                     *             "miner": "1844674407370955161",
+                     *             "owner": "1844674407370955161",
+                     *             "recycle": "1844674407370955161",
+                     *             "validator": "1844674407370955161"
                      *           },
                      *           "recycle": 0.5,
                      *           "valid_from": 1,

@@ -170,6 +170,11 @@ describe("sampleFromSchema", () => {
       s({ type: "string", pattern: "^[a-z0-9][a-z0-9-]*$" }),
       /^[a-z0-9][a-z0-9-]*$/,
     );
+    // u64 parts of u64::MAX in canonical decimal (MET-7365's emission split):
+    // a real share, not a placeholder the schema's own pattern would refuse.
+    const parts = s({ type: "string", pattern: "^(0|[1-9][0-9]{0,19})$" });
+    assert.equal(parts, "1844674407370955161");
+    assert.match(parts, /^(0|[1-9][0-9]{0,19})$/);
     assert.match(
       s({ type: "string", pattern: "^/metagraph/" }),
       /^\/metagraph\//,
