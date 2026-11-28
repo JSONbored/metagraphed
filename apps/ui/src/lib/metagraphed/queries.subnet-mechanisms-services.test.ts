@@ -18,15 +18,24 @@ function resolveWith(url: string, data: unknown): void {
   });
 }
 
-async function run<T>(opts: {
-  queryKey: readonly unknown[];
-  queryFn?: unknown;
-}): Promise<ApiResult<T>> {
-  const queryFn = opts.queryFn as
-    | ((context: { signal: AbortSignal; queryKey: readonly unknown[] }) => Promise<ApiResult<T>>)
-    | undefined;
-  if (!queryFn) throw new Error("expected a queryFn");
-  return queryFn({ signal: new AbortController().signal, queryKey: opts.queryKey });
+async function runMechanisms(netuid: number) {
+  const opts = subnetMechanismsQuery(netuid);
+  if (!opts.queryFn) throw new Error("expected a queryFn");
+  return opts.queryFn({
+    signal: new AbortController().signal,
+    queryKey: opts.queryKey,
+    meta: undefined,
+  } as unknown as Parameters<NonNullable<typeof opts.queryFn>>[0]);
+}
+
+async function runServices(netuid: number) {
+  const opts = subnetServicesQuery(netuid);
+  if (!opts.queryFn) throw new Error("expected a queryFn");
+  return opts.queryFn({
+    signal: new AbortController().signal,
+    queryKey: opts.queryKey,
+    meta: undefined,
+  } as unknown as Parameters<NonNullable<typeof opts.queryFn>>[0]);
 }
 
 beforeEach(() => mockedApiFetch.mockReset());
@@ -53,7 +62,7 @@ describe("subnetMechanismsQuery", () => {
         },
       ],
     });
-    const result = await run(subnetMechanismsQuery(68));
+    const result = await runMechanisms(68);
     expect(mockedApiFetch.mock.calls[0]?.[0]).toBe("/api/v1/subnets/68/mechanisms");
     expect(result.data).toEqual({
       netuid: 68,
@@ -84,7 +93,7 @@ describe("subnetMechanismsQuery", () => {
       captured_at: null,
       mechanisms: [],
     });
-    const result = await run(subnetMechanismsQuery(3));
+    const result = await runMechanisms(3);
     expect(result.data).toEqual({
       netuid: 3,
       mechanism_count: null,
@@ -106,7 +115,7 @@ describe("subnetMechanismsQuery", () => {
         { mechid: 1, emission_split: null, consensus_mode: "null" },
       ],
     });
-    const result = await run(subnetMechanismsQuery(12));
+    const result = await runMechanisms(12);
     expect(result.data).toEqual({
       netuid: 12,
       mechanism_count: null,
@@ -135,7 +144,7 @@ describe("subnetServicesQuery", () => {
         },
       ],
     });
-    const result = await run(subnetServicesQuery(19));
+    const result = await runServices(19);
     expect(mockedApiFetch.mock.calls[0]?.[0]).toBe("/api/v1/subnets/19/services");
     expect(result.data).toEqual({
       netuid: 19,
@@ -159,7 +168,7 @@ describe("subnetServicesQuery", () => {
       captured_at: "2026-11-28T18:46:32.612Z",
       services: [],
     });
-    expect((await run(subnetServicesQuery(3))).data).toMatchObject({
+    expect((await runServices(3)).data).toMatchObject({
       service_count: 0,
       captured_at: "2026-11-28T18:46:32.612Z",
     });
@@ -170,7 +179,7 @@ describe("subnetServicesQuery", () => {
       captured_at: null,
       services: [],
     });
-    expect((await run(subnetServicesQuery(3))).data).toMatchObject({
+    expect((await runServices(3)).data).toMatchObject({
       service_count: null,
       captured_at: null,
     });
@@ -186,7 +195,7 @@ describe("subnetServicesQuery", () => {
         { hotkey: "5F-second-hotkey", service_url: 42, set_at: -3 },
       ],
     });
-    const result = await run(subnetServicesQuery(51));
+    const result = await runServices(51);
     expect(result.data.services).toEqual([
       { hotkey: "5F-second-hotkey", service_url: "", set_at: null, captured_at: null },
     ]);
