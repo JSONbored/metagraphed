@@ -14,12 +14,14 @@
 //   block_number <= seam  ->  R2 lakehouse (verified history, full depth)
 //   block_number >  seam  ->  D1 chain_detail_* (the live-follow lane's window)
 //
-// ONE SEAM, AND IT IS THE SAME SEAM. `resolveBlocksSeam` (src/blocks-cold-tier.ts,
+// ONE SEAM, AND IT IS THE SAME SEAM. `resolveBlocksSeam` (src/blocks-seam.ts,
 // #9217) resolves the decoder's own published watermark, floored by the
-// configured constant. This module calls it and does not introduce a second
-// knob -- "how far is decoded" has exactly one derived answer, and a hot tier
-// with its own idea of that answer would be a second source of truth that
-// drifts silently in whichever direction nobody is watching.
+// configured constant, and every read -- this module's and the block feed's --
+// routes on it through `resolveReadBlocksSeam`, which adds only the chain
+// core's own whole-coverage floor when the retained copy cannot answer. No
+// second knob -- "how far is decoded" has exactly one derived answer, and a
+// hot tier with its own idea of that answer would be a second source of truth
+// that drifts silently in whichever direction nobody is watching.
 //
 // A GAP DECLINES. It never answers empty. Above the seam, an empty extrinsics
 // array is indistinguishable from a block that genuinely had none, and that
@@ -50,7 +52,7 @@ import { buildBlockExtrinsics, buildExtrinsic } from "./extrinsics.ts";
 import { buildBlockEvents, formatAccountEvent } from "./account-events.ts";
 import { decodeChainEventArgs } from "./chain-event-args.ts";
 import { parseJsonPreservingBigInts } from "./big-int-safe-json.ts";
-import { resolveBlocksSeam } from "./blocks-seam.ts";
+import { resolveReadBlocksSeam } from "./blocks-seam.ts";
 import {
   CHAIN_CORE_DETAIL,
   chainCoreNetwork,
@@ -986,7 +988,7 @@ export async function answerBlockDetail<T>(
   // full object here avoids a second R2 read while retaining the seam's one
   // authoritative route decision.
   const [seam, watermark] = await Promise.all([
-    resolveBlocksSeam(env, {}, network),
+    resolveReadBlocksSeam(env, {}, network),
     network === DEFAULT_CHAIN_NETWORK
       ? resolveDecodeWatermark(env, {}, network)
       : Promise.resolve(null),

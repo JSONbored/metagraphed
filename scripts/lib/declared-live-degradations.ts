@@ -34,7 +34,6 @@ export const DECLARED_LIVE_DEGRADATIONS: ReadonlyMap<string, string> = new Map([
     "/api/v1/accounts/{ss58}/stake-flow",
     "/api/v1/accounts/{ss58}/stake-moves",
     "/api/v1/accounts/{ss58}/transfers",
-    "/api/v1/blocks",
     "/api/v1/blocks/{ref}/chain-events",
     "/api/v1/blocks/{ref}/events",
     "/api/v1/blocks/{ref}/extrinsics",
@@ -57,4 +56,8 @@ export const DECLARED_LIVE_DEGRADATIONS: ReadonlyMap<string, string> = new Map([
 // and the whole file dies at cutover.
 export const CONVERGING_LIVE_ROUTES: ReadonlyMap<string, string> = new Map([
   ["/api/v1/extrinsics", "history_unavailable"],
+  // The block feed's newest page is the chain core's once reads route past an
+  // unanswerable retained copy (resolveReadBlocksSeam): 503 until the fleet
+  // runs that change, 200 after. A day of 200s removes the row.
+  ["/api/v1/blocks", "history_unavailable"],
 ]);

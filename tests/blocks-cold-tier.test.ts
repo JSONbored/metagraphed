@@ -30,8 +30,10 @@ import {
 } from "../src/blocks-cold-tier.ts";
 import { NATIVE_FIXTURE_ENV } from "./helpers/native-fixture-token.ts";
 import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
+import { CHAIN_CORE_DETAIL } from "../src/chain-core-read.ts";
 import {
   publishedBlocksSeam,
+  resolveReadBlocksSeam,
   RETAINED_SEAM_TTL_MS,
 } from "../src/blocks-seam.ts";
 import {
@@ -288,6 +290,76 @@ describe("retained publication bounds block routing", () => {
         RetainedHistoryUnavailableError,
       );
     }
+  });
+
+  test("a read routes the chain core's whole window past an unanswerable retained copy", async () => {
+    // The fleet on 2026-11-28: a selected retained owner with no census, and a
+    // chain core holding every detail family whole from 9,590,000.
+    const core = (floor: number | null) => ({
+      NATIVE_CHAIN_READ_STORE: {
+        tables: [],
+        store: {
+          query: async (text: string, values: unknown[]) => {
+            assert.equal(text, CHAIN_CORE_DETAIL.coverage);
+            assert.deepEqual(values, ["finney", "finney"]);
+            return floor === null
+              ? []
+              : [{ floor: String(floor), head: "9602400", observed: null }];
+          },
+        },
+      },
+    });
+    const owner = {
+      ...archive({ decoded_through: SEAM + 451 }),
+      RETAINED_BLOCKS_NETWORKS: "mainnet",
+    };
+    assert.equal(
+      await resolveReadBlocksSeam({ ...owner, ...core(9_590_000) }),
+      9_589_999,
+    );
+    // Retention keeps the strict seam: below the chain core's floor no
+    // retained copy holds the rows a prune would drop.
+    await assert.rejects(
+      resolveBlocksSeam({ ...owner, ...core(9_590_000) }),
+      RetainedHistoryUnavailableError,
+    );
+    // No chain core, one holding nothing whole, or one that cannot be read:
+    // the refusal stands.
+    for (const env of [
+      owner,
+      { ...owner, ...core(null) },
+      {
+        ...owner,
+        NATIVE_CHAIN_READ_STORE: {
+          tables: [],
+          store: { query: async () => Promise.reject(new Error("pool")) },
+        },
+      },
+    ])
+      await assert.rejects(
+        resolveReadBlocksSeam(env),
+        RetainedHistoryUnavailableError,
+      );
+  });
+
+  test("an answering retained copy, and any other failure, pass through untouched", async () => {
+    const env = {
+      ...archive({ decoded_through: SEAM + 1 }),
+      ...retained(SEAM + 451),
+    };
+    assert.equal(
+      await resolveReadBlocksSeam(env),
+      await resolveBlocksSeam(env),
+    );
+    assert.equal(await resolveReadBlocksSeam(env, {}, "testnet"), 0);
+    await assert.rejects(
+      resolveReadBlocksSeam(env, {
+        now: () => {
+          throw new Error("clock");
+        },
+      }),
+      /clock/,
+    );
   });
 
   test("the same rule preserves the verified floor and the non-mainnet source boundary", async () => {
