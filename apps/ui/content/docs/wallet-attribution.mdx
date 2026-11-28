@@ -1,6 +1,6 @@
 ---
 title: Wallet attribution
-description: What each wallet role means and what evidence it requires, why a burn is a claim until proven, what `unresolved` means and how much of the network sits there, and the 18% owner cut that is paid as stake rather than cash.
+description: What each wallet role means and what evidence it requires, why a burn is a claim until proven, what `unresolved` means and how much of the network sits there, and the owner cut that is paid as stake rather than cash.
 ---
 
 Saying "this address belongs to that team" is an accusation as easily as it is a fact. Every address on this site that we attribute to somebody carries the evidence that backs it, in the response, so that anyone repeating the attribution can check it before they do.
@@ -48,11 +48,11 @@ A `burn` role therefore carries `unspendable_proof_basis` — the stated grounds
 
 If a declared burn address is later observed sending funds, that is surfaced as an event. The event states the claim, the observation, and the delta — and states that misattribution on our side is a possible explanation, because it is. It does not assert intent.
 
-## The 18% owner cut, and the thing most analyses get wrong
+## The owner cut, and the thing most analyses get wrong
 
-Under dTAO, a share of each subnet's alpha emission goes to the subnet owner. That share is `SubnetOwnerCut`, a `u16` fraction: **11796 / 65535 ≈ 18%**.
+Under dTAO, a share of each subnet's alpha emission goes to the subnet owner. Until runtime 497 (2026-11-26) that share was `SubnetOwnerCut` for every subnet, a `u16` fraction: **11796 / 65535 ≈ 18%**. Since then each subnet declares its own emission split, and the owner's share is its owner slot: the default split keeps 18%, and on 2026-11-28, 22 of 131 subnets declared another, from nothing to 33%.
 
-It is not one sixth. The "1/6" figure circulates widely and is wrong by about eight percent of the amount in question; where the value matters, read it from the chain rather than assuming either number. Our responses echo the share that was actually applied, so you never have to assume it — and when the share could not be resolved, the accrual is `null` rather than silently computed at 18%.
+It is not one sixth. The "1/6" figure circulates widely and is wrong by about eight percent of the amount in question; where the value matters, read it from the chain rather than assuming either number. Our responses echo the share that was actually applied, so you never have to assume it — and when the subnet's split is not observed, the accrual is `null` rather than silently computed at 18%.
 
 **The cut is paid as stake, not as a liquid balance.** This is the detail third-party analyses most often miss, and it changes what you can conclude. The owner does not receive spendable TAO that then shows up moving in transfer data. Alpha accrues to the owner hotkey as stake. It becomes liquid only when someone unstakes it — and on dTAO, `StakeRemoved` takes alpha out of the AMM pool and returns TAO, which means **removing stake is the disposal**. There is no separate "sold" step for the chain to evidence, and any accounting that looks for one will find nothing and conclude wrongly.
 
@@ -88,14 +88,14 @@ The first is a market price. The second is a corporate action. If you are quotin
 
 ## Where the numbers come from
 
-| Field                            | Source                                                                                                                                           |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `owner_coldkey` / `owner_hotkey` | `SubtensorModule.SubnetOwner`, read from chain                                                                                                   |
-| `accrual.owner_cut`              | `SubnetOwnerCut`. The storage item is unset on chain, so the effective value is the runtime default — reported as `reconstructed`, not as a read |
-| `accrual.alpha`                  | The subnet's own alpha emission × the cut, over the stated window                                                                                |
-| `accrual.tao`                    | Priced through the subnet's own alpha price. Alpha is a different token per subnet and is never priced through another subnet's pool             |
-| `wallets[].source_urls`          | The published pages that evidence the attribution                                                                                                |
-| `wallets[].activity`             | Observed movement, reported per denomination                                                                                                     |
+| Field                            | Source                                                                                                                                                |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `owner_coldkey` / `owner_hotkey` | `SubtensorModule.SubnetOwner`, read from chain                                                                                                        |
+| `accrual.owner_cut`              | The owner slot of the subnet's declared emission split, `SubtensorModule.SubnetEmissionWeights`, captured from chain storage — reported as `measured` |
+| `accrual.alpha`                  | The subnet's own alpha emission × the cut, over the stated window                                                                                     |
+| `accrual.tao`                    | Priced through the subnet's own alpha price. Alpha is a different token per subnet and is never priced through another subnet's pool                  |
+| `wallets[].source_urls`          | The published pages that evidence the attribution                                                                                                     |
+| `wallets[].activity`             | Observed movement, reported per denomination                                                                                                          |
 
 Activity is reported on separate legs per `(denomination, netuid)` and **never summed into a single figure**. TAO and alpha are different tokens, and alpha from two subnets are different tokens from each other; a combined total would be a unit error wearing the costume of a number. Movements that could not be placed on a leg are published in `skipped` with their reason rather than dropped — a quietly discarded row makes a net figure look complete when it is not.
 

@@ -10,9 +10,9 @@
 //   - the entities artifact, which is allowed to be absent (128 of 128 subnets
 //     have nothing declared today) and must then serve the chain-derived owner
 //     keys rather than an error;
-//   - network/parameters.json, whose `subnet_owner_cut_effective` is allowed to
-//     be missing or non-numeric -- in which case the accrual is NULL rather
-//     than silently 18%, which is the whole point of #10484.
+//   - the emission store, whose current split's owner slot is the share
+//     (MET-7385) -- unbound, unobserved or unreadable, the accrual is NULL
+//     rather than silently 18%, which is the whole point of #10484.
 //
 // A test that only walked the happy path here would prove nothing: an empty
 // entities artifact IS the production state.
@@ -21,7 +21,13 @@ import { describe, test } from "vitest";
 import { handleRequest } from "../workers/api.ts";
 import { handleSubnetOwnerCut } from "../workers/request-handlers/entities.ts";
 import { MCP_TOOLS } from "../src/mcp-server.ts";
+import { RetainedHistoryUnavailableError } from "../src/retained-history-store.ts";
 import { jsonBody, mockEnv, type Row } from "./row-type.ts";
+import {
+  DECLARED_OWNER_PARTS,
+  DEFAULT_OWNER_PARTS,
+  emissionStore,
+} from "./helpers/emission-store.ts";
 
 const ECONOMICS_PATH = "/metagraph/economics.json";
 const ENTITIES_PATH = "/metagraph/entities.json";
@@ -46,18 +52,16 @@ const DECLARED_TREASURY = {
   source_urls: ["https://example.org/treasury"],
 };
 
-/** SubnetOwnerCut reconstructed: 11796/65535, not one sixth. */
+/** The default split's owner slot: SubnetOwnerCut's 11796/65535, not 1/6. */
 const OWNER_CUT_EFFECTIVE = 11796 / 65535;
 
-/** The share, injected. The suite has no global fetch stub, so a live
- * loadNetworkParameters here would put a public Bittensor node in the test
- * path -- and make the result depend on whether that node answered. */
-const params = (share: number | null) => ({
-  loadParams: async () => ({ subnet_owner_cut_effective: share }) as never,
-});
-const mcpParams = (share: number | null) => ({
-  loadNetworkParameters: async () =>
-    ({ subnet_owner_cut_effective: share }) as never,
+/** SN64's emission store, bound: `ownerParts` in its current split's owner
+ * slot, or no capture observed at all when null. The share is read from here
+ * (MET-7385), so this is the seam a test drives it through. */
+const share = (ownerParts: bigint | null) => ({
+  SUBNET_EMISSION_STORE: emissionStore(
+    ownerParts === null ? null : { 64: ownerParts },
+  ),
 });
 
 type ArtifactMap = Record<string, unknown>;
@@ -70,7 +74,10 @@ type ArtifactMap = Record<string, unknown>;
  * An ASSETS-only env would serve nothing for economics.json, which looks
  * exactly like "this subnet has no owner" and would let these tests pass while
  * proving nothing. */
-function artifactEnv(artifacts: ArtifactMap) {
+function artifactEnv(
+  artifacts: ArtifactMap,
+  bindings: Record<string, unknown> = share(DEFAULT_OWNER_PARTS),
+) {
   const r2Object = (value: unknown) => ({
     async json() {
       return value;
@@ -92,6 +99,7 @@ function artifactEnv(artifacts: ArtifactMap) {
         return pathname in artifacts ? r2Object(artifacts[pathname]) : null;
       },
     },
+    ...bindings,
   });
 }
 
@@ -102,14 +110,10 @@ function req(path: string) {
 /** An MCP context whose artifact reads are the map given. */
 function mcpCtx(
   artifacts: ArtifactMap,
-  share: number | null = OWNER_CUT_EFFECTIVE,
+  ownerParts: bigint | null = DEFAULT_OWNER_PARTS,
 ) {
   return {
-    // Stubbed BY DEFAULT. A test that forgot to inject would otherwise read a
-    // public Bittensor node -- it passed alone and failed under parallelism,
-    // which is the worst way to find out.
-    ...mcpParams(share),
-    env: mockEnv(),
+    env: mockEnv(share(ownerParts)),
     readArtifact: async (_env: unknown, path: string) => {
       if (path in artifacts) return { ok: true, data: artifacts[path] };
       return { ok: false, status: 404, code: "artifact_not_found" };
@@ -209,7 +213,6 @@ describe("GET /api/v1/subnets/{netuid}/owner-cut", () => {
       req("/api/v1/subnets/64/owner-cut"),
       artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
       64,
-      params(OWNER_CUT_EFFECTIVE),
     );
     assert.equal(res.status, 200);
     const data = (await jsonBody(res)).data as Row;
@@ -227,14 +230,13 @@ describe("GET /api/v1/subnets/{netuid}/owner-cut", () => {
 
   test("A REAL FLOW READ POPULATES THE UNSTAKED BUCKET", async () => {
     // #10930's headline: the classifier has been complete since #10485 and was
-    // handed nothing. `loadFlows` is injected the same way `loadParams` is, so
-    // the wiring is driven without a lakehouse binding.
+    // handed nothing. `loadFlows` is injected, so the wiring is driven without
+    // a lakehouse binding.
     const res = await handleSubnetOwnerCut(
       req("/api/v1/subnets/64/owner-cut"),
       artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
       64,
       {
-        ...params(OWNER_CUT_EFFECTIVE),
         loadFlows: async () =>
           ({
             data: null,
@@ -268,7 +270,6 @@ describe("GET /api/v1/subnets/{netuid}/owner-cut", () => {
       artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
       64,
       {
-        ...params(OWNER_CUT_EFFECTIVE),
         loadFlows: async () =>
           ({ data: null, generatedAt: null, rows: [] }) as never,
       },
@@ -289,45 +290,111 @@ describe("GET /api/v1/subnets/{netuid}/owner-cut", () => {
     assert.match(notes, /owner_coldkey only/);
   });
 
-  test("reconstructs the share from the runtime default, and accrues", async () => {
-    // The regression this route shipped with: it read the share from
-    // /metagraph/network/parameters.json, which publishes no owner-cut field at
-    // all -- so every one of 129 subnets served "owner cut share not read".
-    // The share comes from the LIVE parameters read now, which RECONSTRUCTS it:
-    // SubnetOwnerCut is unset on chain, so the effective value is the runtime
-    // default, and that is a real answer rather than an unread one.
-    const res = await handleSubnetOwnerCut(
-      req("/api/v1/subnets/64/owner-cut"),
-      artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
-      64,
-      params(OWNER_CUT_EFFECTIVE),
-    );
-    assert.equal(res.status, 200);
-    const accrual = ((await jsonBody(res)).data as Row).accrual as Row;
+  test("accrues at the subnet's DECLARED share, not the network's 18%", async () => {
+    // MET-7385: since runtime 497 each subnet's owner is paid its own split's
+    // owner slot. A subnet declaring 33% accrued at 18% on this route, and one
+    // declaring none accrued 18% it never received.
+    const accrual = async (ownerParts: bigint) => {
+      const res = await handleSubnetOwnerCut(
+        req("/api/v1/subnets/64/owner-cut"),
+        artifactEnv(
+          { [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } },
+          share(ownerParts),
+        ),
+        64,
+      );
+      assert.equal(res.status, 200);
+      const data = (await jsonBody(res)).data as Row;
+      assert.deepEqual((data.field_sources as Row)["accrual.owner_cut"], {
+        kind: "measured",
+        storage: "SubtensorModule.SubnetEmissionWeights",
+      });
+      return data.accrual as Row;
+    };
+    const fallback = await accrual(DEFAULT_OWNER_PARTS);
     assert.ok(
-      Math.abs((accrual.owner_cut as number) - OWNER_CUT_EFFECTIVE) < 1e-3,
-      `expected ~18%, got ${accrual.owner_cut}`,
+      Math.abs((fallback.owner_cut as number) - OWNER_CUT_EFFECTIVE) < 1e-9,
+      `expected the default split's 18%, got ${fallback.owner_cut}`,
     );
-    assert.ok((accrual.alpha as number) > 0, "a real accrual, not a null");
+    const declared = await accrual(DECLARED_OWNER_PARTS);
+    assert.ok(Math.abs((declared.owner_cut as number) - 0.33) < 1e-9);
+    // 1 alpha/block x 7200 x 30 days x 0.33, against the default's 18%.
+    assert.ok(Math.abs((declared.alpha as number) - 7200 * 30 * 0.33) < 1e-3);
+    assert.ok(
+      Math.abs(
+        (declared.alpha as number) / (fallback.alpha as number) -
+          0.33 / OWNER_CUT_EFFECTIVE,
+      ) < 1e-9,
+    );
+    const none = await accrual(0n);
+    assert.equal(none.owner_cut, 0);
+    assert.equal(none.alpha, 0);
   });
 
-  test("a share that cannot be resolved AT ALL still nulls the accrual", async () => {
-    // The other half. Reconstruction is the normal path; if even that fails,
-    // the accrual must be null rather than silently 18% -- assuming the default
-    // would make an unresolvable share indistinguishable from a read one.
-    const res = await handleSubnetOwnerCut(
+  test("a split that is not observed nulls the accrual, never assumes 18%", async () => {
+    // A store bound before its first capture, and no store at all: neither is
+    // a share, and assuming the default would make an unread share
+    // indistinguishable from a declared one.
+    for (const bindings of [share(null), {}]) {
+      const res = await handleSubnetOwnerCut(
+        req("/api/v1/subnets/64/owner-cut"),
+        artifactEnv(
+          { [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } },
+          bindings,
+        ),
+        64,
+      );
+      assert.equal(res.status, 200);
+      const accrual = ((await jsonBody(res)).data as Row).accrual as Row;
+      assert.equal(accrual.owner_cut, null);
+      assert.equal(accrual.alpha, null);
+      assert.match(String(accrual.reason), /owner cut share not read/);
+    }
+  });
+
+  test("an unanswerable retained flow read is the unread decline, not a 503", async () => {
+    // The fleet's shape on 2026-11-28: a retained owner is configured
+    // (NATIVE_PROJECTIONS enabled) and cannot answer the stake streams, so
+    // the read raised history_unavailable and the router served the WHOLE
+    // route as a 503, the accrual included. The disposition already has the
+    // answer for streams it could not read.
+    const res = await handleRequest(
       req("/api/v1/subnets/64/owner-cut"),
-      artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
-      64,
-      {
-        loadParams: async () => ({ subnet_owner_cut_effective: null }) as never,
-      },
+      artifactEnv(
+        { [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } },
+        { ...share(DEFAULT_OWNER_PARTS), NATIVE_PROJECTIONS: "enabled" },
+      ),
     );
     assert.equal(res.status, 200);
-    const accrual = ((await jsonBody(res)).data as Row).accrual as Row;
-    assert.equal(accrual.owner_cut, null);
-    assert.equal(accrual.alpha, null);
-    assert.match(String(accrual.reason), /owner cut share not read/);
+    const data = (await jsonBody(res)).data as Row;
+    assert.ok(
+      Math.abs(
+        ((data.accrual as Row).owner_cut as number) - OWNER_CUT_EFFECTIVE,
+      ) < 1e-9,
+    );
+    const disposition = data.disposition as Row;
+    assert.equal((disposition.buckets as Row).unstaked, null);
+    assert.ok(((disposition.buckets as Row).unresolved as number) > 0);
+    assert.match((disposition.notes as string[]).join(" "), /not read/);
+  });
+
+  test("any other flow-read failure still fails the route", async () => {
+    // The decline is for an unanswerable retained read alone: a defect in
+    // the read must not become a quiet `unresolved`.
+    await assert.rejects(
+      () =>
+        handleSubnetOwnerCut(
+          req("/api/v1/subnets/64/owner-cut"),
+          artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+          64,
+          {
+            loadFlows: async () => {
+              throw new Error("flow read defect");
+            },
+          },
+        ),
+      /flow read defect/,
+    );
   });
 });
 
@@ -417,39 +484,46 @@ describe("MCP get_subnet_owner_cut", () => {
     assert.equal(notes.includes("not read for this window"), false);
   });
 
-  test("reconstructs the share rather than reporting it unread", async () => {
-    // Same regression as the REST route: this tool read the served artifact,
-    // which carries no owner-cut field, and reported "not read" for all 129.
+  test("reads the subnet's declared share, as REST does", async () => {
+    const out = (await tool("get_subnet_owner_cut").handler(
+      { netuid: 64 },
+      mcpCtx(
+        { [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } },
+        DECLARED_OWNER_PARTS,
+      ),
+    )) as Row;
+    const accrual = out.accrual as Row;
+    assert.ok(Math.abs((accrual.owner_cut as number) - 0.33) < 1e-9);
+    assert.ok(Math.abs((accrual.alpha as number) - 7200 * 30 * 0.33) < 1e-3);
+  });
+
+  test("an unanswerable retained flow read leaves the streams unread", async () => {
     const out = (await tool("get_subnet_owner_cut").handler({ netuid: 64 }, {
       ...(mcpCtx({
         [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] },
       }) as object),
-      ...mcpParams(OWNER_CUT_EFFECTIVE),
+      loadStakeFlow: async () => {
+        throw new RetainedHistoryUnavailableError();
+      },
     } as never)) as Row;
-    const accrual = out.accrual as Row;
-    assert.ok(
-      Math.abs((accrual.owner_cut as number) - OWNER_CUT_EFFECTIVE) < 1e-3,
-    );
-    assert.ok((accrual.alpha as number) > 0);
+    assert.ok((out.accrual as Row).alpha as number);
+    const disposition = out.disposition as Row;
+    assert.equal((disposition.buckets as Row).unstaked, null);
+    assert.match((disposition.notes as string[]).join(" "), /not read/);
   });
 });
 
-// ── the production path ─────────────────────────────────────────────────────
+// ── no store bound ──────────────────────────────────────────────────────────
 //
-// Both surfaces fall back to the REAL loadNetworkParameters when no loader is
-// injected -- that is production. Covering it without network I/O is what the
-// outbound-fetch guard makes possible: the guard refuses the socket, the loader
-// swallows that the way it swallows any RPC failure (it is schema-stable and
-// never throws), and the share comes back null.
-//
-// Which is the right degradation, and worth pinning: an unreachable node must
-// null the accrual, NOT quietly substitute the 18% runtime default. "Unset on
-// chain, so use the default" and "we could not ask" are different answers.
-describe("the un-injected fallback is the live reader", () => {
-  test("the REST handler falls back to it, and an unreachable node nulls the share", async () => {
+// Both surfaces read the share from the bound emission store, and a
+// deployment without one has no share: the accrual is null, NOT the 18%
+// runtime default. "The default split" and "we could not read the split" are
+// different answers.
+describe("with no emission store bound", () => {
+  test("the REST handler nulls the share", async () => {
     const res = await handleSubnetOwnerCut(
       req("/api/v1/subnets/64/owner-cut"),
-      artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+      artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }, {}),
       64,
     );
     assert.equal(res.status, 200);
@@ -459,8 +533,7 @@ describe("the un-injected fallback is the live reader", () => {
     assert.match(String(accrual.reason), /owner cut share not read/);
   });
 
-  test("the MCP tool falls back to it too", async () => {
-    // A ctx carrying no loadNetworkParameters override: the production shape.
+  test("the MCP tool nulls it too", async () => {
     const out = (await tool("get_subnet_owner_cut").handler({ netuid: 64 }, {
       env: {},
       readArtifact: async () => ({ ok: false, status: 404 }),

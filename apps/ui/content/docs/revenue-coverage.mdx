@@ -51,7 +51,7 @@ The published basis is **`tao_total`** — `SubnetTaoInEmission + SubnetExcessTa
 Two alternates are computed and published alongside, and **never silently substituted**:
 
 - `alpha_out_priced` — alpha emitted, priced at the subnet's alpha price
-- `owner_take` — the owner's share, which is **18%** (`SubnetOwnerCut = 11796/65535 = 0.17999…`), not one sixth
+- `owner_take` — the owner's share, at the subnet's declared owner share: since runtime 497 its emission split's owner slot, **18%** for the default split (`11796/65535 = 0.17999…`, not one sixth). `null` when the subnet's split is not observed, never an assumed 18%
 
 A ratio whose denominator changed without saying so is worse than no ratio, so the basis is a field in the response.
 

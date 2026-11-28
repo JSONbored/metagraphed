@@ -250,6 +250,9 @@ export interface LoadSubnetRevenueInput {
    * compile error.
    */
   observations: Map<string, RevenueObservation[]> | null;
+  /** The subnet's declared owner share (src/owner-share.ts), required and
+   * explicitly nullable like `observations`: null declines the owner take. */
+  owner_share: number | null;
 }
 
 /** Compose the served body. Never throws on missing pieces. */
@@ -275,6 +278,7 @@ export function loadSubnetRevenue(
     sources,
     observations: input.observations,
     searched_at: input.searched_at ?? null,
+    owner_share: input.owner_share,
   });
   return view;
 }

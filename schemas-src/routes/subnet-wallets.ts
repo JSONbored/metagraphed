@@ -129,7 +129,7 @@ const OwnerCutAccrualSchema = z
   .object({
     owner_cut: z.number().nullable().meta({
       description:
-        "The share applied, echoed so a reader never has to assume 18%. Null when SubnetOwnerCut could not be resolved — the storage item is unset on chain and the runtime default is used, so a null here means even that failed.",
+        "The share applied, echoed so a reader never has to assume 18%: the subnet's declared owner share, its emission split's owner slot since runtime 497 (SubtensorModule.SubnetEmissionWeights). Null when the subnet's split is not observed, which nulls the accrual.",
     }),
     alpha: z.number().nullable(),
     tao: z.number().nullable(),
@@ -179,5 +179,5 @@ export const SubnetOwnerCutArtifactSchema = ArtifactBaseSchema.extend({
   disposition: OwnerCutDispositionSchema,
   field_sources: FieldSourcesSchema,
 }).describe(
-  "One subnet's owner-cut accrual and what became of it. The cut is 18% (SubnetOwnerCut is 11796/65535, not one sixth) and is paid as STAKE rather than a liquid balance — so a disposition derived from transfers alone would report 'held' for every subnet, and absence of flow evidence resolves to `unresolved` instead. Mirrors GET /api/v1/subnets/{netuid}/owner-cut.",
+  "One subnet's owner-cut accrual and what became of it. The cut is the subnet's declared owner share (since runtime 497 each subnet's own; 18% for the default split, 11796/65535, not one sixth) and is paid as STAKE rather than a liquid balance — so a disposition derived from transfers alone would report 'held' for every subnet, and absence of flow evidence resolves to `unresolved` instead. Mirrors GET /api/v1/subnets/{netuid}/owner-cut.",
 );

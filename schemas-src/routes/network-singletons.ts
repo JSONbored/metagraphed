@@ -113,7 +113,7 @@ export const NetworkParametersArtifactSchema = z
     }),
     subnet_owner_cut_effective: z.number().nullable().optional().meta({
       description:
-        "The share the runtime actually applies: the stored numerator over 65535, or the runtime default 11796/65535 = 0.17999... when the item is unset. Never 0 from absence.",
+        "SubnetOwnerCut's share: the stored numerator over 65535, or the runtime default 11796/65535 = 0.17999... when the item is unset. Never 0 from absence. Since runtime 497 a subnet's owner is paid its own declared split's owner slot instead: read /api/v1/subnets/{netuid}/emission-split.",
     }),
     queried_at: z.string().nullable().optional(),
     // #9078. Required, not optional: it is attached outside the KV cache on

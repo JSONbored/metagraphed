@@ -12,13 +12,11 @@
 //    (~$1.2k/day), which would surface as an unexplained residual in exactly
 //    the reconciliation #10440 is built on.
 //
-// 2. The rate is READ, not hardcoded -- and reading it correctly is the whole
-//    difficulty, because `SubtensorModule.SubnetOwnerCut` is UNSET on chain.
-//    src/network-parameters.ts resolves absent to the runtime default and
-//    publishes raw and effective separately; this module takes the effective
-//    share and refuses to invent one. A caller that passes 0 because it read
-//    the raw field gets zero accrual, which is why `owner_cut` is required and
-//    validated rather than defaulted here.
+// 2. The rate is READ, not hardcoded. Since runtime 497 it is each subnet's
+//    own: its declared split's owner slot (src/owner-share.ts), which for the
+//    default split is SubnetOwnerCut's 18% and for 22 subnets on 2026-11-28
+//    was not. This module takes the share and refuses to invent one, which is
+//    why `owner_cut` is required and validated rather than defaulted here.
 //
 // 3. The cut is paid in ALPHA. Pricing it needs the subnet's own alpha price at
 //    the instant it accrued, not a window average and not the TAO figure --
@@ -51,9 +49,8 @@ export interface OwnerCutAccrualInput {
    */
   usd_per_tao: number | null;
   /**
-   * The share the runtime applies -- network-parameters'
-   * `subnet_owner_cut_effective`, NOT the raw numerator. Null when the
-   * parameter could not be read, which makes the whole accrual null rather
+   * The share the runtime applies: the subnet's declared owner slot. Null
+   * when its split is not observed, which makes the whole accrual null rather
    * than silently 18%.
    */
   owner_cut: number | null | undefined;

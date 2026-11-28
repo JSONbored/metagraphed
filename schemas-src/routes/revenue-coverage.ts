@@ -50,7 +50,10 @@ export const RevenueEmissionSchema = z
     alternates: z
       .object({
         alpha_out_priced: CoverageBasisSchema.nullable(),
-        owner_take: CoverageBasisSchema,
+        owner_take: CoverageBasisSchema.nullable().meta({
+          description:
+            "The owner's share of the same denominator, at the subnet's declared owner share (its emission split's owner slot since runtime 497). NULL when its split is not observed, never an assumed 18%.",
+        }),
       })
       .strict(),
   })

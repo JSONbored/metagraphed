@@ -26,6 +26,8 @@ const BASE = {
   window_days: 1,
   tao_total_per_block: 0.063615264,
   usd_per_tao: 204.03,
+  // SN64's default split: the owner slot is the runtime's 18%.
+  owner_share: 11796 / 65535,
   sources: [] as RevenueSourceRow[],
   // Stated, not omitted (#10926): the field is required and explicitly
   // nullable, so a fixture with no observation series says so once here rather

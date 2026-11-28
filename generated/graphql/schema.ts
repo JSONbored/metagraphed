@@ -8151,7 +8151,11 @@ type RevenueEmission {
 
 type RevenueEmissionAlternates {
   alpha_out_priced: RevenueCoverageBasis
-  owner_take: RevenueCoverageBasis!
+
+  """
+  The owner's share of the same denominator, at the subnet's declared owner share (its emission split's owner slot since runtime 497). NULL when its split is not observed, never an assumed 18%.
+  """
+  owner_take: RevenueCoverageBasis
 }
 
 type RevenueCoverageBasis {
@@ -10544,7 +10548,7 @@ type NetworkParameters {
   subnet_owner_cut: Float
 
   """
-  The share the runtime actually applies: the stored numerator over 65535, or the runtime default 11796/65535 = 0.17999... when the item is unset. Never 0 from absence.
+  SubnetOwnerCut's share: the stored numerator over 65535, or the runtime default 11796/65535 = 0.17999... when the item is unset. Never 0 from absence. Since runtime 497 a subnet's owner is paid its own declared split's owner slot instead: read /api/v1/subnets/{netuid}/emission-split.
   """
   subnet_owner_cut_effective: Float
   queried_at: String
