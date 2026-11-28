@@ -135,7 +135,9 @@ const HOT2 = "33".repeat(32);
 function storageFixture(): Map<string, string> {
   const s = new Map<string, string>();
   s.set(prefix("GammaEnabled"), "0x01");
-  s.set(prefix("TotalNetworks"), "0x0400");
+  // Four subnets, 0 to 3, as SubnetState lists them (Started).
+  for (const netuid of ["0000", "0100", "0200", "0300"])
+    s.set(prefix("SubnetState") + netuid, "0x01");
   s.set(prefix("TaoUsdPrice"), REAL.taoUsd);
   s.set(prefix("TaoUsdPriceOracle"), REAL.oracle);
   for (const netuid of ["0100", "0300"])
@@ -165,18 +167,24 @@ test("one finalized block's state, read whole and decoded", async () => {
   const snapshot = await loadChainGammaSnapshot("mainnet", rpc);
   assert.equal(snapshot.block, 9_601_792);
   assert.equal(snapshot.enabled, true);
-  // Netuids 0 and 2 carry nothing; 1 has a price; 3 is a whole gamma subnet,
-  // its unconverted total summed over its two targets.
+  // Every subnet SubnetState lists is a row. Netuids 0 and 2 hold no gamma
+  // keys, so each ValueQuery reads as the runtime's default -- false, zero --
+  // never null; 1 has a price; 3 is a whole gamma subnet, its unconverted
+  // total summed over its two targets.
   assert.deepEqual(
     snapshot.subnets.map((s) => [
       s.netuid,
       s.enabled,
+      s.price,
       s.pending,
       s.unconverted,
+      s.whitelisted,
     ]),
     [
-      [1, null, null, "0"],
-      [3, true, "14899999851", "15"],
+      [0, false, "0", "0", "0", false],
+      [1, false, "99504970479690973", "0", "0", false],
+      [2, false, "0", "0", "0", false],
+      [3, true, "99504970479690973", "14899999851", "15", true],
     ],
   );
   assert.deepEqual(snapshot.services, [
@@ -254,7 +262,7 @@ describe("the capture lands in the serving tables", () => {
       now: () => T1,
       load: async () => first,
     });
-    assert.deepEqual(one, { ok: true, captured: 7, undecoded: 0 });
+    assert.deepEqual(one, { ok: true, captured: 9, undecoded: 0 });
     const rows = async (sql: string) => (await db.query(sql)).rows;
     assert.deepEqual(await rows("SELECT enabled FROM chain_gamma"), [
       { enabled: true },
@@ -264,7 +272,9 @@ describe("the capture lands in the serving tables", () => {
         "SELECT netuid::int, price, unconverted_emission FROM subnet_gamma ORDER BY netuid",
       ),
       [
+        { netuid: 0, price: "0", unconverted_emission: "0" },
         { netuid: 1, price: "99504970479690973", unconverted_emission: "0" },
+        { netuid: 2, price: "0", unconverted_emission: "0" },
         { netuid: 3, price: "99504970479690973", unconverted_emission: "15" },
       ],
     );
@@ -475,7 +485,9 @@ describe("every edge the reads can meet", () => {
     assert.deepEqual(
       snapshot.subnets.map((s) => [s.netuid, s.unconverted]),
       [
+        [0, null],
         [1, null],
+        [2, null],
         [3, null],
       ],
     );
@@ -483,7 +495,11 @@ describe("every edge the reads can meet", () => {
 
   test("absent values, a key it cannot parse, a null change and an undecodable total", async () => {
     const storage = storageFixture();
-    storage.delete(prefix("TotalNetworks"));
+    // Absent ValueQuery keys read as the runtime's default: false.
+    storage.delete(prefix("GammaEnabled"));
+    storage.delete(prefix("SubnetGammaEnabled") + "0300");
+    // A value that does not decode is unknown and counted, never defaulted.
+    storage.set(prefix("SubnetGammaEmissionWhitelisted") + "0300", "0x05");
     storage.delete(prefix("TaoUsdPrice"));
     storage.set(prefix("UnconvertedGammaEmission") + "0300" + "1c00", "0x0a");
     const { rpc } = chain(storage);
@@ -504,11 +520,15 @@ describe("every edge the reads can meet", () => {
         return rpc(m, params);
       },
     );
-    assert.deepEqual(snapshot.subnets, []);
+    assert.equal(snapshot.enabled, false);
+    const three = snapshot.subnets.find((row) => row.netuid === 3);
+    assert.equal(three?.enabled, false);
+    assert.equal(three?.whitelisted, null);
     assert.equal(snapshot.oracle, null);
     assert.equal(snapshot.services?.length, 1);
-    // The truncated total and the key too short to name an account.
-    assert.equal(snapshot.undecoded, 2);
+    // The truncated total, the key too short to name an account, and the
+    // whitelist flag that is no bool.
+    assert.equal(snapshot.undecoded, 3);
   });
 
   test("the default reader speaks JSON-RPC to the network's endpoint", async () => {

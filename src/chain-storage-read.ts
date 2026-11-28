@@ -6,6 +6,7 @@
 // runtime that moved a shape is read as unknown, never as a wrong number.
 
 import { encodeAccountId32 } from "./ss58.ts";
+import { bytesToHex, storageMapPrefix } from "./twox-storage-key.ts";
 
 /** One JSON-RPC call: the method and its params, answering the result. */
 export type Rpc = (method: string, params: unknown[]) => Promise<unknown>;
@@ -214,4 +215,26 @@ export function netuidAt(hex: string, at: number): number {
     parseInt(hex.slice(at, at + 2), 16) +
     parseInt(hex.slice(at + 2, at + 4), 16) * 256
   );
+}
+
+const SUBNET_STATE = bytesToHex(
+  storageMapPrefix("SubtensorModule", "SubnetState"),
+);
+
+/** Every subnet the chain holds at `at`, ascending: the netuids SubnetState
+ * lists (an OptionQuery, so absence is no subnet). Throws when the listing is
+ * past its bound or holds a key that names no netuid, because a partial or
+ * unreadable listing cannot say which subnets are gone. */
+export async function subnetNetuids(rpc: Rpc, at: string): Promise<number[]> {
+  const keys = await enumerate(rpc, SUBNET_STATE, at);
+  if (keys === null)
+    throw new Error("SubnetState is larger than its read bound");
+  return keys
+    .map((key) => {
+      const suffix = key.slice(SUBNET_STATE.length);
+      if (!/^[0-9a-f]{4}$/.test(suffix))
+        throw new Error("SubnetState holds a key that names no netuid");
+      return netuidAt(suffix, 0);
+    })
+    .sort((a, b) => a - b);
 }
