@@ -352,6 +352,10 @@ import type {
   HotkeyCommitmentHistory,
   SubnetCommitmentRow,
   SubnetCommitments,
+  SubnetMechanism,
+  SubnetMechanisms,
+  SubnetService,
+  SubnetServices,
 } from "./types";
 
 const STALE_SHORT = 30_000;
@@ -9811,6 +9815,79 @@ export const subnetHotkeyCommitmentQuery = (netuid: number, hotkey: string) =>
         meta: res.meta,
         url: res.url,
       } as ApiResult<HotkeyCommitmentHistory>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** A subnet's mechanism registry (MET-7365): each mechanism's share of the
+ * subnet's emission, ordered by mechid. */
+export const subnetMechanismsQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-mechanisms", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(`/api/v1/subnets/${netuid}/mechanisms`, {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const mechanisms = (Array.isArray(d.mechanisms) ? d.mechanisms : [])
+        .map((raw): SubnetMechanism | null => {
+          const mechid = isRecord(raw) ? nonNegativeInteger(raw.mechid) : null;
+          if (!isRecord(raw) || mechid === null) return null;
+          const split = firstFiniteNumber(raw.emission_split);
+          return {
+            mechid,
+            emission_split: split !== undefined && split >= 0 && split <= 1 ? split : null,
+            consensus_mode: coerceString(raw.consensus_mode) ?? null,
+            captured_at: coerceString(raw.captured_at) ?? null,
+          };
+        })
+        .filter((row): row is SubnetMechanism => row !== null)
+        .sort((a, b) => a.mechid - b.mechid);
+      return {
+        data: {
+          netuid: firstFiniteNumber(d.netuid) ?? netuid,
+          mechanism_count: nonNegativeInteger(d.mechanism_count),
+          captured_at: coerceString(d.captured_at) ?? null,
+          mechanisms,
+        },
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetMechanisms>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** The service URLs a subnet's hotkeys bind on chain (MET-7365). */
+export const subnetServicesQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-services", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(`/api/v1/subnets/${netuid}/services`, {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const services = (Array.isArray(d.services) ? d.services : [])
+        .map((raw): SubnetService | null => {
+          const hotkey = isRecord(raw) ? coerceString(raw.hotkey) : undefined;
+          if (!isRecord(raw) || !hotkey) return null;
+          return {
+            hotkey,
+            service_url: typeof raw.service_url === "string" ? raw.service_url : "",
+            set_at: nonNegativeInteger(raw.set_at),
+            captured_at: coerceString(raw.captured_at) ?? null,
+          };
+        })
+        .filter((row): row is SubnetService => row !== null);
+      return {
+        data: {
+          netuid: firstFiniteNumber(d.netuid) ?? netuid,
+          service_count: nonNegativeInteger(d.service_count),
+          captured_at: coerceString(d.captured_at) ?? null,
+          services,
+        },
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetServices>;
     },
     staleTime: STALE_MED,
   });

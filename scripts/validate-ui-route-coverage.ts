@@ -128,10 +128,6 @@ export const PROSE_ONLY_ROUTES: readonly string[] = [
   // exception. The current UI does not consume this route; remove the entry
   // when a real consumer lands, which the stale-entry check below enforces.
   "/api/v1/chain/subnet-price-share-composition",
-  // #13162 publishes the mechanism registry; the registry is empty until the
-  // engine's per-mechanism capture lands, so no UI consumes it yet. Remove the
-  // entry when a real consumer lands, which the stale-entry check enforces.
-  "/api/v1/subnets/{netuid}/mechanisms",
   // #13163 publishes the dividend accrual and lock state; both are empty
   // until the engine's stake-v2 capture lands, so no UI consumes them yet.
   // Remove the entries when a real consumer lands, which the stale-entry
@@ -143,15 +139,15 @@ export const PROSE_ONLY_ROUTES: readonly string[] = [
   // check enforces.
   "/api/v1/chain/baskets",
   "/api/v1/validators/{hotkey}/basket",
-  // #13164 publishes the Gamma subsystem and the on-chain service registry;
-  // every table behind them is empty until the engine's Gamma capture lands,
-  // so no UI consumes them yet. Remove the entries when a real consumer
-  // lands, which the stale-entry check enforces.
+  // #13164 publishes the Gamma subsystem, which the burn tick's Gamma capture
+  // now fills; no UI consumes it yet, because its price crosses as the
+  // chain's raw encoding and the page has no reading of it to show. Remove
+  // the entries when a real consumer lands, which the stale-entry check
+  // enforces.
   "/api/v1/subnets/{netuid}/gamma",
   "/api/v1/subnets/{netuid}/gamma/history",
   "/api/v1/chain/gamma",
   "/api/v1/gamma/deposits",
-  "/api/v1/subnets/{netuid}/services",
   // #13165 publishes the v490 balancer Swap state and AlphaAssets
   // accounting; both tables behind them are empty until the engine's capture
   // lands, so no UI consumes them yet. Remove the entries when a real

@@ -57,7 +57,7 @@ export function SurfacesSection({
 }: {
   netuid: number;
   name?: string;
-  /** Evidence that belongs to this question (MET-7365: on-chain commitments). */
+  /** Evidence that belongs to this question (MET-7365: on-chain services and commitments). */
   children?: ReactNode;
 }) {
   const [expanded, setExpanded] = useState(false);

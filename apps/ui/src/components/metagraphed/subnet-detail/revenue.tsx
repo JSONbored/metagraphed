@@ -163,7 +163,7 @@ export function RevenueSection({ netuid }: { netuid: number }) {
     query.error ?? new Error("The revenue response did not include a complete evidence ledger.");
 
   return (
-    <section id="revenue" className="mg-revenue-evidence" aria-labelledby="revenue-heading">
+    <section id="revenue" className="mg-section-evidence" aria-labelledby="revenue-heading">
       <SectionHead
         id="revenue-heading"
         name="Revenue evidence"

@@ -100,11 +100,7 @@ export function CommitmentsEvidence({ netuid }: { netuid: number }) {
   const rows = data?.data.rows ?? [];
 
   return (
-    <section
-      id="commitments"
-      className="mg-commitments-evidence"
-      aria-labelledby="commitments-heading"
-    >
+    <section id="commitments" className="mg-section-evidence" aria-labelledby="commitments-heading">
       <SectionHead
         id="commitments-heading"
         name="On-chain commitments"

@@ -1557,28 +1557,23 @@
       gap: 20px;
     }
   }
-  .mg-revenue-evidence,
-  .mg-commitments-evidence {
+  .mg-section-evidence {
     display: grid;
     gap: 20px;
     margin-top: 32px;
     padding-top: 32px;
     border-top: 1px solid var(--rule);
   }
-  .mg-revenue-evidence .mg-section-head,
-  .mg-revenue-evidence .mg-section-visual,
-  .mg-revenue-evidence .mg-section-note,
-  .mg-commitments-evidence .mg-section-head,
-  .mg-commitments-evidence .mg-section-visual,
-  .mg-commitments-evidence .mg-section-note {
+  .mg-section-evidence .mg-section-head,
+  .mg-section-evidence .mg-section-visual,
+  .mg-section-evidence .mg-section-note {
     margin: 0;
   }
   .mg-revenue-evidence-sources {
     margin-top: 4px;
   }
   @media (max-width: 40rem) {
-    .mg-revenue-evidence,
-    .mg-commitments-evidence {
+    .mg-section-evidence {
       gap: 16px;
       margin-top: 24px;
       padding-top: 24px;
