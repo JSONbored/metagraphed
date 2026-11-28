@@ -363,11 +363,17 @@ describe("data-api's bundle boundary", () => {
     // the coverage window, the account index's two ordered scans), which holds
     // no dependency of its own and enters the graph with it. Same 2,512 bytes
     // of margin.
+    // The block reads route past an unanswerable retained copy (ADR 0029
+    // phase 1b): +2,608 source bytes, for 4,979,129 -- resolveReadBlocksSeam
+    // and its documentation in src/blocks-seam.ts (+2,444), whose chain-core
+    // coverage query is already in the graph through src/chain-core-read.ts,
+    // and the hot tier's note that it routes on it (+164). Same 2,512 bytes
+    // of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_978_968,
+      firstParty < 4_981_641,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );
