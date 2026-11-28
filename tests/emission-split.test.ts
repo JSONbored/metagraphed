@@ -764,6 +764,56 @@ describe("each day's own split since runtime 497 (MET-7385)", () => {
     assert.equal(pointOn(alone, "2026-11-27").split_source, "unobserved");
   });
 
+  test("a gap day whose UID emission cannot be measured is not carried back", () => {
+    const reference = sn3Day("2026-11-28");
+    const cases: [string, Row[]][] = [
+      // No alpha out recorded that day.
+      [
+        "no alpha out",
+        sn3Day("2026-11-27").map((r) => ({ ...r, alpha_out_emission: null })),
+      ],
+      // Alpha out recorded as zero.
+      [
+        "zero alpha out",
+        sn3Day("2026-11-27").map((r) => ({ ...r, alpha_out_emission: 0 })),
+      ],
+      // No UID earned anything, and one row carries no emission cell at all.
+      [
+        "nothing earned",
+        sn3Day("2026-11-27").map((r, i) =>
+          i === 0 ? { ...r, emission_tao: null } : { ...r, emission_tao: 0 },
+        ),
+      ],
+    ];
+    for (const [label, gapDay] of cases) {
+      const out = buildSubnetEmissionSplitHistory(
+        [...reference, ...gapDay],
+        3,
+        {
+          splits: store([SN3_SPLIT]),
+        },
+      );
+      assert.equal(
+        pointOn(out, "2026-11-27").split_source,
+        "unobserved",
+        label,
+      );
+    }
+    // A store with no observation dates nothing since the upgrade.
+    assert.deepEqual(
+      splitForDay(
+        "2026-11-28",
+        {
+          observation: null,
+          splits: [SN3_SPLIT],
+          lifecycle: [],
+        } as unknown as SubnetEmissionHistory,
+        OWNER_CUT,
+      ),
+      { kind: "none" },
+    );
+  });
+
   test("with no store, every day since the upgrade is unobserved", () => {
     const out = buildSubnetEmissionSplitHistory(
       [...sn74Day("2026-11-28"), ...sn74Day("2026-08-12")],

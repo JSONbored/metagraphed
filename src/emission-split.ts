@@ -206,8 +206,10 @@ export function splitForDay(
       split: defaultSplit(ownerCut, "runtime_default"),
       first: false,
     };
-  const observedBlock = Number(history?.observation?.block_number);
-  const observedAt = Number(history?.observation?.observed_at_ms);
+  const observation = history?.observation;
+  if (!history || !observation) return { kind: "none" };
+  const observedBlock = Number(observation.block_number);
+  const observedAt = Number(observation.observed_at_ms);
   if (!Number.isSafeInteger(observedBlock) || !Number.isFinite(observedAt))
     return { kind: "none" };
   const timeOf = (block: unknown) =>
@@ -222,7 +224,7 @@ export function splitForDay(
     to: number;
     split: Omit<DaySplit, "source">;
   }[] = [];
-  for (const row of history?.splits ?? []) {
+  for (const row of history.splits) {
     const split = splitOfRow(row as Row);
     if (split === null) continue;
     ranges.push({
@@ -251,9 +253,10 @@ export function splitForDay(
 function uidPerAlphaOut(dayRows: readonly Row[]): number | null {
   let alphaOut: number | null = null;
   let uid = 0;
+  // The rows are a day's group, every one carrying its date: none is null.
   for (const row of dayRows) {
-    alphaOut ??= nonNegativeCellOrNull(row?.alpha_out_emission);
-    uid += nonNegativeCellOrNull(row?.emission_tao) ?? 0;
+    alphaOut ??= nonNegativeCellOrNull(row.alpha_out_emission);
+    uid += nonNegativeCellOrNull(row.emission_tao) ?? 0;
   }
   return alphaOut === null || alphaOut <= 0 || uid <= 0 ? null : uid / alphaOut;
 }
