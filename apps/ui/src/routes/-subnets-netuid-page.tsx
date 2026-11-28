@@ -28,7 +28,7 @@ import { EmissionSplitSection } from "@/components/metagraphed/subnet-detail/emi
 import { RevenueSection } from "@/components/metagraphed/subnet-detail/revenue";
 import { ValidatorsSection } from "@/components/metagraphed/subnet-detail/validators";
 import { SurfacesSection } from "@/components/metagraphed/subnet-detail/surfaces";
-import { CommitmentsSection } from "@/components/metagraphed/subnet-detail/commitments";
+import { CommitmentsEvidence } from "@/components/metagraphed/subnet-detail/commitments";
 import { ActivitySection } from "@/components/metagraphed/subnet-detail/activity";
 import { ParticipationSection } from "@/components/metagraphed/subnet-detail/participation";
 import { PeersSection } from "@/components/metagraphed/subnet-detail/peers";
@@ -68,13 +68,12 @@ const apiPaths = (netuid: number) => [
   `/api/v1/economics`,
 ];
 
-/** The page's eight questions, in the order it answers them. */
+/** The page's seven questions, in the order it answers them. */
 const SECTIONS = [
   { id: "momentum", name: "Momentum" },
   { id: "emission-split", name: "Value flow" },
   { id: "validators", name: "Validators" },
   { id: "surfaces", name: "Surfaces" },
-  { id: "commitments", name: "Commitments" },
   { id: "activity", name: "Activity" },
   { id: "participation", name: "Participation" },
   { id: "peers", name: "Peers" },
@@ -328,8 +327,9 @@ export function SubnetDetailPage() {
           <RevenueSection netuid={netuid} />
         </EmissionSplitSection>
         <ValidatorsSection netuid={netuid} />
-        <SurfacesSection netuid={netuid} name={name} />
-        <CommitmentsSection netuid={netuid} />
+        <SurfacesSection netuid={netuid} name={name}>
+          <CommitmentsEvidence netuid={netuid} />
+        </SurfacesSection>
         <ActivitySection netuid={netuid} />
         <ParticipationSection
           netuid={netuid}

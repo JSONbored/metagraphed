@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { AnalyticsSection, DataTable, type DataTableColumn } from "@jsonbored/ui-kit";
+import { DataTable, SectionHead, type DataTableColumn } from "@jsonbored/ui-kit";
 import { subnetCommitmentsQuery, subnetHotkeyCommitmentQuery } from "@/lib/metagraphed/queries";
 import { formatNumber } from "@/lib/metagraphed/format";
 import { useHydrated } from "@/hooks/use-hydrated";
@@ -78,10 +78,15 @@ function CommitmentHistory({ netuid, hotkey }: { netuid: number; hotkey: string 
  * timelocked payloads -- most recently committed first, and the timelocks the
  * chain has revealed. A table, because the reading is a lookup: which hotkey
  * said what, and since when.
+ *
+ * Evidence under Surfaces, not an eighth page question: it is the other half
+ * of what a subnet publishes (#11604's page-shape rule, held by
+ * tests/e2e/token-inventory.spec.ts). Same shape as the revenue evidence under
+ * Value flow, and addressable on its own anchor.
  */
-export function CommitmentsSection({ netuid }: { netuid: number }) {
+export function CommitmentsEvidence({ netuid }: { netuid: number }) {
   const [page, setPage] = useState(0);
-  const { ref, nearViewport } = useNearViewport();
+  const { ref, nearViewport } = useNearViewport<HTMLDivElement>();
   useRegisterApiSource(nearViewport ? [`/api/v1/subnets/${netuid}/commitments`] : []);
   const { data, isPending, isError, error, refetch } = useQuery({
     ...subnetCommitmentsQuery(netuid, { limit: PAGE_SIZE, offset: page * PAGE_SIZE }),
@@ -95,17 +100,22 @@ export function CommitmentsSection({ netuid }: { netuid: number }) {
   const rows = data?.data.rows ?? [];
 
   return (
-    <AnalyticsSection
+    <section
       id="commitments"
-      name="Commitments"
-      question="What this subnet's miners and validators publish on chain."
-      visualRef={ref}
-      visual={
-        // Nothing server-rendered before the section nears the viewport: the
-        // page's HTML ratchet (tests/e2e/indexable-routes.spec.ts) has no room
-        // for a skeleton table the reader may never scroll to, and the table
-        // mounts with its data the moment they do.
-        !nearViewport ? null : isError ? (
+      className="mg-commitments-evidence"
+      aria-labelledby="commitments-heading"
+    >
+      <SectionHead
+        id="commitments-heading"
+        name="On-chain commitments"
+        question="What this subnet's miners and validators publish on chain."
+      />
+      <div className="mg-section-visual" ref={ref}>
+        {/* Nothing server-rendered before the block nears the viewport: the
+            page's HTML ratchet (tests/e2e/indexable-routes.spec.ts) has no
+            room for a skeleton table the reader may never scroll to, and the
+            table mounts with its data the moment they do. */}
+        {!nearViewport ? null : isError ? (
           <ErrorState error={error} onRetry={() => void refetch()} context="on-chain commitments" />
         ) : (
           <DataTable
@@ -123,10 +133,10 @@ export function CommitmentsSection({ netuid }: { netuid: number }) {
             storageKey="subnet-commitments-columns"
             mobile="cards"
           />
-        )
-      }
-      footnote={
-        !nearViewport
+        )}
+      </div>
+      <p className="mg-section-note">
+        {!nearViewport
           ? "on-chain commitments · chain-direct"
           : loading
             ? "Loading on-chain commitments · chain-direct"
@@ -134,8 +144,8 @@ export function CommitmentsSection({ netuid }: { netuid: number }) {
               ? "chain-direct · retry the affected record above"
               : observed === null
                 ? "No capture observed yet · chain-direct"
-                : `${formatNumber(total ?? 0)} hotkeys · block ${formatNumber(observed)} · chain-direct`
-      }
-    />
+                : `${formatNumber(total ?? 0)} hotkeys · block ${formatNumber(observed)} · chain-direct`}
+      </p>
+    </section>
   );
 }
