@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
-import type { EmissionSplitPoint, SubnetEconomics } from "@/lib/metagraphed/types";
+import type {
+  EmissionSplitPoint,
+  SubnetEconomics,
+  SubnetMechanisms,
+  SubnetServices,
+} from "@/lib/metagraphed/types";
 import {
   commitmentSummary,
+  mechanismShareRows,
+  mechanismsNote,
+  servicesNote,
   declaredSplitRows,
   activityKindRail,
   categoryTotals,
@@ -404,5 +412,72 @@ describe("commitmentSummary", () => {
     const line = commitmentSummary([field("raw", { text: "x".repeat(500) })], [], 20);
     expect(line).toHaveLength(20);
     expect(line.endsWith("…")).toBe(true);
+  });
+});
+
+describe("mechanisms evidence", () => {
+  const registry = (count: number | null, shares: (number | null)[]): SubnetMechanisms => ({
+    netuid: 68,
+    mechanism_count: count,
+    captured_at: count === null ? null : "2026-11-28T19:00:00.000Z",
+    mechanisms: shares.map((share, mechid) => ({
+      mechid,
+      emission_split: share,
+      consensus_mode: "yuma",
+      captured_at: "2026-11-28T19:00:00.000Z",
+    })),
+  });
+
+  it("declines before a capture is observed", () => {
+    expect(mechanismShareRows(undefined)).toEqual([]);
+    expect(mechanismShareRows(registry(null, []))).toEqual([]);
+    expect(mechanismsNote(undefined)).toBe("No capture observed yet · chain-direct");
+    expect(mechanismsNote(registry(null, []))).toBe("No capture observed yet · chain-direct");
+  });
+
+  it("says a single mechanism carries the whole emission, and draws nothing", () => {
+    expect(mechanismShareRows(registry(1, [1]))).toEqual([]);
+    expect(mechanismsNote(registry(1, [1]))).toBe(
+      "One mechanism, which carries all of this subnet's emission · chain-direct",
+    );
+  });
+
+  it("draws each mechanism's share when the subnet runs more than one", () => {
+    expect(mechanismShareRows(registry(2, [0.7143, 0.2857]))).toEqual([
+      { key: "mechanism-0", label: "Mechanism 0", share: 0.7143 },
+      { key: "mechanism-1", label: "Mechanism 1", share: 0.2857 },
+    ]);
+    expect(mechanismsNote(registry(2, [0.7143, 0.2857]))).toBe("2 mechanisms · chain-direct");
+  });
+
+  it("keeps a share the capture did not carry as null, never 0", () => {
+    expect(mechanismShareRows(registry(2, [null, 0.5]))[0]?.share).toBeNull();
+  });
+});
+
+describe("servicesNote", () => {
+  const registry = (count: number | null): SubnetServices => ({
+    netuid: 19,
+    service_count: count,
+    captured_at: count === null ? null : "2026-11-28T18:46:32.612Z",
+    services: Array.from({ length: count ?? 0 }, (_, i) => ({
+      hotkey: `hotkey-${i}`,
+      service_url: `https://example.com/${i}`,
+      set_at: null,
+      captured_at: "2026-11-28T18:46:32.612Z",
+    })),
+  });
+
+  it("keeps the decline apart from a read that found nothing", () => {
+    expect(servicesNote(undefined)).toBe("No capture observed yet · chain-direct");
+    expect(servicesNote(registry(null))).toBe("No capture observed yet · chain-direct");
+    expect(servicesNote(registry(0))).toBe(
+      "No service bound at the last whole read · chain-direct",
+    );
+  });
+
+  it("counts the bindings", () => {
+    expect(servicesNote(registry(1))).toBe("1 service bound · chain-direct");
+    expect(servicesNote(registry(3))).toBe("3 services bound · chain-direct");
   });
 });

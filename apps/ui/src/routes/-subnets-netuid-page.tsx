@@ -29,6 +29,8 @@ import { RevenueSection } from "@/components/metagraphed/subnet-detail/revenue";
 import { ValidatorsSection } from "@/components/metagraphed/subnet-detail/validators";
 import { SurfacesSection } from "@/components/metagraphed/subnet-detail/surfaces";
 import { CommitmentsEvidence } from "@/components/metagraphed/subnet-detail/commitments";
+import { MechanismsEvidence } from "@/components/metagraphed/subnet-detail/mechanisms";
+import { ServicesEvidence } from "@/components/metagraphed/subnet-detail/services";
 import { ActivitySection } from "@/components/metagraphed/subnet-detail/activity";
 import { ParticipationSection } from "@/components/metagraphed/subnet-detail/participation";
 import { PeersSection } from "@/components/metagraphed/subnet-detail/peers";
@@ -324,10 +326,12 @@ export function SubnetDetailPage() {
           onWindow={(next: Window) => void navigate({ search: { window: next }, replace: true })}
         />
         <EmissionSplitSection netuid={netuid} window={window}>
+          <MechanismsEvidence netuid={netuid} />
           <RevenueSection netuid={netuid} />
         </EmissionSplitSection>
         <ValidatorsSection netuid={netuid} />
         <SurfacesSection netuid={netuid} name={name}>
+          <ServicesEvidence netuid={netuid} />
           <CommitmentsEvidence netuid={netuid} />
         </SurfacesSection>
         <ActivitySection netuid={netuid} />

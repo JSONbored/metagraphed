@@ -14,10 +14,12 @@ import type {
   SubnetEconomics,
   SubnetHistoryPoint,
   SubnetOhlcCandle,
+  SubnetMechanisms,
+  SubnetServices,
   Surface,
   Uptime,
 } from "@/lib/metagraphed/types";
-import { formatDecimal } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
 
 export type Window = "7d" | "30d" | "90d";
 
@@ -435,4 +437,41 @@ export function commitmentSummary(
         ? `revealed: ${newest.text ?? "binary payload"}`
         : "empty";
   return line.length > max ? `${line.slice(0, max - 1)}…` : line;
+}
+
+/**
+ * The mechanism shares worth drawing (MET-7365), one row per mechanism. Empty
+ * for a subnet that runs only the mechanism every subnet has -- its share is
+ * the whole emission, and the note says so -- and before a capture is observed.
+ */
+export function mechanismShareRows(
+  registry: SubnetMechanisms | null | undefined,
+): { key: string; label: string; share: number | null }[] {
+  if (!registry || registry.mechanism_count === null || registry.mechanisms.length < 2) return [];
+  return registry.mechanisms.map((mechanism) => ({
+    key: `mechanism-${mechanism.mechid}`,
+    label: `Mechanism ${mechanism.mechid}`,
+    share: mechanism.emission_split,
+  }));
+}
+
+/** What the mechanism registry says, in a line (MET-7365). */
+export function mechanismsNote(registry: SubnetMechanisms | null | undefined): string {
+  const count = registry?.mechanism_count ?? null;
+  if (count === null) return "No capture observed yet · chain-direct";
+  if (count === 1)
+    return "One mechanism, which carries all of this subnet's emission · chain-direct";
+  return `${formatNumber(count)} mechanisms · chain-direct`;
+}
+
+/**
+ * What the service registry says about a subnet, in a line (MET-7365). A null
+ * count is the decline -- no whole read observed -- and stays apart from a
+ * read that found the subnet binds nothing.
+ */
+export function servicesNote(registry: SubnetServices | null | undefined): string {
+  const count = registry?.service_count ?? null;
+  if (count === null) return "No capture observed yet · chain-direct";
+  if (count === 0) return "No service bound at the last whole read · chain-direct";
+  return `${formatNumber(count)} ${count === 1 ? "service" : "services"} bound · chain-direct`;
 }

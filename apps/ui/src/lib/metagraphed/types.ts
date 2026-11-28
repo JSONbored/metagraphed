@@ -3392,6 +3392,44 @@ export interface HotkeyCommitmentHistory {
   history: CommitmentState[];
 }
 
+/** One mechanism (sub-subnet) of a subnet (MET-7365). */
+export interface SubnetMechanism {
+  /** 0 is the original mechanism every subnet has. */
+  mechid: number;
+  /** Its share of the subnet's emission, 0..1; null when not captured. */
+  emission_split: number | null;
+  /** The chain's own spelling (`yuma` or `null`); null when not captured. */
+  consensus_mode: string | null;
+  captured_at: string | null;
+}
+
+export interface SubnetMechanisms {
+  netuid: number;
+  /** Null until a mechanism capture is observed: every subnet has mechanism 0. */
+  mechanism_count: number | null;
+  captured_at: string | null;
+  /** Ordered by mechid. */
+  mechanisms: SubnetMechanism[];
+}
+
+/** One on-chain service binding of a subnet (MET-7365). */
+export interface SubnetService {
+  hotkey: string;
+  /** Verbatim as the key's owner published it: untrusted, never an unvetted href. */
+  service_url: string;
+  /** The block it was last set at; null when the capture did not carry it. */
+  set_at: number | null;
+  captured_at: string | null;
+}
+
+export interface SubnetServices {
+  netuid: number;
+  /** Null is the decline; 0 is a whole read of the registry that found none. */
+  service_count: number | null;
+  captured_at: string | null;
+  services: SubnetService[];
+}
+
 /**
  * Miner fairness (#10931). DESCRIPTIVE ONLY — there is no score field here and
  * the render must not invent one.
