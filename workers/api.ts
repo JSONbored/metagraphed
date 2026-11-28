@@ -735,6 +735,11 @@ import {
   SUBNET_BURN_HISTORY_TABLE,
   type BurnHistoryDb,
 } from "../src/subnet-burn-history.ts";
+import {
+  CHAIN_GAMMA_CAPTURE_TABLES,
+  captureChainGamma,
+  type ChainGammaDb,
+} from "../src/chain-gamma-capture.ts";
 import { runOperationalSurfacesSync } from "../src/operational-surfaces-sync.ts";
 import { runSchemaSnapshotsSync } from "../src/schema-snapshots-sync.ts";
 import { runSurfaceVerificationSync } from "../src/surface-verification-sync.ts";
@@ -3359,6 +3364,31 @@ async function dispatchScheduled(
         // reports, and a watchdog must never be able to fail the lane it
         // watches.
         ctx.waitUntil(runSubnetBurnCoverageWatchdog(env).then(() => undefined));
+        // The Gamma, service and TAO/USD oracle state (MET-7365) rides the
+        // same tick: one finalized block's storage, one transaction. Its own
+        // store and its own verdict, so a failure here is this lane's alone
+        // and never the burn series'.
+        const gammaStore = producerStore(env, ctx, [
+          ...CHAIN_GAMMA_CAPTURE_TABLES,
+        ]);
+        try {
+          const gamma = await captureChainGamma(env, {
+            db: gammaStore.db as ChainGammaDb,
+          });
+          ctx.waitUntil(
+            recordLaneVerdict(laneHealthStore(env), {
+              lane: "chain-gamma",
+              verdict: gamma.ok ? "ok" : "stale",
+              age_ms: null,
+              detail: gamma.ok
+                ? `captured ${gamma.captured}`
+                : (gamma.reason ?? "capture failed"),
+              checked_at: Date.now(),
+            }).then(() => undefined),
+          );
+        } finally {
+          gammaStore.close();
+        }
         return result;
       } finally {
         store.close();
