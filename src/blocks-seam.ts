@@ -10,6 +10,11 @@ import {
 } from "./retained-blocks-d1.ts";
 import { RetainedHistoryUnavailableError } from "./retained-history-store.ts";
 import { registerModuleStateReset } from "./module-state-registry.ts";
+import {
+  CHAIN_CORE_DETAIL,
+  chainCoreNetwork,
+  chainViewsStore,
+} from "./chain-core-read.ts";
 
 export const RETAINED_SEAM_TTL_MS = 5_000;
 type Census = Awaited<ReturnType<typeof readRetainedBlockCensus>>;
@@ -109,6 +114,58 @@ export async function resolveBlocksSeam(
     watermark?.decodedThrough,
     retained === undefined ? undefined : (retained?.hi ?? null),
   );
+}
+
+/** The lowest block every chain-core detail family holds whole
+ * (chain.coverage), or null when no chain core is bound or none holds a whole
+ * window yet. */
+async function chainCoreFloor(
+  env: unknown,
+  network: ChainNetworkId,
+): Promise<number | null> {
+  const store = chainViewsStore(env);
+  if (!store) return null;
+  const core = chainCoreNetwork(network);
+  const [row] = await store.query<{ floor?: unknown }>(
+    CHAIN_CORE_DETAIL.coverage,
+    [core, core],
+  );
+  return safeBlockNumber(row?.floor);
+}
+
+/**
+ * The seam a READ routes on (ADR 0029 phase 1b): `resolveBlocksSeam`, except
+ * that a selected retained copy which cannot answer does not refuse what the
+ * chain core holds whole.
+ *
+ * A retained owner with no census raises history_unavailable for every height
+ * -- including the blocks the chain core holds whole, which then never reach
+ * the chain core at all (measured on the fleet 2026-11-28: every block route
+ * answered 503, block 9,602,100 included, with the chain core holding it).
+ * The chain core's own coverage is a boundary nothing is routed past into a
+ * gap: every block at or above its floor is served whole from it, and every
+ * height below stays with the retained owner, whose reads still raise
+ * history_unavailable for it.
+ *
+ * READS ONLY. Retention (src/chain-detail-prune.ts) keeps the strict seam: it
+ * prunes the hot tier below the seam because the retained copy holds those
+ * rows, and below the chain core's floor no retained copy does.
+ */
+export async function resolveReadBlocksSeam(
+  env: unknown,
+  deps: DecodeWatermarkDeps = {},
+  network: ChainNetworkId = DEFAULT_CHAIN_NETWORK,
+): Promise<number> {
+  try {
+    return await resolveBlocksSeam(env, deps, network);
+  } catch (error) {
+    if (!(error instanceof RetainedHistoryUnavailableError)) throw error;
+    // A chain core that cannot say what it holds leaves the refusal standing:
+    // history_unavailable is the honest answer, not the chain core's failure.
+    const floor = await chainCoreFloor(env, network).catch(() => null);
+    if (floor === null) throw error;
+    return floor - 1;
+  }
 }
 
 /**

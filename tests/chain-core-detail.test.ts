@@ -407,6 +407,29 @@ test("a covered block answers hot, and a block the window does not hold declines
   assert.equal(outside.kind, "gap");
 });
 
+test("with the retained copy unanswerable, the chain core still answers what it holds whole", async () => {
+  // The fleet on 2026-11-28: a selected retained owner with no census, which
+  // made every block route answer history_unavailable, held blocks included.
+  const fleet = { ...env, RETAINED_BLOCKS_NETWORKS: "mainnet" };
+  let coldReads = 0;
+  const ops = {
+    hot: (height: number) => loadBlockChainEventsHotTier(fleet, height),
+    cold: async () => {
+      coldReads += 1;
+      return null;
+    },
+    isEmpty: () => true,
+  };
+  const covered = await answerBlockDetail(fleet, String(BASE + 1), ops);
+  assert.equal(covered.kind, "answer");
+  assert.equal(coldReads, 0);
+  // Below the chain core's floor the block stays the retained owner's: its
+  // cold loader is asked, which on the fleet raises history_unavailable.
+  const below = await answerBlockDetail(fleet, String(BASE - 5), ops);
+  assert.equal(coldReads, 1);
+  assert.equal(below.kind, "miss");
+});
+
 test("a failed chain-core read answers nothing rather than guessing", async () => {
   const broken = {
     NATIVE_CHAIN_READ_STORE: {
