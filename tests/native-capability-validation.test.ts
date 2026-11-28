@@ -131,6 +131,7 @@ test("sequence readiness follows the declared write set", async () => {
     "retained_views",
     "search",
     "chain_views",
+    "state",
   ])
     sources.set(name, {
       ...base,
@@ -159,6 +160,7 @@ test("a read source that can run its schema's owner-authority functions refuses 
     "retained",
     "retained_views",
     "search",
+    "state",
   ];
   const sources = (callable: string[]) => {
     const calls: unknown[][] = [];
@@ -199,6 +201,7 @@ test("a read source that can run its schema's owner-authority functions refuses 
     ["search"],
     ["chain"],
     ["chain"],
+    ["state"],
   ]);
 });
 
@@ -215,6 +218,7 @@ test("a views source beside its schema's writer is not held to the read-only rul
     "retained",
     "retained_views",
     "search",
+    "state",
   ])
     map.set(name, {
       ...definition({

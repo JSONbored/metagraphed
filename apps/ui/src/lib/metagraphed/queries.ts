@@ -342,6 +342,10 @@ import type {
   SurfaceUptimeDay,
   Uptime,
   SelfHealth,
+  ChainEmissionSplitRow,
+  ChainEmissionSplits,
+  DeclaredEmissionSplit,
+  SubnetDeclaredEmissionSplit,
 } from "./types";
 
 const STALE_SHORT = 30_000;
@@ -9609,6 +9613,100 @@ export const subnetEmissionSplitHistoryQuery = (
         meta: res.meta,
         url: res.url,
       } as ApiResult<SubnetEmissionSplitHistory>;
+    },
+    staleTime: STALE_MED,
+  });
+
+const DECLARED_SLOTS = ["burn", "recycle", "owner", "validator", "miner"] as const;
+
+/** One declared split as served, or null when it does not read whole: a split
+ * missing a slot is not a split, and is never drawn as one. */
+export function normalizeDeclaredSplit(raw: unknown): DeclaredEmissionSplit | null {
+  if (!isRecord(raw)) return null;
+  const validFrom = firstFiniteNumber(raw.valid_from);
+  const slots: Partial<Record<(typeof DECLARED_SLOTS)[number], number>> = {};
+  for (const slot of DECLARED_SLOTS) {
+    const share = firstFiniteNumber(raw[slot]);
+    if (share === undefined) return null;
+    slots[slot] = share;
+  }
+  if (validFrom === undefined) return null;
+  const gammaShares: DeclaredEmissionSplit["gamma_shares"] = [];
+  for (const entry of Array.isArray(raw.gamma_shares) ? raw.gamma_shares : []) {
+    const target = isRecord(entry) ? firstFiniteNumber(entry.target_netuid) : undefined;
+    const share = isRecord(entry) ? firstFiniteNumber(entry.share) : undefined;
+    if (target !== undefined && share !== undefined)
+      gammaShares.push({ target_netuid: target, share });
+  }
+  return {
+    burn: slots.burn ?? 0,
+    recycle: slots.recycle ?? 0,
+    owner: slots.owner ?? 0,
+    validator: slots.validator ?? 0,
+    miner: slots.miner ?? 0,
+    gamma_shares: gammaShares,
+    is_default: raw.is_default === true,
+    valid_from: validFrom,
+  };
+}
+
+/** A subnet's emission split as the chain declares it (MET-7365). */
+export const subnetEmissionSplitQuery = (netuid: number) =>
+  queryOptions({
+    queryKey: k("subnet-emission-split", netuid),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>(
+        `/api/v1/subnets/${netuid}/emission-split`,
+        { signal },
+      );
+      const d = isRecord(res.data) ? res.data : {};
+      const lifecycle = isRecord(d.lifecycle) ? d.lifecycle : null;
+      return {
+        data: {
+          netuid: firstFiniteNumber(d.netuid) ?? netuid,
+          observed_block: firstFiniteNumber(d.observed_block) ?? null,
+          stage: coerceString(lifecycle?.stage) ?? null,
+          epoch_consensus: coerceString(lifecycle?.epoch_consensus) ?? null,
+          split: normalizeDeclaredSplit(d.split),
+        },
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<SubnetDeclaredEmissionSplit>;
+    },
+    staleTime: STALE_MED,
+  });
+
+/** Every subnet's declared emission split (MET-7365). */
+export const chainEmissionSplitsQuery = () =>
+  queryOptions({
+    queryKey: k("chain-emission-splits"),
+    queryFn: async ({ signal }) => {
+      const res = await apiFetch<Record<string, unknown>>("/api/v1/chain/emission-splits", {
+        signal,
+      });
+      const d = isRecord(res.data) ? res.data : {};
+      const subnets = (Array.isArray(d.subnets) ? d.subnets : [])
+        .map((raw): ChainEmissionSplitRow | null => {
+          if (!isRecord(raw)) return null;
+          const split = normalizeDeclaredSplit(raw);
+          const netuid = firstFiniteNumber(raw.netuid);
+          const stage = coerceString(raw.stage);
+          const consensus = coerceString(raw.epoch_consensus);
+          if (!split || netuid === undefined || !stage || !consensus) return null;
+          return { ...split, netuid, stage, epoch_consensus: consensus };
+        })
+        .filter((row): row is ChainEmissionSplitRow => row !== null);
+      return {
+        data: {
+          observed_block: firstFiniteNumber(d.observed_block) ?? null,
+          subnet_count: firstFiniteNumber(d.subnet_count) ?? null,
+          custom_count: firstFiniteNumber(d.custom_count) ?? null,
+          gamma_share_count: firstFiniteNumber(d.gamma_share_count) ?? null,
+          subnets,
+        },
+        meta: res.meta,
+        url: res.url,
+      } as ApiResult<ChainEmissionSplits>;
     },
     staleTime: STALE_MED,
   });

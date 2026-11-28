@@ -51,6 +51,7 @@ import {
   chainCallsQuery,
   chainConcentrationQuery,
   chainFeesQuery,
+  chainEmissionSplitsQuery,
   chainStakeFlowQuery,
   economicsQuery,
   emissionPipelineQuery,
@@ -58,7 +59,8 @@ import {
   runtimeVersionHistoryQuery,
   sudoCallsQuery,
 } from "@/lib/metagraphed/queries";
-import { formatDecimal, formatNumber } from "@/lib/metagraphed/format";
+import { formatDecimal, formatNumber, formatPct } from "@/lib/metagraphed/format";
+import type { ChainEmissionSplitRow } from "@/lib/metagraphed/types";
 import { API_BASE } from "@/lib/metagraphed/config";
 import { Route } from "./chain.index";
 
@@ -68,6 +70,7 @@ const SECTIONS = [
   { id: "stake-flow", name: "Stake flow" },
   { id: "concentration", name: "Concentration" },
   { id: "emission", name: "Emission" },
+  { id: "emission-splits", name: "Emission splits" },
   { id: "governance", name: "Governance" },
 ] as const;
 
@@ -78,6 +81,7 @@ const API_PATHS = [
   "/api/v1/chain/stake-flow",
   "/api/v1/chain/concentration",
   "/api/v1/chain/emission-pipeline",
+  "/api/v1/chain/emission-splits",
   "/api/v1/runtime",
   "/api/v1/sudo",
   "/api/v1/governance/config-changes",
@@ -100,6 +104,8 @@ export function ExplorerPage() {
     useNearViewport("0px 0px");
   const { ref: emissionRef, nearViewport: emissionNearViewport } = useNearViewport("0px 0px");
   const { ref: governanceRef, nearViewport: governanceNearViewport } = useNearViewport("0px 0px");
+  const { ref: splitsRef, nearViewport: splitsNearViewport } = useNearViewport("0px 0px");
+  const [splitScope, setSplitScope] = useState<"custom" | "all">("custom");
 
   // Daily activity is one independently fallible rollup, not the route's
   // availability gate. If its projection declines, the blocks, calls, fees,
@@ -142,7 +148,14 @@ export function ExplorerPage() {
   });
   const economics = useQuery({
     ...economicsQuery({ fields: "identity" }),
-    enabled: emissionNearViewport || flowNearViewport,
+    enabled: emissionNearViewport || flowNearViewport || splitsNearViewport,
+    retry: 0,
+  });
+  // The split each subnet's emission is DECLARED to follow (MET-7365): the
+  // owner's cut is per subnet since runtime 497, not a fixed 18%.
+  const splits = useQuery({
+    ...chainEmissionSplitsQuery(),
+    enabled: splitsNearViewport,
     retry: 0,
   });
 
@@ -266,6 +279,49 @@ export function ExplorerPage() {
       .filter((row) => typeof row.value === "number")
       .map((row) => ({ key: row.key, label: row.label, value: (row.value as number) * 100 }));
   }, [stake]);
+
+  const splitRows = (splits.data?.data.subnets ?? []).filter(
+    (row) => splitScope === "all" || !row.is_default,
+  );
+  const pct = (value: unknown) => (typeof value === "number" ? formatPct(value, 1) : "—");
+  const splitColumns: DataTableColumn<ChainEmissionSplitRow>[] = [
+    {
+      key: "netuid",
+      label: "Subnet",
+      kind: "link",
+      value: (row) => nameOf(row.netuid),
+      href: (row) => `/subnets/${row.netuid}`,
+    },
+    { key: "owner", label: "Owner", kind: "number", value: (row) => row.owner, format: pct },
+    {
+      key: "validator",
+      label: "Validators",
+      kind: "number",
+      value: (row) => row.validator,
+      format: pct,
+    },
+    { key: "miner", label: "Miners", kind: "number", value: (row) => row.miner, format: pct },
+    {
+      key: "burn",
+      label: "Burn + recycle",
+      kind: "number",
+      value: (row) => row.burn + row.recycle,
+      format: pct,
+    },
+    {
+      key: "gamma",
+      label: "Gamma",
+      kind: "text",
+      value: (row) =>
+        row.gamma_shares.length === 0
+          ? "—"
+          : row.gamma_shares
+              .map((gamma) => `SN${gamma.target_netuid} ${formatPct(gamma.share, 1)}`)
+              .join(", "),
+    },
+    { key: "stage", label: "Stage", kind: "status", value: (row) => row.stage.replace("_", " ") },
+    { key: "consensus", label: "Consensus", kind: "status", value: (row) => row.epoch_consensus },
+  ];
 
   const govColumns: DataTableColumn<GovernanceRow>[] = [
     { key: "at", label: "When", kind: "time", value: (row) => row.at },
@@ -612,6 +668,65 @@ export function ExplorerPage() {
                     )} never eligible, ${formatNumber(tally.disabled)} with emission off, ${formatNumber(
                       tally.zeroWeighted,
                     )} zeroed by the weighting · chain-direct`
+          }
+        />
+        <AnalyticsSection
+          id="emission-splits"
+          name="Emission splits"
+          question="Where each subnet's emission goes, as the chain declares it."
+          visualRef={splitsRef}
+          controls={
+            <FilterField label="Subnets">
+              <FilterSelect
+                value={splitScope}
+                onChange={(event) => setSplitScope(event.target.value === "all" ? "all" : "custom")}
+              >
+                <option value="custom">Custom splits</option>
+                <option value="all">Every subnet</option>
+              </FilterSelect>
+            </FilterField>
+          }
+          visual={
+            <DataTable
+              rows={splitRows}
+              columns={splitColumns}
+              rowKey={(row) => String(row.netuid)}
+              caption="Each subnet's declared emission split"
+              link={RouterLink}
+              source="chain-emission-splits"
+              pageSize={25}
+              mobile="cards"
+              dense
+              storageKey="chain-emission-splits-columns"
+              loading={!splitsNearViewport || splits.isPending}
+              error={
+                splits.isError ? (
+                  <ErrorState
+                    error={splits.error}
+                    context="emission splits"
+                    onRetry={() => void splits.refetch()}
+                  />
+                ) : undefined
+              }
+              empty={
+                splits.data?.data.observed_block == null
+                  ? "No emission split capture has been observed yet."
+                  : "Every subnet follows the runtime's default split."
+              }
+            />
+          }
+          footnote={
+            !splitsNearViewport || splits.isPending
+              ? "declared emission splits · chain-direct"
+              : splits.isError || splits.data?.data.observed_block == null
+                ? "Declared emission splits are not available yet · chain-direct"
+                : `${formatNumber(splits.data.data.custom_count ?? 0)} of ${formatNumber(
+                    splits.data.data.subnet_count ?? 0,
+                  )} subnets set their own split · ${formatNumber(
+                    splits.data.data.gamma_share_count ?? 0,
+                  )} route emission to gamma · block ${formatNumber(
+                    splits.data.data.observed_block,
+                  )} · chain-direct`
           }
         />
         <AnalyticsSection

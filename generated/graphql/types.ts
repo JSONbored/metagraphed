@@ -1393,6 +1393,57 @@ export type ChainDeregistrationsSubnet = {
   tenure?: Maybe<DeregistrationTenure>;
 };
 
+/** One subnet's current split, with its current lifecycle state beside it. */
+export type ChainEmissionSplitEntry = {
+  __typename?: 'ChainEmissionSplitEntry';
+  /** Alpha destroyed outright (it still counts toward issuance) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  burn: Scalars['Float']['output'];
+  /** SubnetCreatedViaLease: the subnet was registered through a lease. Such a subnet may not set its owner slot below the default. */
+  created_via_lease: Scalars['Boolean']['output'];
+  /** SubnetEpochConsensus: `yuma`, or `null` -- the largest-stake validator's weights and stake-proportional dividends. */
+  epoch_consensus: Scalars['String']['output'];
+  /** The split's gamma shares, ascending by target netuid. */
+  gamma_shares: Array<GammaShare>;
+  /** True when this is the runtime's default split for a subnet that never set one: owner 18% (InitialSubnetOwnerCut, 11796/65535), validators 41%, miners the rest, and no gamma shares. */
+  is_default: Scalars['Boolean']['output'];
+  /** Miner incentive (split across mechanisms by MechanismEmissionSplit) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  miner: Scalars['Float']['output'];
+  netuid: Scalars['Int']['output'];
+  /** The subnet owner's cut as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  owner: Scalars['Float']['output'];
+  parts: EmissionSlotParts;
+  /** Alpha removed from issuance as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  recycle: Scalars['Float']['output'];
+  /** SubnetState: `registered` (its start call has not completed), `started`, `pending_dissolution` (it has left the active set and waits for cleanup) or `dissolving` (on_idle is cleaning it up). */
+  stage: Scalars['String']['output'];
+  /** The first capture block at which this split was observed. The change happened between the previous capture and this block, about 75 blocks at the 15-minute cadence; the event log (SubnetEmissionWeightsSet) has the exact block. */
+  valid_from: Scalars['Int']['output'];
+  /** The first capture block at which another split was observed (exclusive). Null while it is the current split. */
+  valid_to?: Maybe<Scalars['Int']['output']>;
+  /** Validator dividends (root's alpha is carved out of this slot) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  validator: Scalars['Float']['output'];
+};
+
+/** Every subnet's current emission split and lifecycle state from chain storage (runtime spec 497). Mirrors GET /api/v1/chain/emission-splits. */
+export type ChainEmissionSplits = {
+  __typename?: 'ChainEmissionSplits';
+  /** How many of them carry a split other than the runtime's default (owner 18%, validators 41%, miners the rest, no gamma shares). */
+  custom_count?: Maybe<Scalars['Int']['output']>;
+  /** The runtime's default split, for comparison: InitialSubnetOwnerCut (11796/65535) for the owner, half the rest for validators, and the remainder for miners. */
+  default_split: EmissionSlots;
+  /** How many of them route any part of their emission to gamma. */
+  gamma_share_count?: Maybe<Scalars['Int']['output']>;
+  /** When that capture ran, as an ISO timestamp. */
+  observed_at?: Maybe<Scalars['String']['output']>;
+  /** The newest finalized block the capture read every subnet at. Null when no capture has been observed: the subnet list is then empty and every count null. */
+  observed_block?: Maybe<Scalars['Int']['output']>;
+  schema_version: Scalars['Int']['output'];
+  /** How many subnets the chain held at the observed block. */
+  subnet_count?: Maybe<Scalars['Int']['output']>;
+  /** Every subnet the chain held, ascending by netuid. */
+  subnets: Array<ChainEmissionSplitEntry>;
+};
+
 /** One live chain event as the firehose broadcasts it. Only the fields relevant to the event's table are populated. */
 export type ChainEvent = {
   __typename?: 'ChainEvent';
@@ -2744,6 +2795,61 @@ export type EmissionPipelineVerification = {
   verified: Scalars['Boolean']['output'];
 };
 
+/** The five fixed slots in exact u64 parts. */
+export type EmissionSlotParts = {
+  __typename?: 'EmissionSlotParts';
+  /** The burn slot in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text. */
+  burn: Scalars['String']['output'];
+  /** The miner slot in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text. */
+  miner: Scalars['String']['output'];
+  /** The owner slot in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text. */
+  owner: Scalars['String']['output'];
+  /** The recycle slot in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text. */
+  recycle: Scalars['String']['output'];
+  /** The validator slot in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text. */
+  validator: Scalars['String']['output'];
+};
+
+/** The five fixed slots `[burn, recycle, owner, validator, miner]`, as fractions and exact parts. */
+export type EmissionSlots = {
+  __typename?: 'EmissionSlots';
+  /** Alpha destroyed outright (it still counts toward issuance) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  burn: Scalars['Float']['output'];
+  /** Miner incentive (split across mechanisms by MechanismEmissionSplit) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  miner: Scalars['Float']['output'];
+  /** The subnet owner's cut as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  owner: Scalars['Float']['output'];
+  parts: EmissionSlotParts;
+  /** Alpha removed from issuance as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  recycle: Scalars['Float']['output'];
+  /** Validator dividends (root's alpha is carved out of this slot) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  validator: Scalars['Float']['output'];
+};
+
+/** One emission split with its validity range. The five slots and the gamma shares sum to exactly u64::MAX. */
+export type EmissionSplit = {
+  __typename?: 'EmissionSplit';
+  /** Alpha destroyed outright (it still counts toward issuance) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  burn: Scalars['Float']['output'];
+  /** The split's gamma shares, ascending by target netuid. */
+  gamma_shares: Array<GammaShare>;
+  /** True when this is the runtime's default split for a subnet that never set one: owner 18% (InitialSubnetOwnerCut, 11796/65535), validators 41%, miners the rest, and no gamma shares. */
+  is_default: Scalars['Boolean']['output'];
+  /** Miner incentive (split across mechanisms by MechanismEmissionSplit) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  miner: Scalars['Float']['output'];
+  /** The subnet owner's cut as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  owner: Scalars['Float']['output'];
+  parts: EmissionSlotParts;
+  /** Alpha removed from issuance as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  recycle: Scalars['Float']['output'];
+  /** The first capture block at which this split was observed. The change happened between the previous capture and this block, about 75 blocks at the 15-minute cadence; the event log (SubnetEmissionWeightsSet) has the exact block. */
+  valid_from: Scalars['Int']['output'];
+  /** The first capture block at which another split was observed (exclusive). Null while it is the current split. */
+  valid_to?: Maybe<Scalars['Int']['output']>;
+  /** Validator dividends (root's alpha is carved out of this slot) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  validator: Scalars['Float']['output'];
+};
+
 export type Endpoint = {
   __typename?: 'Endpoint';
   auth_required: Scalars['Boolean']['output'];
@@ -3031,6 +3137,17 @@ export type GammaDeposits = {
   /** The chain's Gamma deposits, largest balance first. */
   deposits: Array<GammaDeposit>;
   schema_version: Scalars['Int']['output'];
+};
+
+/** One gamma share (SubnetGammaEmission): a part of the subnet's alpha emission converted each epoch into the target subnet's gamma for the subnet owner hotkey. At most 10% each, at most sixteen. */
+export type GammaShare = {
+  __typename?: 'GammaShare';
+  /** This gamma share in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text. */
+  parts: Scalars['String']['output'];
+  /** This gamma share as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+  share: Scalars['Float']['output'];
+  /** The subnet whose gamma this share converts into each epoch. */
+  target_netuid: Scalars['Int']['output'];
 };
 
 export type Gaps = {
@@ -3854,6 +3971,8 @@ export type Query = {
   chain_concentration_history: ChainConcentrationHistory;
   /** Network-wide neuron-deregistration leaderboard over a 7d/30d window (default 7d): subnets ranked by deregistration events with each's distinct-hotkey count and deregistrations-per-hotkey churn intensity, plus a network rollup and the per-subnet intensity spread, DERIVED from UID reuse in the NeuronRegistered stream by a scheduled projection -- NeuronDeregistered has never been emitted by the runtime (#9307). The network-wide, exit-side counterpart of subnet_deregistrations -- where neurons are being pushed out. limit caps the leaderboard (default 20, max 100). A window nothing derived carries a degraded block rather than a confident zero. Mirrors GET /api/v1/chain/deregistrations. */
   chain_deregistrations: ChainDeregistrations;
+  /** Every subnet's current emission split and lifecycle state (MET-7365, runtime spec 497), with how many left the runtime's default split and how many route emission to gamma. With no capture observed, the list is empty and every count null. Mirrors GET /api/v1/chain/emission-splits. */
+  chain_emission_splits: ChainEmissionSplits;
   /** Paginated all-events feed (newest first) from the chain_events lakehouse table: each event's block, event index, pallet, method, decoded args, phase, and emitting extrinsic index. Filter by pallet/method/block/extrinsic; page with limit (1-200, default 50) and the opaque keyset cursor (or legacy before=block_number). An invalid filter combo is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty feed, never a GraphQL error. Reads the raw all-events tier -- distinct from account_events/subnet_events (the curated account-attributed streams, a different data source) and from Subscription.chainEvents (live WebSocket firehose). Pass network to read testnet's decoded history instead of mainnet's. Mirrors GET /api/v1/chain-events. */
   chain_events: ChainEventsFeed;
   /** Chain-activity aggregate over the most recent N blocks the decode lane has published (the blocks arg, 1-5000, default 1000, a stray large value silently capped) from the chain_events lakehouse table: the pallet.method event distribution, each with its count, busiest first. A non-positive/non-integer blocks is a GraphQL BAD_USER_INPUT error; a cold/unbound tier resolves to a schema-stable empty aggregate, never a GraphQL error. The aggregate sibling of chain_events (the raw feed). Pass network to aggregate testnet's decoded history instead of mainnet's. Mirrors GET /api/v1/chain-events/stats (and MCP get_chain_activity). */
@@ -4054,6 +4173,8 @@ export type Query = {
   subnet_deregistrations: SubnetDeregistrations;
   /** One subnet's stored pipeline inputs and legacy price share OVER TIME: emission share, the TAO split (pool-liquidity injection vs chain buys), alpha in/out emission, miner burned fraction and whether emission is enabled, one point per day, each pinned to the block it was captured at. chain_emission_pipeline answers ONE BLOCK for every subnet; this answers one subnet across days. READ THE DEPTH: the pipeline columns began on 2026-08-02, so a wide window returns the days that EXIST -- first_captured_day says where the series starts. READ distinct_observations, NOT point_count, when claiming a value moved: the snapshot writer carries the last capture forward when a fresh one has not landed, so two consecutive points can be THE SAME OBSERVATION, flagged per point as repeats_previous_observation. Treating one as an independent sample reports a value as FLAT when it was simply not re-measured. window is 7d, 30d (default), 90d or 180d. An empty series is a measurement. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/emission-pipeline/history. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
   subnet_emission_pipeline_history: SubnetPipelineHistory;
+  /** One subnet's emission split as the chain declares it (MET-7365, runtime spec 497): the five fixed slots SubtensorModule.SubnetEmissionWeights holds -- burn, recycle, owner, validator, miner -- and the gamma shares SubnetGammaEmission routes to other subnets' gamma, as fractions and exact u64 parts, with its lifecycle stage, epoch consensus and lease origin and the validity-range history of both. The owner's cut is per subnet since v497: never assume 18%. With no capture observed, observed_block is null and there is no split. Mirrors GET /api/v1/subnets/{netuid}/emission-split. */
+  subnet_emission_split: SubnetEmissionSplit;
   /** Per-subnet per-day emission split by recipient class from the neuron_daily rollup over a 7d/30d/90d window (default 30d): the owner, validator and miner legs, the exact measured validator/miner ratio, and how many UIDs of each class actually earned, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. The owner leg and every absolute figure are reconstructed — the owner cut is paid outside the UID set. Mirrors GET /api/v1/subnets/{netuid}/emission-split/history. */
   subnet_emission_split_history: SubnetEmissionSplitHistory;
   /** One subnet's endpoint/resource registry as a filtered/sorted/paged list — the baked per-subnet /metagraph/endpoints/{netuid}.json artifact the REST route and list_subnet_endpoints MCP tool read. Filter with kind, layer, provider, publication_state, status, known_status, and pool_eligible; threshold with min_/max_latency_ms and min_/max_score; project with fields; sort with sort + order; and page with limit (1-100) / cursor, exactly as REST does — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the endpoints rows. Null when no endpoint artifact has been baked for the netuid (rather than a GraphQL error). Distinct from endpoints(...) (the filterable network-wide endpoint registry). Mirrors GET /api/v1/subnets/{netuid}/endpoints. */
@@ -5260,6 +5381,11 @@ export type QuerySubnet_DeregistrationsArgs = {
 export type QuerySubnet_Emission_Pipeline_HistoryArgs = {
   netuid: Scalars['Int']['input'];
   window?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QuerySubnet_Emission_SplitArgs = {
+  netuid: Scalars['Int']['input'];
 };
 
 
@@ -6991,6 +7117,27 @@ export type SubnetEmissionDecomposition = {
   weighted_share?: Maybe<Scalars['Float']['output']>;
 };
 
+/** One subnet's emission split and lifecycle state from chain storage (runtime spec 497). Mirrors GET /api/v1/subnets/{netuid}/emission-split. */
+export type SubnetEmissionSplit = {
+  __typename?: 'SubnetEmissionSplit';
+  /** Whether the chain held this subnet at the observed block. False for a subnet dissolved since, or never registered; null with no observation. */
+  exists?: Maybe<Scalars['Boolean']['output']>;
+  /** Every split this subnet has had since the capture began, newest first, at most 100. */
+  history: Array<EmissionSplit>;
+  /** The subnet's current lifecycle state, or null when it does not exist at the observed block. */
+  lifecycle?: Maybe<SubnetLifecycleState>;
+  /** Every lifecycle state this subnet has had since the capture began, newest first, at most 100. */
+  lifecycle_history: Array<SubnetLifecycleState>;
+  netuid: Scalars['Int']['output'];
+  /** When that capture ran, as an ISO timestamp. */
+  observed_at?: Maybe<Scalars['String']['output']>;
+  /** The newest finalized block the capture read every subnet's split and state at. Null when no capture has been observed (store unbound, or the capture has not run): the response then carries no split at all. */
+  observed_block?: Maybe<Scalars['Int']['output']>;
+  schema_version: Scalars['Int']['output'];
+  /** The subnet's current emission split, or null when it has none at the observed block. */
+  split?: Maybe<EmissionSplit>;
+};
+
 /** Per-day split of one subnet's emission by recipient class — owner, validators, miners — over a 7d/30d/90d window, newest first. The validator/miner split is MEASURED from the per-UID neuron_daily rollup; the owner leg and every absolute figure are RECONSTRUCTED, because the owner's cut is paid outside the UID set and `SubnetOwnerCut` is unset on chain. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/emission-split/history. */
 export type SubnetEmissionSplitHistory = {
   __typename?: 'SubnetEmissionSplitHistory';
@@ -7434,6 +7581,21 @@ export type SubnetLifecycleEntry = {
   netuid: Scalars['Int']['output'];
   observed_at: Scalars['String']['output'];
   predates_capture: Scalars['Boolean']['output'];
+};
+
+/** One lifecycle state with its validity range. */
+export type SubnetLifecycleState = {
+  __typename?: 'SubnetLifecycleState';
+  /** SubnetCreatedViaLease: the subnet was registered through a lease. Such a subnet may not set its owner slot below the default. */
+  created_via_lease: Scalars['Boolean']['output'];
+  /** SubnetEpochConsensus: `yuma`, or `null` -- the largest-stake validator's weights and stake-proportional dividends. */
+  epoch_consensus: Scalars['String']['output'];
+  /** SubnetState: `registered` (its start call has not completed), `started`, `pending_dissolution` (it has left the active set and waits for cleanup) or `dissolving` (on_idle is cleaning it up). */
+  stage: Scalars['String']['output'];
+  /** The first capture block at which this state was observed. */
+  valid_from: Scalars['Int']['output'];
+  /** The first capture block at which another state was observed (exclusive). Null while it is current. */
+  valid_to?: Maybe<Scalars['Int']['output']>;
 };
 
 /** One captured limit order: its chain key, owner, type, amount, raw price and state with their capture stamp. */
@@ -9330,6 +9492,8 @@ export type ResolversTypes = ResolversObject<{
   ChainDeregistrations: ResolverTypeWrapper<ChainDeregistrations>;
   ChainDeregistrationsNetwork: ResolverTypeWrapper<ChainDeregistrationsNetwork>;
   ChainDeregistrationsSubnet: ResolverTypeWrapper<ChainDeregistrationsSubnet>;
+  ChainEmissionSplitEntry: ResolverTypeWrapper<ChainEmissionSplitEntry>;
+  ChainEmissionSplits: ResolverTypeWrapper<ChainEmissionSplits>;
   ChainEvent: ResolverTypeWrapper<ChainEvent>;
   ChainEventRow: ResolverTypeWrapper<ChainEventRow>;
   ChainEventsFeed: ResolverTypeWrapper<ChainEventsFeed>;
@@ -9436,6 +9600,9 @@ export type ResolversTypes = ResolversObject<{
   EmissionPipelineAggregate: ResolverTypeWrapper<EmissionPipelineAggregate>;
   EmissionPipelineChainState: ResolverTypeWrapper<EmissionPipelineChainState>;
   EmissionPipelineVerification: ResolverTypeWrapper<EmissionPipelineVerification>;
+  EmissionSlotParts: ResolverTypeWrapper<EmissionSlotParts>;
+  EmissionSlots: ResolverTypeWrapper<EmissionSlots>;
+  EmissionSplit: ResolverTypeWrapper<EmissionSplit>;
   Endpoint: ResolverTypeWrapper<Endpoint>;
   EndpointIncident: ResolverTypeWrapper<EndpointIncident>;
   EndpointIncidentWindow: ResolverTypeWrapper<EndpointIncidentWindow>;
@@ -9457,6 +9624,7 @@ export type ResolversTypes = ResolversObject<{
   Float: ResolverTypeWrapper<Scalars['Float']['output']>;
   GammaDeposit: ResolverTypeWrapper<GammaDeposit>;
   GammaDeposits: ResolverTypeWrapper<GammaDeposits>;
+  GammaShare: ResolverTypeWrapper<GammaShare>;
   Gaps: ResolverTypeWrapper<Gaps>;
   GapsArtifactGaps: ResolverTypeWrapper<GapsArtifactGaps>;
   GapsArtifactGapsSchemaParity: ResolverTypeWrapper<GapsArtifactGapsSchemaParity>;
@@ -9593,6 +9761,7 @@ export type ResolversTypes = ResolversObject<{
   SubnetDeregistrations: ResolverTypeWrapper<SubnetDeregistrations>;
   SubnetEconomics: ResolverTypeWrapper<SubnetEconomics>;
   SubnetEmissionDecomposition: ResolverTypeWrapper<SubnetEmissionDecomposition>;
+  SubnetEmissionSplit: ResolverTypeWrapper<SubnetEmissionSplit>;
   SubnetEmissionSplitHistory: ResolverTypeWrapper<SubnetEmissionSplitHistory>;
   SubnetEmissionSplitHistoryPoint: ResolverTypeWrapper<SubnetEmissionSplitHistoryPoint>;
   SubnetEmissionSplitMinerEarnings: ResolverTypeWrapper<SubnetEmissionSplitMinerEarnings>;
@@ -9624,6 +9793,7 @@ export type ResolversTypes = ResolversObject<{
   SubnetLeaseHistoryArtifactLeaseEvents: ResolverTypeWrapper<SubnetLeaseHistoryArtifactLeaseEvents>;
   SubnetLifecycle: ResolverTypeWrapper<SubnetLifecycle>;
   SubnetLifecycleEntry: ResolverTypeWrapper<SubnetLifecycleEntry>;
+  SubnetLifecycleState: ResolverTypeWrapper<SubnetLifecycleState>;
   SubnetLimitOrder: ResolverTypeWrapper<SubnetLimitOrder>;
   SubnetLimitOrders: ResolverTypeWrapper<SubnetLimitOrders>;
   SubnetList: ResolverTypeWrapper<SubnetList>;
@@ -9848,6 +10018,8 @@ export type ResolversParentTypes = ResolversObject<{
   ChainDeregistrations: ChainDeregistrations;
   ChainDeregistrationsNetwork: ChainDeregistrationsNetwork;
   ChainDeregistrationsSubnet: ChainDeregistrationsSubnet;
+  ChainEmissionSplitEntry: ChainEmissionSplitEntry;
+  ChainEmissionSplits: ChainEmissionSplits;
   ChainEvent: ChainEvent;
   ChainEventRow: ChainEventRow;
   ChainEventsFeed: ChainEventsFeed;
@@ -9953,6 +10125,9 @@ export type ResolversParentTypes = ResolversObject<{
   EmissionPipelineAggregate: EmissionPipelineAggregate;
   EmissionPipelineChainState: EmissionPipelineChainState;
   EmissionPipelineVerification: EmissionPipelineVerification;
+  EmissionSlotParts: EmissionSlotParts;
+  EmissionSlots: EmissionSlots;
+  EmissionSplit: EmissionSplit;
   Endpoint: Endpoint;
   EndpointIncident: EndpointIncident;
   EndpointIncidentWindow: EndpointIncidentWindow;
@@ -9974,6 +10149,7 @@ export type ResolversParentTypes = ResolversObject<{
   Float: Scalars['Float']['output'];
   GammaDeposit: GammaDeposit;
   GammaDeposits: GammaDeposits;
+  GammaShare: GammaShare;
   Gaps: Gaps;
   GapsArtifactGaps: GapsArtifactGaps;
   GapsArtifactGapsSchemaParity: GapsArtifactGapsSchemaParity;
@@ -10109,6 +10285,7 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetDeregistrations: SubnetDeregistrations;
   SubnetEconomics: SubnetEconomics;
   SubnetEmissionDecomposition: SubnetEmissionDecomposition;
+  SubnetEmissionSplit: SubnetEmissionSplit;
   SubnetEmissionSplitHistory: SubnetEmissionSplitHistory;
   SubnetEmissionSplitHistoryPoint: SubnetEmissionSplitHistoryPoint;
   SubnetEmissionSplitMinerEarnings: SubnetEmissionSplitMinerEarnings;
@@ -10140,6 +10317,7 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetLeaseHistoryArtifactLeaseEvents: SubnetLeaseHistoryArtifactLeaseEvents;
   SubnetLifecycle: SubnetLifecycle;
   SubnetLifecycleEntry: SubnetLifecycleEntry;
+  SubnetLifecycleState: SubnetLifecycleState;
   SubnetLimitOrder: SubnetLimitOrder;
   SubnetLimitOrders: SubnetLimitOrders;
   SubnetList: SubnetList;
@@ -11334,6 +11512,34 @@ export type ChainDeregistrationsSubnetResolvers<ContextType = GqlContext, Parent
   tenure?: Resolver<Maybe<ResolversTypes['DeregistrationTenure']>, ParentType, ContextType>;
 }>;
 
+export type ChainEmissionSplitEntryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainEmissionSplitEntry'] = ResolversParentTypes['ChainEmissionSplitEntry']> = ResolversObject<{
+  burn?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  created_via_lease?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  epoch_consensus?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  gamma_shares?: Resolver<Array<ResolversTypes['GammaShare']>, ParentType, ContextType>;
+  is_default?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  miner?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  owner?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  parts?: Resolver<ResolversTypes['EmissionSlotParts'], ParentType, ContextType>;
+  recycle?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  stage?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  valid_from?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  valid_to?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  validator?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+}>;
+
+export type ChainEmissionSplitsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainEmissionSplits'] = ResolversParentTypes['ChainEmissionSplits']> = ResolversObject<{
+  custom_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  default_split?: Resolver<ResolversTypes['EmissionSlots'], ParentType, ContextType>;
+  gamma_share_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  observed_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  subnet_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  subnets?: Resolver<Array<ResolversTypes['ChainEmissionSplitEntry']>, ParentType, ContextType>;
+}>;
+
 export type ChainEventResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['ChainEvent'] = ResolversParentTypes['ChainEvent']> = ResolversObject<{
   amount_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   block_hash?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -12364,6 +12570,36 @@ export type EmissionPipelineVerificationResolvers<ContextType = GqlContext, Pare
   verified?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
 }>;
 
+export type EmissionSlotPartsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EmissionSlotParts'] = ResolversParentTypes['EmissionSlotParts']> = ResolversObject<{
+  burn?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  miner?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  owner?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  recycle?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  validator?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type EmissionSlotsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EmissionSlots'] = ResolversParentTypes['EmissionSlots']> = ResolversObject<{
+  burn?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  miner?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  owner?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  parts?: Resolver<ResolversTypes['EmissionSlotParts'], ParentType, ContextType>;
+  recycle?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  validator?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+}>;
+
+export type EmissionSplitResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['EmissionSplit'] = ResolversParentTypes['EmissionSplit']> = ResolversObject<{
+  burn?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  gamma_shares?: Resolver<Array<ResolversTypes['GammaShare']>, ParentType, ContextType>;
+  is_default?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  miner?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  owner?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  parts?: Resolver<ResolversTypes['EmissionSlotParts'], ParentType, ContextType>;
+  recycle?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  valid_from?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  valid_to?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  validator?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+}>;
+
 export type EndpointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Endpoint'] = ResolversParentTypes['Endpoint']> = ResolversObject<{
   auth_required?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
   authority?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -12589,6 +12825,12 @@ export type GammaDepositsResolvers<ContextType = GqlContext, ParentType extends 
   deposit_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   deposits?: Resolver<Array<ResolversTypes['GammaDeposit']>, ParentType, ContextType>;
   schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type GammaShareResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['GammaShare'] = ResolversParentTypes['GammaShare']> = ResolversObject<{
+  parts?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  share?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
+  target_netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
 }>;
 
 export type GapsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Gaps'] = ResolversParentTypes['Gaps']> = ResolversObject<{
@@ -13213,6 +13455,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   chain_concentration?: Resolver<ResolversTypes['ChainConcentration'], ParentType, ContextType>;
   chain_concentration_history?: Resolver<ResolversTypes['ChainConcentrationHistory'], ParentType, ContextType, Partial<QueryChain_Concentration_HistoryArgs>>;
   chain_deregistrations?: Resolver<ResolversTypes['ChainDeregistrations'], ParentType, ContextType, Partial<QueryChain_DeregistrationsArgs>>;
+  chain_emission_splits?: Resolver<ResolversTypes['ChainEmissionSplits'], ParentType, ContextType>;
   chain_events?: Resolver<ResolversTypes['ChainEventsFeed'], ParentType, ContextType, Partial<QueryChain_EventsArgs>>;
   chain_events_stats?: Resolver<ResolversTypes['ChainEventsStats'], ParentType, ContextType, Partial<QueryChain_Events_StatsArgs>>;
   chain_fees?: Resolver<ResolversTypes['ChainFees'], ParentType, ContextType, Partial<QueryChain_FeesArgs>>;
@@ -13313,6 +13556,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_cost_to_participate?: Resolver<ResolversTypes['SubnetCostToParticipate'], ParentType, ContextType, RequireFields<QuerySubnet_Cost_To_ParticipateArgs, 'netuid'>>;
   subnet_deregistrations?: Resolver<ResolversTypes['SubnetDeregistrations'], ParentType, ContextType, RequireFields<QuerySubnet_DeregistrationsArgs, 'netuid'>>;
   subnet_emission_pipeline_history?: Resolver<ResolversTypes['SubnetPipelineHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Emission_Pipeline_HistoryArgs, 'netuid'>>;
+  subnet_emission_split?: Resolver<ResolversTypes['SubnetEmissionSplit'], ParentType, ContextType, RequireFields<QuerySubnet_Emission_SplitArgs, 'netuid'>>;
   subnet_emission_split_history?: Resolver<ResolversTypes['SubnetEmissionSplitHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Emission_Split_HistoryArgs, 'netuid'>>;
   subnet_endpoints?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_EndpointsArgs, 'netuid'>>;
   subnet_event_summary?: Resolver<ResolversTypes['SubnetEventSummary'], ParentType, ContextType, RequireFields<QuerySubnet_Event_SummaryArgs, 'netuid'>>;
@@ -14329,6 +14573,18 @@ export type SubnetEmissionDecompositionResolvers<ContextType = GqlContext, Paren
   weighted_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;
 
+export type SubnetEmissionSplitResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEmissionSplit'] = ResolversParentTypes['SubnetEmissionSplit']> = ResolversObject<{
+  exists?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  history?: Resolver<Array<ResolversTypes['EmissionSplit']>, ParentType, ContextType>;
+  lifecycle?: Resolver<Maybe<ResolversTypes['SubnetLifecycleState']>, ParentType, ContextType>;
+  lifecycle_history?: Resolver<Array<ResolversTypes['SubnetLifecycleState']>, ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  observed_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  split?: Resolver<Maybe<ResolversTypes['EmissionSplit']>, ParentType, ContextType>;
+}>;
+
 export type SubnetEmissionSplitHistoryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetEmissionSplitHistory'] = ResolversParentTypes['SubnetEmissionSplitHistory']> = ResolversObject<{
   field_sources?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType>;
   miner_earnings?: Resolver<Maybe<ResolversTypes['SubnetEmissionSplitMinerEarnings']>, ParentType, ContextType>;
@@ -14657,6 +14913,14 @@ export type SubnetLifecycleEntryResolvers<ContextType = GqlContext, ParentType e
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
   observed_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
   predates_capture?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+}>;
+
+export type SubnetLifecycleStateResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetLifecycleState'] = ResolversParentTypes['SubnetLifecycleState']> = ResolversObject<{
+  created_via_lease?: Resolver<ResolversTypes['Boolean'], ParentType, ContextType>;
+  epoch_consensus?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  stage?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  valid_from?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  valid_to?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
 export type SubnetLimitOrderResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetLimitOrder'] = ResolversParentTypes['SubnetLimitOrder']> = ResolversObject<{
@@ -16058,6 +16322,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ChainDeregistrations?: ChainDeregistrationsResolvers<ContextType>;
   ChainDeregistrationsNetwork?: ChainDeregistrationsNetworkResolvers<ContextType>;
   ChainDeregistrationsSubnet?: ChainDeregistrationsSubnetResolvers<ContextType>;
+  ChainEmissionSplitEntry?: ChainEmissionSplitEntryResolvers<ContextType>;
+  ChainEmissionSplits?: ChainEmissionSplitsResolvers<ContextType>;
   ChainEvent?: ChainEventResolvers<ContextType>;
   ChainEventRow?: ChainEventRowResolvers<ContextType>;
   ChainEventsFeed?: ChainEventsFeedResolvers<ContextType>;
@@ -16163,6 +16429,9 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   EmissionPipelineAggregate?: EmissionPipelineAggregateResolvers<ContextType>;
   EmissionPipelineChainState?: EmissionPipelineChainStateResolvers<ContextType>;
   EmissionPipelineVerification?: EmissionPipelineVerificationResolvers<ContextType>;
+  EmissionSlotParts?: EmissionSlotPartsResolvers<ContextType>;
+  EmissionSlots?: EmissionSlotsResolvers<ContextType>;
+  EmissionSplit?: EmissionSplitResolvers<ContextType>;
   Endpoint?: EndpointResolvers<ContextType>;
   EndpointIncident?: EndpointIncidentResolvers<ContextType>;
   EndpointIncidentWindow?: EndpointIncidentWindowResolvers<ContextType>;
@@ -16183,6 +16452,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   FailureReasonsDay?: FailureReasonsDayResolvers<ContextType>;
   GammaDeposit?: GammaDepositResolvers<ContextType>;
   GammaDeposits?: GammaDepositsResolvers<ContextType>;
+  GammaShare?: GammaShareResolvers<ContextType>;
   Gaps?: GapsResolvers<ContextType>;
   GapsArtifactGaps?: GapsArtifactGapsResolvers<ContextType>;
   GapsArtifactGapsSchemaParity?: GapsArtifactGapsSchemaParityResolvers<ContextType>;
@@ -16316,6 +16586,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetDeregistrations?: SubnetDeregistrationsResolvers<ContextType>;
   SubnetEconomics?: SubnetEconomicsResolvers<ContextType>;
   SubnetEmissionDecomposition?: SubnetEmissionDecompositionResolvers<ContextType>;
+  SubnetEmissionSplit?: SubnetEmissionSplitResolvers<ContextType>;
   SubnetEmissionSplitHistory?: SubnetEmissionSplitHistoryResolvers<ContextType>;
   SubnetEmissionSplitHistoryPoint?: SubnetEmissionSplitHistoryPointResolvers<ContextType>;
   SubnetEmissionSplitMinerEarnings?: SubnetEmissionSplitMinerEarningsResolvers<ContextType>;
@@ -16347,6 +16618,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetLeaseHistoryArtifactLeaseEvents?: SubnetLeaseHistoryArtifactLeaseEventsResolvers<ContextType>;
   SubnetLifecycle?: SubnetLifecycleResolvers<ContextType>;
   SubnetLifecycleEntry?: SubnetLifecycleEntryResolvers<ContextType>;
+  SubnetLifecycleState?: SubnetLifecycleStateResolvers<ContextType>;
   SubnetLimitOrder?: SubnetLimitOrderResolvers<ContextType>;
   SubnetLimitOrders?: SubnetLimitOrdersResolvers<ContextType>;
   SubnetList?: SubnetListResolvers<ContextType>;

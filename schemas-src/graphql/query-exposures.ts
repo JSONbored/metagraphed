@@ -453,6 +453,20 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "One subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string, and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters (u64 atomic units as decimal strings) with their capture stamp. Until the engine's Gamma capture lands, the store holds no rows and this resolves to the schema-stable decline -- gamma NULL, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. Mirrors GET /api/v1/subnets/{netuid}/gamma.",
   },
   {
+    field: "subnet_emission_split",
+    operation: "subnet-emission-split",
+    returns: "SubnetEmissionSplit!",
+    description:
+      "One subnet's emission split as the chain declares it (MET-7365, runtime spec 497): the five fixed slots SubtensorModule.SubnetEmissionWeights holds -- burn, recycle, owner, validator, miner -- and the gamma shares SubnetGammaEmission routes to other subnets' gamma, as fractions and exact u64 parts, with its lifecycle stage, epoch consensus and lease origin and the validity-range history of both. The owner's cut is per subnet since v497: never assume 18%. With no capture observed, observed_block is null and there is no split. Mirrors GET /api/v1/subnets/{netuid}/emission-split.",
+  },
+  {
+    field: "chain_emission_splits",
+    operation: "chain-emission-splits",
+    returns: "ChainEmissionSplits!",
+    description:
+      "Every subnet's current emission split and lifecycle state (MET-7365, runtime spec 497), with how many left the runtime's default split and how many route emission to gamma. With no capture observed, the list is empty and every count null. Mirrors GET /api/v1/chain/emission-splits.",
+  },
+  {
     field: "subnet_services",
     operation: "subnet-services",
     returns: "SubnetServices!",

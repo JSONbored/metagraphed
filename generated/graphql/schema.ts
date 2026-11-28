@@ -276,6 +276,16 @@ type Query {
   subnet_gamma(netuid: Int!): SubnetGamma!
 
   """
+  One subnet's emission split as the chain declares it (MET-7365, runtime spec 497): the five fixed slots SubtensorModule.SubnetEmissionWeights holds -- burn, recycle, owner, validator, miner -- and the gamma shares SubnetGammaEmission routes to other subnets' gamma, as fractions and exact u64 parts, with its lifecycle stage, epoch consensus and lease origin and the validity-range history of both. The owner's cut is per subnet since v497: never assume 18%. With no capture observed, observed_block is null and there is no split. Mirrors GET /api/v1/subnets/{netuid}/emission-split.
+  """
+  subnet_emission_split(netuid: Int!): SubnetEmissionSplit!
+
+  """
+  Every subnet's current emission split and lifecycle state (MET-7365, runtime spec 497), with how many left the runtime's default split and how many route emission to gamma. With no capture observed, the list is empty and every count null. Mirrors GET /api/v1/chain/emission-splits.
+  """
+  chain_emission_splits: ChainEmissionSplits!
+
+  """
   One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until the engine's Services capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services.
   """
   subnet_services(netuid: Int!): SubnetServices!
@@ -2601,6 +2611,298 @@ type SubnetGammaState {
   """
   whitelisted: Boolean
   captured_at: String
+}
+
+"""
+One subnet's emission split and lifecycle state from chain storage (runtime spec 497). Mirrors GET /api/v1/subnets/{netuid}/emission-split.
+"""
+type SubnetEmissionSplit {
+  schema_version: Int!
+  netuid: Int!
+
+  """
+  The newest finalized block the capture read every subnet's split and state at. Null when no capture has been observed (store unbound, or the capture has not run): the response then carries no split at all.
+  """
+  observed_block: Int
+
+  """When that capture ran, as an ISO timestamp."""
+  observed_at: String
+
+  """
+  Whether the chain held this subnet at the observed block. False for a subnet dissolved since, or never registered; null with no observation.
+  """
+  exists: Boolean
+
+  """
+  The subnet's current lifecycle state, or null when it does not exist at the observed block.
+  """
+  lifecycle: SubnetLifecycleState
+
+  """
+  The subnet's current emission split, or null when it has none at the observed block.
+  """
+  split: EmissionSplit
+
+  """
+  Every split this subnet has had since the capture began, newest first, at most 100.
+  """
+  history: [EmissionSplit!]!
+
+  """
+  Every lifecycle state this subnet has had since the capture began, newest first, at most 100.
+  """
+  lifecycle_history: [SubnetLifecycleState!]!
+}
+
+"""One lifecycle state with its validity range."""
+type SubnetLifecycleState {
+  """The first capture block at which this state was observed."""
+  valid_from: Int!
+
+  """
+  The first capture block at which another state was observed (exclusive). Null while it is current.
+  """
+  valid_to: Int
+
+  """
+  SubnetState: \`registered\` (its start call has not completed), \`started\`, \`pending_dissolution\` (it has left the active set and waits for cleanup) or \`dissolving\` (on_idle is cleaning it up).
+  """
+  stage: String!
+
+  """
+  SubnetEpochConsensus: \`yuma\`, or \`null\` -- the largest-stake validator's weights and stake-proportional dividends.
+  """
+  epoch_consensus: String!
+
+  """
+  SubnetCreatedViaLease: the subnet was registered through a lease. Such a subnet may not set its owner slot below the default.
+  """
+  created_via_lease: Boolean!
+}
+
+"""
+One emission split with its validity range. The five slots and the gamma shares sum to exactly u64::MAX.
+"""
+type EmissionSplit {
+  """
+  Alpha destroyed outright (it still counts toward issuance) as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  burn: Float!
+
+  """
+  Alpha removed from issuance as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  recycle: Float!
+
+  """
+  The subnet owner's cut as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  owner: Float!
+
+  """
+  Validator dividends (root's alpha is carved out of this slot) as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  validator: Float!
+
+  """
+  Miner incentive (split across mechanisms by MechanismEmissionSplit) as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  miner: Float!
+  parts: EmissionSlotParts!
+
+  """
+  The first capture block at which this split was observed. The change happened between the previous capture and this block, about 75 blocks at the 15-minute cadence; the event log (SubnetEmissionWeightsSet) has the exact block.
+  """
+  valid_from: Int!
+
+  """
+  The first capture block at which another split was observed (exclusive). Null while it is the current split.
+  """
+  valid_to: Int
+
+  """The split's gamma shares, ascending by target netuid."""
+  gamma_shares: [GammaShare!]!
+
+  """
+  True when this is the runtime's default split for a subnet that never set one: owner 18% (InitialSubnetOwnerCut, 11796/65535), validators 41%, miners the rest, and no gamma shares.
+  """
+  is_default: Boolean!
+}
+
+"""The five fixed slots in exact u64 parts."""
+type EmissionSlotParts {
+  """
+  The burn slot in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text.
+  """
+  burn: String!
+
+  """
+  The recycle slot in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text.
+  """
+  recycle: String!
+
+  """
+  The owner slot in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text.
+  """
+  owner: String!
+
+  """
+  The validator slot in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text.
+  """
+  validator: String!
+
+  """
+  The miner slot in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text.
+  """
+  miner: String!
+}
+
+"""
+One gamma share (SubnetGammaEmission): a part of the subnet's alpha emission converted each epoch into the target subnet's gamma for the subnet owner hotkey. At most 10% each, at most sixteen.
+"""
+type GammaShare {
+  """The subnet whose gamma this share converts into each epoch."""
+  target_netuid: Int!
+
+  """
+  This gamma share as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  share: Float!
+
+  """
+  This gamma share in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text.
+  """
+  parts: String!
+}
+
+"""
+Every subnet's current emission split and lifecycle state from chain storage (runtime spec 497). Mirrors GET /api/v1/chain/emission-splits.
+"""
+type ChainEmissionSplits {
+  schema_version: Int!
+
+  """
+  The newest finalized block the capture read every subnet at. Null when no capture has been observed: the subnet list is then empty and every count null.
+  """
+  observed_block: Int
+
+  """When that capture ran, as an ISO timestamp."""
+  observed_at: String
+
+  """How many subnets the chain held at the observed block."""
+  subnet_count: Int
+
+  """
+  How many of them carry a split other than the runtime's default (owner 18%, validators 41%, miners the rest, no gamma shares).
+  """
+  custom_count: Int
+
+  """How many of them route any part of their emission to gamma."""
+  gamma_share_count: Int
+
+  """
+  The runtime's default split, for comparison: InitialSubnetOwnerCut (11796/65535) for the owner, half the rest for validators, and the remainder for miners.
+  """
+  default_split: EmissionSlots!
+
+  """Every subnet the chain held, ascending by netuid."""
+  subnets: [ChainEmissionSplitEntry!]!
+}
+
+"""
+The five fixed slots \`[burn, recycle, owner, validator, miner]\`, as fractions and exact parts.
+"""
+type EmissionSlots {
+  """
+  Alpha destroyed outright (it still counts toward issuance) as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  burn: Float!
+
+  """
+  Alpha removed from issuance as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  recycle: Float!
+
+  """
+  The subnet owner's cut as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  owner: Float!
+
+  """
+  Validator dividends (root's alpha is carved out of this slot) as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  validator: Float!
+
+  """
+  Miner incentive (split across mechanisms by MechanismEmissionSplit) as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  miner: Float!
+  parts: EmissionSlotParts!
+}
+
+"""
+One subnet's current split, with its current lifecycle state beside it.
+"""
+type ChainEmissionSplitEntry {
+  """
+  Alpha destroyed outright (it still counts toward issuance) as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  burn: Float!
+
+  """
+  Alpha removed from issuance as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  recycle: Float!
+
+  """
+  The subnet owner's cut as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  owner: Float!
+
+  """
+  Validator dividends (root's alpha is carved out of this slot) as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  validator: Float!
+
+  """
+  Miner incentive (split across mechanisms by MechanismEmissionSplit) as a fraction of the subnet's emission, rounded to nine places; \`parts\` holds the exact value.
+  """
+  miner: Float!
+  parts: EmissionSlotParts!
+
+  """
+  The first capture block at which this split was observed. The change happened between the previous capture and this block, about 75 blocks at the 15-minute cadence; the event log (SubnetEmissionWeightsSet) has the exact block.
+  """
+  valid_from: Int!
+
+  """
+  The first capture block at which another split was observed (exclusive). Null while it is the current split.
+  """
+  valid_to: Int
+
+  """The split's gamma shares, ascending by target netuid."""
+  gamma_shares: [GammaShare!]!
+
+  """
+  True when this is the runtime's default split for a subnet that never set one: owner 18% (InitialSubnetOwnerCut, 11796/65535), validators 41%, miners the rest, and no gamma shares.
+  """
+  is_default: Boolean!
+  netuid: Int!
+
+  """
+  SubnetState: \`registered\` (its start call has not completed), \`started\`, \`pending_dissolution\` (it has left the active set and waits for cleanup) or \`dissolving\` (on_idle is cleaning it up).
+  """
+  stage: String!
+
+  """
+  SubnetEpochConsensus: \`yuma\`, or \`null\` -- the largest-stake validator's weights and stake-proportional dividends.
+  """
+  epoch_consensus: String!
+
+  """
+  SubnetCreatedViaLease: the subnet was registered through a lease. Such a subnet may not set its owner slot below the default.
+  """
+  created_via_lease: Boolean!
 }
 
 """

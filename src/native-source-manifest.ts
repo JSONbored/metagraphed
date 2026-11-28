@@ -180,6 +180,13 @@ export const NATIVE_SOURCE_RELATIONS = Object.freeze({
     "chain_event_rows",
     "extrinsic_rows",
   ]),
+  // Decoded on-chain state over time (ADR 0029 phase 2, migration 0060):
+  // validity ranges a producer lane writes and the routes read.
+  state: Object.freeze([
+    "observations",
+    "subnet_emission_splits",
+    "subnet_lifecycle_states",
+  ]),
 });
 export type NativeSourceName = keyof typeof NATIVE_SOURCE_RELATIONS;
 /** A `_views` source is the read-only views of the schema its name begins with. */
@@ -255,6 +262,7 @@ export const NATIVE_SERVING_WRITES: Readonly<
   retained: Object.freeze([]),
   search: Object.freeze([]),
   chain: Object.freeze([]),
+  state: Object.freeze([]),
 });
 
 /** Relations with exactly ONE writing composition (infra#882 condition 1):
@@ -286,6 +294,7 @@ export function nativeSourceDefinitions(
     "realtime",
     "retained",
     "search",
+    "state",
   ];
   if (
     !owners ||

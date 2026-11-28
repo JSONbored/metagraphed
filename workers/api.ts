@@ -434,6 +434,8 @@ import {
   handleChainGamma,
   handleGammaDeposits,
   handleSubnetServices,
+  handleSubnetEmissionSplit,
+  handleChainEmissionSplits,
   handleSubnetSwap,
   handleSubnetAlphaAssets,
   handleSubnetLimitOrders,
@@ -740,6 +742,8 @@ import {
   captureChainGamma,
   type ChainGammaDb,
 } from "../src/chain-gamma-capture.ts";
+import { captureSubnetEmission } from "../src/subnet-emission-capture.ts";
+import { selectedSubnetEmissionStore } from "../src/subnet-emission-store.ts";
 import { runOperationalSurfacesSync } from "../src/operational-surfaces-sync.ts";
 import { runSchemaSnapshotsSync } from "../src/schema-snapshots-sync.ts";
 import { runSurfaceVerificationSync } from "../src/surface-verification-sync.ts";
@@ -880,6 +884,8 @@ import {
   CHAIN_GAMMA_PATH,
   GAMMA_DEPOSITS_PATH,
   SUBNET_SERVICES_PATH_PATTERN,
+  SUBNET_EMISSION_SPLIT_PATH_PATTERN,
+  CHAIN_EMISSION_SPLITS_PATH,
   SUBNET_SWAP_PATH_PATTERN,
   SUBNET_ALPHA_ASSETS_PATH_PATTERN,
   SUBNET_LIMIT_ORDERS_PATH_PATTERN,
@@ -3160,6 +3166,35 @@ export async function runChainGammaLane(
   });
 }
 
+/**
+ * Each subnet's emission split and lifecycle state (MET-7365): one finalized
+ * block's storage, written as validity ranges through the state store. Its
+ * own verdict, and it never rejects, even when its store binding is
+ * malformed, so a failure is this lane's alone.
+ */
+export async function runSubnetEmissionLane(env: Env): Promise<void> {
+  let ok = false;
+  let detail: string;
+  try {
+    const capture = await captureSubnetEmission(env, {
+      store: selectedSubnetEmissionStore(env),
+    });
+    ok = capture.ok;
+    detail =
+      capture.reason ??
+      `${capture.subnets} subnets, ${capture.changed} ranges changed`;
+  } catch (error) {
+    detail = `store_unavailable: ${String(error)}`;
+  }
+  await recordLaneVerdict(laneHealthStore(env), {
+    lane: "subnet-emission",
+    verdict: ok ? "ok" : "stale",
+    age_ms: null,
+    detail,
+    checked_at: Date.now(),
+  });
+}
+
 async function dispatchScheduled(
   controller: AppScheduledEvent,
   env: Env,
@@ -3403,6 +3438,9 @@ async function dispatchScheduled(
         // same tick, in the background like the watchdog: the burn result is
         // what the cron reports.
         ctx.waitUntil(runChainGammaLane(env, ctx));
+        // Each subnet's emission split and lifecycle state (MET-7365), the
+        // same way.
+        ctx.waitUntil(runSubnetEmissionLane(env));
         return result;
       } finally {
         store.close();
@@ -7243,6 +7281,22 @@ async function dispatchRequest(
       // native deposits store seam.
       return handleGammaDeposits(request, env);
     }
+    const emissionSplitMatch = SUBNET_EMISSION_SPLIT_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (emissionSplitMatch) {
+      // MET-7365: one subnet's emission split and lifecycle state, through
+      // the native state store seam.
+      return handleSubnetEmissionSplit(
+        request,
+        env,
+        Number(emissionSplitMatch[1]),
+      );
+    }
+    if (resolved.url.pathname === CHAIN_EMISSION_SPLITS_PATH) {
+      // MET-7365: every subnet's emission split, through the same seam.
+      return handleChainEmissionSplits(request, env);
+    }
     const servicesMatch = SUBNET_SERVICES_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -8333,6 +8387,10 @@ export function isMainnetOnlyApiPath(pathname: string) {
     pathname === CHAIN_GAMMA_PATH ||
     pathname === GAMMA_DEPOSITS_PATH ||
     SUBNET_SERVICES_PATH_PATTERN.test(pathname) ||
+    // MET-7365: state.subnet_emission_splits / state.subnet_lifecycle_states
+    // carry no network dimension.
+    SUBNET_EMISSION_SPLIT_PATH_PATTERN.test(pathname) ||
+    pathname === CHAIN_EMISSION_SPLITS_PATH ||
     // #13165: app.swap_balancer / app.alpha_assets carry no network
     // dimension.
     SUBNET_SWAP_PATH_PATTERN.test(pathname) ||

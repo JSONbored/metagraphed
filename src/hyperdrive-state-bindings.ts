@@ -105,6 +105,7 @@ function hyperdriveStateEntry(connectionString: string): HyperdriveStateEntry {
     realtime: owner,
     retained: owner,
     search: owner,
+    state: owner,
   });
   const cleanups: HyperdriveStateEntry["cleanups"] = [];
   const runtime: PgStoreRuntime = createPgStoreRuntime({

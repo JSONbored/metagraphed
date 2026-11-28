@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { EmissionSplitPoint, SubnetEconomics } from "@/lib/metagraphed/types";
 import {
+  declaredSplitRows,
   activityKindRail,
   categoryTotals,
   changeOver,
@@ -317,5 +318,33 @@ describe("withoutSubnetPrefix", () => {
   it("leaves a label that does not start with the name, and needs a name to act", () => {
     expect(withoutSubnetPrefix("Grafana dashboard", "Apex")).toBe("Grafana dashboard");
     expect(withoutSubnetPrefix("Apex docs")).toBe("Apex docs");
+  });
+});
+
+describe("declaredSplitRows", () => {
+  const split = {
+    burn: 0,
+    recycle: 0,
+    owner: 0.18,
+    validator: 0.36,
+    miner: 0.36,
+    gamma_shares: [{ target_netuid: 51, share: 0.1 }],
+    is_default: false,
+    valid_from: 9_602_145,
+  };
+
+  it("is one row a recipient the subnet uses, largest first, gamma named by its target", () => {
+    expect(declaredSplitRows(split).map((row) => [row.label, row.share])).toEqual([
+      ["Validators", 0.36],
+      ["Miners", 0.36],
+      ["Owner", 0.18],
+      ["Gamma, SN51", 0.1],
+    ]);
+  });
+
+  it("folds burn and recycle into one row, and draws no split it was not given", () => {
+    const burning = { ...split, burn: 0.11, recycle: 0.01, gamma_shares: [] };
+    expect(declaredSplitRows(burning).find((row) => row.key === "burn")?.share).toBeCloseTo(0.12);
+    expect(declaredSplitRows(null)).toEqual([]);
   });
 });

@@ -41,6 +41,7 @@ const owners = {
   realtime: url.username,
   retained: url.username,
   search: url.username,
+  state: url.username,
 };
 const sources = new Map<string, NativeSource>(
   nativeSourceDefinitions(owners).map((definition) => [

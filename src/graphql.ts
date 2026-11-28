@@ -65,6 +65,12 @@ import {
 import { buildSubnetGamma, loadSubnetGamma } from "./subnet-gamma.ts";
 import { buildGammaDeposits, loadGammaDeposits } from "./gamma-deposits.ts";
 import { buildSubnetServices, loadSubnetServices } from "./subnet-services.ts";
+import {
+  buildChainEmissionSplits,
+  buildSubnetEmissionSplit,
+  loadChainEmissionSplits,
+  loadSubnetEmissionSplit,
+} from "./subnet-emission-split.ts";
 import { buildSubnetSwap, loadSubnetSwap } from "./subnet-swap.ts";
 import {
   buildSubnetAlphaAssets,
@@ -3778,6 +3784,25 @@ const rootValue = {
       await loadSubnetServices(context.env, netuid),
       netuid,
     );
+  },
+
+  async subnet_emission_split(
+    { netuid }: { netuid: number },
+    context: GqlContext,
+  ) {
+    assertNetuidArgument(netuid);
+    // MET-7365: same loadSubnetEmissionSplit -> buildSubnetEmissionSplit
+    // decline contract the REST handler and the MCP tool share -- an unbound
+    // or unfilled state store is a schema-stable card with observed_block
+    // null, never a GraphQL error.
+    return buildSubnetEmissionSplit(
+      await loadSubnetEmissionSplit(context.env, netuid),
+      netuid,
+    );
+  },
+
+  async chain_emission_splits(_args: unknown, context: GqlContext) {
+    return buildChainEmissionSplits(await loadChainEmissionSplits(context.env));
   },
 
   async subnet_swap({ netuid }: { netuid: number }, context: GqlContext) {

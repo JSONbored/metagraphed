@@ -302,6 +302,13 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   // #13164: per-netuid service registry -- a subnet carries a handful of
   // service bindings, not a series.
   "/api/v1/subnets/{netuid}/services",
+  // MET-7365: per-netuid emission split -- the current split and its validity
+  // ranges, bounded in the store (SUBNET_EMISSION_HISTORY_LIMIT), not by a
+  // query parameter a caller could widen.
+  "/api/v1/subnets/{netuid}/emission-split",
+  // MET-7365: every subnet's current split -- one row per subnet the chain
+  // holds, a set the chain itself bounds.
+  "/api/v1/chain/emission-splits",
   // #13165: per-netuid balancer Swap card -- one current state, not a series.
   "/api/v1/subnets/{netuid}/swap",
   // #13165: per-netuid AlphaAssets card -- one current state, not a series.

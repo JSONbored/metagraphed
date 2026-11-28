@@ -3,7 +3,7 @@ title: Subnets
 description: Every Subnets endpoint in the metagraphed API, with its method and path.
 ---
 
-78 endpoints.
+79 endpoints.
 
 - [Deregistration Ranking](/docs/api-reference/subnets/deregistration-ranking) — `GET /api/v1/chain/deregistration-ranking`\
   Fetch the order in which the chain would deregister subnets to make room for a new registration (#10285) — 'how close is this subnet to being pruned', answered with the pallet's own rule rather than a proxy for it.
@@ -51,6 +51,8 @@ description: Every Subnets endpoint in the metagraphed API, with its method and 
   Network-scoped form of /api/v1/subnets/\{netuid} — prefix the route with a network to choose which chain answers it.
 - [Subnet Emission Pipeline History](/docs/api-reference/subnets/subnet-emission-pipeline-history) — `GET /api/v1/subnets/{netuid}/emission-pipeline/history`\
   Fetch one subnet's emission-pipeline series.
+- [Subnet Emission Split](/docs/api-reference/subnets/subnet-emission-split) — `GET /api/v1/subnets/{netuid}/emission-split`\
+  Fetch one subnet's emission split as the chain declares it (MET-7365, runtime spec 497): where its emission goes across the five fixed slots SubtensorModule.SubnetEmissionWeights holds — burn, recycle, owner, validator and miner — and the gamma shares SubnetGammaEmission routes to other subnets' gamma, each as a fraction of the subnet's emission and in the runtime's exact u64 parts; with its lifecycle stage (SubnetState: registered, started, pending_dissolution, dissolving), its epoch consensus (yuma or null) and whether it was created through a lease.
 - [Subnet Emission Split History](/docs/api-reference/subnets/subnet-emission-split-history) — `GET /api/v1/subnets/{netuid}/emission-split/history`\
   Fetch the per-day split of one subnet's emission by recipient class over a 7d/30d/90d window: how much went to the owner, to validators, and to miners, one point per day (computed live from the neuron_daily rollup).
 - [Subnet Event Summary](/docs/api-reference/subnets/subnet-event-summary) — `GET /api/v1/subnets/{netuid}/event-summary`\

@@ -1572,6 +1572,20 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "subnet-emission-split",
+    "/metagraph/subnets/{netuid}/emission-split.json",
+    "One subnet's emission split from chain storage (MET-7365, runtime spec 497) — the five fixed slots SubtensorModule.SubnetEmissionWeights holds (burn, recycle, owner, validator, miner) and the gamma shares SubnetGammaEmission holds, as fractions and as the runtime's exact u64 parts — with its lifecycle state (SubnetState, SubnetEpochConsensus, SubnetCreatedViaLease) and the validity-range history of both, newest first. Served live from the state store at /api/v1/subnets/{netuid}/emission-split (no static file). With no capture observed, observed_block is null and there is no split: the runtime's default is never served in its place.",
+    "SubnetEmissionSplitArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "chain-emission-splits",
+    "/metagraph/chain/emission-splits.json",
+    "Every subnet's current emission split and lifecycle state from chain storage (MET-7365, runtime spec 497), with how many carry a split other than the runtime's default and how many route emission to gamma. Served live from the state store at /api/v1/chain/emission-splits (no static file). With no capture observed, the list is empty and every count null.",
+    "ChainEmissionSplitsArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "chain-gamma",
     "/metagraph/chain/gamma.json",
     "The chain-wide Gamma state (#13164) — the global GammaEnabled switch beside every subnet's newest captured Gamma state, ordered by netuid and store-capped — served live from the Gamma store at /api/v1/chain/gamma (no static file). enabled: null with an empty subnet list and a null subnet_count until the engine's Gamma capture lands: an unfilled store is never served as a measured Gamma-less chain.",
@@ -3645,6 +3659,28 @@ export const API_ROUTES = [
     "/api/v1/chain/baskets",
     "/metagraph/chain/baskets.json",
     "Fetch every validator's Root basket fund at the newest completed capture (#13163): shares, spot/realizable NAV in rao, deposit/redemption watermarks and Q64.64 pricing marks as canonical decimal strings (never rounded through a float), largest spot NAV first, with the capture's finalized block, runtime era and acceptance stamp. Served live from the Root basket capture store; with no store bound or no completed capture yet the response is the schema-stable decline — capture null, fund_count null, baskets empty. With a capture present, fund_count 0 is a real measurement: a completed capture is a verified complete enumeration of every fund. Per-fund holdings and target allocations live on /api/v1/validators/{hotkey}/basket.",
+    "short",
+    ["chain", "analytics"],
+    [],
+    [],
+  ),
+  route(
+    "subnet-emission-split",
+    "GET",
+    "/api/v1/subnets/{netuid}/emission-split",
+    "/metagraph/subnets/{netuid}/emission-split.json",
+    "Fetch one subnet's emission split as the chain declares it (MET-7365, runtime spec 497): where its emission goes across the five fixed slots SubtensorModule.SubnetEmissionWeights holds — burn, recycle, owner, validator and miner — and the gamma shares SubnetGammaEmission routes to other subnets' gamma, each as a fraction of the subnet's emission and in the runtime's exact u64 parts; with its lifecycle stage (SubnetState: registered, started, pending_dissolution, dissolving), its epoch consensus (yuma or null) and whether it was created through a lease. `history` and `lifecycle_history` are the validity ranges since the capture began, newest first. The owner's cut is per subnet since v497, from 0% to 33%: never assume 18%. With no capture observed, observed_block is null and there is no split.",
+    "short",
+    ["subnets", "analytics"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "chain-emission-splits",
+    "GET",
+    "/api/v1/chain/emission-splits",
+    "/metagraph/chain/emission-splits.json",
+    "Fetch every subnet's current emission split and lifecycle state (MET-7365, runtime spec 497) in one response: each subnet's five fixed slots (burn, recycle, owner, validator, miner) and gamma shares, as fractions and exact u64 parts, beside its lifecycle stage, epoch consensus and lease origin, with how many subnets left the runtime's default split (owner 18%, validators 41%, miners the rest) and how many route emission to gamma. With no capture observed, the list is empty and every count null.",
     "short",
     ["chain", "analytics"],
     [],
@@ -5833,6 +5869,10 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   "/api/v1/chain/gamma",
   "/api/v1/gamma/deposits",
   "/api/v1/subnets/{netuid}/services",
+  // MET-7365: state.subnet_emission_splits / state.subnet_lifecycle_states
+  // carry no network dimension.
+  "/api/v1/subnets/{netuid}/emission-split",
+  "/api/v1/chain/emission-splits",
   // #13165: app.swap_balancer and app.alpha_assets have no network column --
   // a testnet-addressed request would be served MAINNET balancer state the
   // day the captures fill.
@@ -6746,6 +6786,9 @@ export const OPERATION_SUMMARIES: Record<string, string> = {
   "subnet-swap": "Fetch one subnet's balancer Swap state",
   "subnet-alpha-assets": "Fetch one subnet's alpha-asset accounting",
   "subnet-limit-orders": "Fetch one subnet's limit-order book",
+  "subnet-emission-split":
+    "Fetch one subnet's emission split and lifecycle state",
+  "chain-emission-splits": "Fetch every subnet's emission split",
   "chain-gamma": "Fetch the chain-wide Gamma state",
   "gamma-deposits": "Fetch the chain's Gamma deposits",
   "account-locks": "Fetch one account's conviction-lock state",

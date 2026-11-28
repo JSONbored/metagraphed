@@ -273,6 +273,12 @@ export const MCP_EXPOSURES: Readonly<Record<string, McpExposure>> = {
   get_subnet_services: {
     operation: "subnet-services",
   },
+  get_subnet_emission_split: {
+    operation: "subnet-emission-split",
+  },
+  get_chain_emission_splits: {
+    operation: "chain-emission-splits",
+  },
   get_subnet_swap: {
     operation: "subnet-swap",
   },

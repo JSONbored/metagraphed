@@ -177,6 +177,10 @@ export const PROSE_ONLY_ROUTES: readonly string[] = [
   // enforces.
   "/api/v1/accounts/{ss58}/proxies",
   "/api/v1/accounts/{ss58}/multisigs",
+  // Exposed when routePattern stopped matching a route inside a longer path:
+  // each was only ever the prefix of another route the UI renders.
+  "/api/v1/search",
+  "/api/v1/subnets/{netuid}/burn",
 ];
 
 /** Feed routes: consumed by feed readers, not by our UI. */
@@ -200,7 +204,16 @@ const FOOTER_PATHS = /paths=\{\[[\s\S]*?\]\}/g;
 const escapeLiteral = (segment: string): string =>
   segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-/** A path with `{token}` segments turned into a one-segment matcher. */
+/**
+ * A path with `{token}` segments turned into a one-segment matcher, which
+ * matches only where a path ENDS: at a quote, a backtick, a query string, a
+ * fragment, whitespace or the end of the text. Unanchored, a route was cleared
+ * by any longer path it is a prefix of -- measured 2026-11-28, that held up
+ * `/api/v1/search` (by `/api/v1/search/semantic`),
+ * `/api/v1/subnets/{netuid}/burn` (by `.../burn/history`) and
+ * `/api/v1/subnets/{netuid}/emission-split` (by `.../emission-split-history`),
+ * and nothing else.
+ */
 export function routePattern(route: string): RegExp {
   return new RegExp(
     route
@@ -208,7 +221,7 @@ export function routePattern(route: string): RegExp {
       .map((segment) =>
         /^\{.+\}$/.test(segment) ? "[^/`'\"\\s]+" : escapeLiteral(segment),
       )
-      .join("/"),
+      .join("/") + "(?=[`'\"?#\\s]|$)",
   );
 }
 
