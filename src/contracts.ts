@@ -1371,7 +1371,7 @@ export const PUBLIC_ARTIFACTS = [
   artifact(
     "subnet-services",
     "/metagraph/subnets/{netuid}/services.json",
-    "One subnet's on-chain service-URL registry (#13164) — each hotkey's published service URL (SubtensorModule.Services) with the block it was set at and its capture stamp, ordered by hotkey — served live from the services store at /api/v1/subnets/{netuid}/services (no static file). Empty with a null service_count until a Services capture is observed: an empty registry is not a measured service-less subnet, so a zero count is never published.",
+    "One subnet's on-chain service-URL registry (#13164) — each hotkey's published service URL (SubtensorModule.Services) with the block it was set at and its capture stamp, ordered by hotkey — served live from the services store at /api/v1/subnets/{netuid}/services (no static file). A subnet the last whole read found no binding for publishes service_count 0 at that read's stamp; with no whole read observed, the card is empty with a null service_count, never 0 from absence.",
     "SubnetServicesArtifact",
     COMPUTED_LIVE,
   ),
@@ -3353,7 +3353,7 @@ export const API_ROUTES = [
     "GET",
     "/api/v1/subnets/{netuid}/services",
     "/metagraph/subnets/{netuid}/services.json",
-    "Fetch one subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Served live from the services store; until a Services capture is observed the registry holds no rows and the response is the schema-stable decline — an empty services array with service_count null, never 0, because an empty registry is not a measured service-less subnet.",
+    "Fetch one subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Served live from the services store. A subnet the last whole read found no binding for is a measured service_count 0; with no whole read observed the response is the schema-stable decline — an empty services array with service_count null, never 0 from absence.",
     "short",
     ["subnets"],
     [],

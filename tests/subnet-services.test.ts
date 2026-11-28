@@ -30,12 +30,12 @@ function serviceRow(overrides: Row = {}): Row {
 
 describe("buildSubnetServices", () => {
   test("null rows and no rows are both the decline: empty, with a NULL count", () => {
-    for (const rows of [null, []]) {
-      assert.deepEqual(buildSubnetServices(rows, 64), {
+    for (const read of [null, { rows: [], observedAt: null }]) {
+      assert.deepEqual(buildSubnetServices(read, 64), {
         schema_version: 1,
         netuid: 64,
-        // Never 0: an empty registry is "the service capture has not run",
-        // not a measured service-less subnet.
+        // Never 0 from absence: with no whole read observed, an empty
+        // registry is "not read", not a measured service-less subnet.
         service_count: null,
         captured_at: null,
         services: [],
@@ -43,12 +43,40 @@ describe("buildSubnetServices", () => {
     }
   });
 
+  test("an observed whole read makes an empty subnet a measured 0", () => {
+    const observed = String(CAPTURED_MS);
+    assert.deepEqual(
+      buildSubnetServices({ rows: [], observedAt: observed }, 3),
+      {
+        schema_version: 1,
+        netuid: 3,
+        service_count: 0,
+        captured_at: CAPTURED_ISO,
+        services: [],
+      },
+    );
+    const card = buildSubnetServices(
+      { rows: [serviceRow()], observedAt: observed },
+      64,
+    );
+    assert.equal(card.service_count, 1);
+    assert.equal(card.captured_at, CAPTURED_ISO);
+    // A stamp that does not parse is no observation: the decline holds.
+    assert.equal(
+      buildSubnetServices({ rows: [], observedAt: "soon" }, 3).service_count,
+      null,
+    );
+  });
+
   test("formats rows and stamps the newest capture", () => {
     const card = buildSubnetServices(
-      [
-        serviceRow({ captured_at: CAPTURED_MS + 1000 }),
-        serviceRow({ hotkey: "5Hotkey_two", set_at: null }),
-      ],
+      {
+        rows: [
+          serviceRow({ captured_at: CAPTURED_MS + 1000 }),
+          serviceRow({ hotkey: "5Hotkey_two", set_at: null }),
+        ],
+        observedAt: null,
+      },
       64,
     );
     assert.equal(card.service_count, 2);
@@ -71,23 +99,30 @@ describe("buildSubnetServices", () => {
 
   test("a row missing its hotkey or URL is dropped; soft cells degrade", () => {
     const card = buildSubnetServices(
-      [
-        serviceRow({ hotkey: "" }),
-        serviceRow({ hotkey: 7 }),
-        serviceRow({ service_url: "" }),
-        serviceRow({ service_url: null }),
-        serviceRow({
-          hotkey: "5Hotkey_soft",
-          set_at: "not-a-block",
-          captured_at: null,
-        }),
-        serviceRow({ hotkey: "5Hotkey_blank", set_at: "", captured_at: "abc" }),
-        // Beyond ECMAScript's maximum time value: Invalid Date, so no stamp.
-        serviceRow({
-          hotkey: "5Hotkey_far",
-          captured_at: 9_000_000_000_000_000,
-        }),
-      ],
+      {
+        observedAt: null,
+        rows: [
+          serviceRow({ hotkey: "" }),
+          serviceRow({ hotkey: 7 }),
+          serviceRow({ service_url: "" }),
+          serviceRow({ service_url: null }),
+          serviceRow({
+            hotkey: "5Hotkey_soft",
+            set_at: "not-a-block",
+            captured_at: null,
+          }),
+          serviceRow({
+            hotkey: "5Hotkey_blank",
+            set_at: "",
+            captured_at: "abc",
+          }),
+          // Beyond ECMAScript's maximum time value: Invalid Date, so no stamp.
+          serviceRow({
+            hotkey: "5Hotkey_far",
+            captured_at: 9_000_000_000_000_000,
+          }),
+        ],
+      },
       7,
     );
     assert.equal(card.service_count, 3);
@@ -115,7 +150,10 @@ describe("buildSubnetServices", () => {
   });
 
   test("a string set_at block crosses as its integer", () => {
-    const card = buildSubnetServices([serviceRow({ set_at: "9000000" })], 7);
+    const card = buildSubnetServices(
+      { rows: [serviceRow({ set_at: "9000000" })], observedAt: null },
+      7,
+    );
     assert.equal((card.services as Row[])[0].set_at, 9_000_000);
   });
 });
@@ -135,9 +173,23 @@ describe("selectedSubnetServicesStore / loadSubnetServices", () => {
         ],
       },
     };
-    assert.deepEqual(await loadSubnetServices(env, 3), [
-      serviceRow({ hotkey: "5Hotkey_3" }),
-    ]);
+    assert.deepEqual(await loadSubnetServices(env, 3), {
+      rows: [serviceRow({ hotkey: "5Hotkey_3" })],
+      observedAt: null,
+    });
+  });
+
+  test("a store that stamps its whole reads hands the stamp in", async () => {
+    const env = {
+      SUBNET_SERVICES_STORE: {
+        rows: async () => [],
+        observedAt: async () => String(CAPTURED_MS),
+      },
+    };
+    assert.deepEqual(await loadSubnetServices(env, 3), {
+      rows: [],
+      observedAt: String(CAPTURED_MS),
+    });
   });
 
   test("a failing store read declines rather than erroring the route", async () => {
@@ -177,6 +229,38 @@ describe("createPgSubnetServicesStore", () => {
     });
     return { calls, store };
   }
+
+  test("the newest stamp in the table is the last whole read", async () => {
+    const { calls, store } = fixture();
+    await store.observedAt!();
+    assert.equal(calls.length, 1);
+    assert.match(
+      calls[0].sql,
+      /max\(captured_at\)::text AS captured_at FROM app\.subnet_services$/,
+    );
+    const stamped = createPgSubnetServicesStore({
+      read: {
+        async query<T>() {
+          return [{ captured_at: String(CAPTURED_MS) }] as T[];
+        },
+        async first() {
+          throw new Error("unexpected first");
+        },
+      },
+    });
+    assert.equal(await stamped.observedAt!(), String(CAPTURED_MS));
+    const empty = createPgSubnetServicesStore({
+      read: {
+        async query<T>() {
+          return [] as T[];
+        },
+        async first() {
+          throw new Error("unexpected first");
+        },
+      },
+    });
+    assert.equal(await empty.observedAt!(), null);
+  });
 
   test("reads one subnet's services ordered by hotkey", async () => {
     const { calls, store } = fixture();

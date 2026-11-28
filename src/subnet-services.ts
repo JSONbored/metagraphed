@@ -3,12 +3,13 @@
 // cannot drift. Pure + exported for tests; callers resolve the store (the
 // native seam in subnet-services-store.ts) and hand the rows in.
 //
-// THE DECLINE IS NULL, NEVER ZERO. The registry's writers -- the engine's
-// SubtensorModule.Services decode (events ServiceSet / ServiceRemoved) --
-// land separately (#13164 defers them), so an empty result is not "this
-// subnet publishes no service URLs": it is "the service capture has not
-// run", and `service_count: null` with an empty `services` is how the
-// artifact says so.
+// NULL IS THE DECLINE; ZERO IS A MEASUREMENT. The burn tick's Gamma capture
+// (src/chain-gamma-capture.ts) reads SubtensorModule.Services whole and stamps
+// every row, so once a whole read is observed, a subnet it found no binding
+// for publishes `service_count: 0` at that read's stamp. With no read observed
+// (no store, an empty registry, a store without the stamp), an empty result is
+// not "this subnet publishes no service URLs" but "not read", and
+// `service_count: null` with an empty `services` is how the artifact says so.
 import { selectedSubnetServicesStore } from "./subnet-services-store.ts";
 
 type Row = Record<string, unknown>;
@@ -43,13 +44,28 @@ function formatService(row: Row): Row | null {
   };
 }
 
+/** One subnet's rows, and when the registry was last read whole. */
+export interface SubnetServicesRead {
+  rows: readonly Row[];
+  observedAt: string | null;
+}
+
 export function buildSubnetServices(
-  rows: readonly Row[] | null,
+  read: SubnetServicesRead | null,
   netuid: unknown,
 ): Row {
-  const services = (rows ?? [])
+  const services = (read?.rows ?? [])
     .map((row) => formatService(row))
     .filter((row): row is Row => row !== null);
+  const observed = toIso(read?.observedAt);
+  if (observed !== null)
+    return {
+      schema_version: 1,
+      netuid,
+      service_count: services.length,
+      captured_at: observed,
+      services,
+    };
   // Newest stamp across the rows: the registry is written per hotkey, so one
   // capture stamp per artifact is the honest summary of when it was read.
   let newest: string | null = null;
@@ -77,11 +93,15 @@ export function buildSubnetServices(
 export async function loadSubnetServices(
   env: unknown,
   netuid: number,
-): Promise<Row[] | null> {
+): Promise<SubnetServicesRead | null> {
   const store = selectedSubnetServicesStore(env);
   if (!store) return null;
   try {
-    return await store.rows(netuid);
+    const [rows, observedAt] = await Promise.all([
+      store.rows(netuid),
+      store.observedAt ? store.observedAt() : null,
+    ]);
+    return { rows, observedAt };
   } catch (error) {
     console.error("subnet services store read failed:", error);
     return null;

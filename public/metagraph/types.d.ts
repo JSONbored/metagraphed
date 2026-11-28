@@ -5131,7 +5131,7 @@ export interface paths {
         };
         /**
          * Fetch one subnet's on-chain service URLs
-         * @description Fetch one subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Served live from the services store; until a Services capture is observed the registry holds no rows and the response is the schema-stable decline — an empty services array with service_count null, never 0, because an empty registry is not a measured service-less subnet.
+         * @description Fetch one subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Served live from the services store. A subnet the last whole read found no binding for is a measured service_count 0; with no whole read observed the response is the schema-stable decline — an empty services array with service_count null, never 0 from absence.
          */
         get: operations["subnetServices"];
         put?: never;
@@ -14355,7 +14355,7 @@ export interface components {
             captured_at: string | null;
             netuid: number;
             schema_version: number;
-            /** @description How many service bindings this subnet carries -- `services.length`. NULL when the registry holds no rows for this subnet (store unbound, or the service capture has not run): a zero count is never a measurement and is not published. */
+            /** @description How many service bindings this subnet carries -- `services.length`. 0 when the Gamma capture read the registry whole and found this subnet none; NULL when no whole read is observed (store unbound, or the registry empty), never 0 from absence. */
             service_count: number | null;
             /** @description The subnet's service bindings, ordered by hotkey. */
             services: components["schemas"]["SubnetService"][];

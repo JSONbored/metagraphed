@@ -32,5 +32,13 @@ export function createPgSubnetServicesStore(
         [netuid],
       );
     },
+    async observedAt() {
+      // A whole capture upserts every row with its own stamp and deletes the
+      // rest, so the newest stamp in the table is the last whole read.
+      const [row] = await runtime.read.query<{ captured_at: string | null }>(
+        "SELECT max(captured_at)::text AS captured_at FROM app.subnet_services",
+      );
+      return row?.captured_at ?? null;
+    },
   };
 }

@@ -3531,11 +3531,11 @@ export async function handleGammaDeposits(request: Request, env: Env) {
 }
 
 // GET /api/v1/subnets/{netuid}/services (#13164): one subnet's on-chain
-// service-URL registry, read through the native services store seam. No
-// store bound or a failed read is the same schema-stable decline: an empty
-// `services` with `service_count: null`, never a zero count (an empty
-// registry is not a measured service-less subnet), marked as a tier
-// fallback.
+// service-URL registry, read through the native services store seam. A
+// subnet with no binding at an observed whole read is a measured 0. No store
+// bound or a failed read is the schema-stable decline: an empty `services`
+// with `service_count: null`, never a zero count from absence, marked as a
+// tier fallback.
 export async function handleSubnetServices(
   request: Request,
   env: Env,

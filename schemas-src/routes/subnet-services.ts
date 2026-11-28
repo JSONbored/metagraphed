@@ -34,18 +34,18 @@ export const SubnetServicesArtifactSchema = z
     schema_version: z.int(),
     netuid: z.int().min(0),
     /**
-     * NULL IS THE DECLINE, and 0 is deliberately not expressible. An empty
-     * registry is never a measured "no services" -- it is what an unbound or
-     * unfilled store looks like (the engine dependency #13164 defers), and
-     * publishing it as a count would be the confident-zero failure the
-     * sibling subnet surfaces' own comments are about.
+     * NULL IS THE DECLINE; ZERO IS A MEASUREMENT. A 0 is published only when
+     * a whole read of the registry is observed and found this subnet none.
+     * Without one, an empty list is what an unbound or unfilled store looks
+     * like, and a count would be the confident-zero failure the sibling
+     * subnet surfaces' own comments are about.
      */
     service_count: z
       .int()
-      .min(1)
+      .min(0)
       .nullable()
       .describe(
-        "How many service bindings this subnet carries -- `services.length`. NULL when the registry holds no rows for this subnet (store unbound, or the service capture has not run): a zero count is never a measurement and is not published.",
+        "How many service bindings this subnet carries -- `services.length`. 0 when the Gamma capture read the registry whole and found this subnet none; NULL when no whole read is observed (store unbound, or the registry empty), never 0 from absence.",
       ),
     captured_at: z.string().nullable(),
     services: z

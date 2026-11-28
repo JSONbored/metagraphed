@@ -485,7 +485,7 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
     operation: "subnet-services",
     returns: "SubnetServices!",
     description:
-      "One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until a Services capture is observed, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services.",
+      "One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. A subnet the last whole read found no binding for is a measured service_count 0; with no whole read observed this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0 from absence. Mirrors GET /api/v1/subnets/{netuid}/services.",
   },
   {
     field: "subnet_swap",
