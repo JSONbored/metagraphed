@@ -507,6 +507,7 @@ describe(
         realtime: url.username,
         retained: url.username,
         search: url.username,
+        state: url.username,
       };
       const roles: Partial<Record<NativeProcessProfile, string>> = {};
       for (const profile of ["serving", "producer"] as const) {

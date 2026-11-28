@@ -135,6 +135,12 @@ import {
   buildSubnetServices,
   loadSubnetServices,
 } from "../../src/subnet-services.ts";
+import {
+  buildChainEmissionSplits,
+  buildSubnetEmissionSplit,
+  loadChainEmissionSplits,
+  loadSubnetEmissionSplit,
+} from "../../src/subnet-emission-split.ts";
 import { buildSubnetSwap, loadSubnetSwap } from "../../src/subnet-swap.ts";
 import {
   buildSubnetAlphaAssets,
@@ -3542,6 +3548,58 @@ export async function handleSubnetServices(
     "short",
   );
   return rows === null ? markDataApiTierFallbackResponse(response) : response;
+}
+
+// GET /api/v1/subnets/{netuid}/emission-split (MET-7365): one subnet's
+// emission split and lifecycle state, read through the native state store
+// seam. No store bound or a failed read is the same schema-stable decline:
+// `observed_block: null` and no split -- the runtime's default is never
+// served in a store's absence -- marked as a tier fallback.
+export async function handleSubnetEmissionSplit(
+  request: Request,
+  env: Env,
+  netuid: number,
+) {
+  const history = await loadSubnetEmissionSplit(env, netuid);
+  const data = buildSubnetEmissionSplit(history, netuid);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        `/metagraph/subnets/${netuid}/emission-split.json`,
+        data.observed_at as string | null,
+      ),
+    },
+    "short",
+  );
+  return history === null
+    ? markDataApiTierFallbackResponse(response)
+    : response;
+}
+
+// GET /api/v1/chain/emission-splits (MET-7365): every subnet's current
+// emission split and lifecycle state, through the same seam and the same
+// decline.
+export async function handleChainEmissionSplits(request: Request, env: Env) {
+  const current = await loadChainEmissionSplits(env);
+  const data = buildChainEmissionSplits(current);
+  const response = await envelopeResponse(
+    request,
+    {
+      data,
+      meta: await metagraphMeta(
+        env,
+        "/metagraph/chain/emission-splits.json",
+        data.observed_at as string | null,
+      ),
+    },
+    "short",
+  );
+  return current === null
+    ? markDataApiTierFallbackResponse(response)
+    : response;
 }
 
 // GET /api/v1/subnets/{netuid}/swap (#13165): one subnet's current

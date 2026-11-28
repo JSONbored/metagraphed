@@ -7,9 +7,13 @@ import {
   StackedColumns,
   type RankGridItem,
 } from "@jsonbored/ui-kit";
-import { subnetEmissionSplitHistoryQuery } from "@/lib/metagraphed/queries";
+import {
+  subnetEmissionSplitHistoryQuery,
+  subnetEmissionSplitQuery,
+} from "@/lib/metagraphed/queries";
 import { taoCompact } from "@/components/metagraphed/neuron-format";
 import {
+  declaredSplitRows,
   EMISSION_SERIES,
   emissionColumns,
   emissionTotals,
@@ -17,7 +21,7 @@ import {
   windowDays,
   type Window,
 } from "./subnet-detail-logic";
-import { formatPct } from "@/lib/metagraphed/format";
+import { formatNumber, formatPct } from "@/lib/metagraphed/format";
 import { useHydrated } from "@/hooks/use-hydrated";
 import { ErrorState } from "@/components/metagraphed/states";
 
@@ -41,6 +45,14 @@ export function EmissionSplitSection({
     ...subnetEmissionSplitHistoryQuery(netuid, window),
     retry: 0,
   });
+  // The split the chain declares (MET-7365), beside the split it was paid.
+  const declared = useQuery({ ...subnetEmissionSplitQuery(netuid), retry: 0 });
+  const declaredSplit = declared.data?.data.split ?? null;
+  const declaredItems: RankGridItem[] = declaredSplitRows(declaredSplit).map((row) => ({
+    key: `declared-${row.key}`,
+    label: row.label,
+    share: formatPct(row.share, 1),
+  }));
   const hydrated = useHydrated();
   const loading = !hydrated || isPending;
   const showLoading = hydrated && isPending;
@@ -125,7 +137,30 @@ export function EmissionSplitSection({
             ? "chain-direct · retry the affected record above"
             : `${window} · owner cut, validator dividends, miner incentive and burn, chain-direct`
       }
-      after={children}
+      after={
+        <>
+          {declaredItems.length > 0 ? (
+            <RankGrid
+              items={declaredItems}
+              cols={4}
+              ariaLabel="Emission split the chain declares"
+              source={`sn-${netuid}-declared-split`}
+            />
+          ) : null}
+          {declaredSplit ? (
+            <p className="text-11 text-ink-muted">
+              {declaredSplit.is_default
+                ? "Declared split: the runtime default (owner 18%, validators 41%, miners the rest)"
+                : "Declared split: set by this subnet"}
+              {` · since block ${formatNumber(declaredSplit.valid_from)}`}
+              {declared.data?.data.stage ? ` · ${declared.data.data.stage.replace("_", " ")}` : ""}
+              {declared.data?.data.epoch_consensus === "null" ? " · null consensus" : ""}
+              {" · chain-direct"}
+            </p>
+          ) : null}
+          {children}
+        </>
+      }
     />
   );
 }

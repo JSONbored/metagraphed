@@ -53,6 +53,30 @@ describe("matching a route against UI source", () => {
     assert.ok(!p.test("/api/v1/feeds/gapsXatom"));
   });
 
+  test("a route is not cleared by a longer path it is a prefix of", () => {
+    // The near-miss of 2026-11-28: the per-subnet emission split route read
+    // as rendered because the UI fetches its -history sibling.
+    const src = "`/api/v1/subnets/${netuid}/emission-split-history`";
+    assert.ok(
+      !routePattern("/api/v1/subnets/{netuid}/emission-split").test(src),
+    );
+    assert.ok(
+      routePattern("/api/v1/subnets/{netuid}/emission-split-history").test(src),
+    );
+    assert.ok(
+      !routePattern("/api/v1/search").test('"/api/v1/search/semantic"'),
+    );
+    // A query string, a fragment, a quote and the end of the text all end a
+    // path, so the forms the UI really writes still count.
+    for (const text of [
+      'apiFetch("/api/v1/search?q=x")',
+      "`/api/v1/search#top`",
+      "'/api/v1/search'",
+      "/api/v1/search",
+    ])
+      assert.ok(routePattern("/api/v1/search").test(text), text);
+  });
+
   test("the network-wide route is not cleared by its per-subnet twin", () => {
     // The near-miss #10300 documents, and the one my own first spot-check fell
     // for: six hits for `concentration/history`, all of them per-subnet.
@@ -186,8 +210,14 @@ describe("the named prose-only exemption (#10517)", () => {
     // more routes of the same engine-gated class (accounts/{ss58}/proxies,
     // accounts/{ss58}/multisigs) -- both tables are empty until the engine's
     // Proxy/Multisig captures land. Same discipline as above.
+    //
+    // 19 -> 21 (MET-7365): no new gap. routePattern stopped matching a route
+    // inside a longer path, which showed two routes the UI never consumed
+    // (/search and subnets/{netuid}/burn) that were passing as the prefix of
+    // routes it does. Written down rather than hidden; the emission split
+    // routes that change added are rendered, not listed.
     assert.ok(
-      PROSE_ONLY_ROUTES.length <= 19,
+      PROSE_ONLY_ROUTES.length <= 21,
       `${PROSE_ONLY_ROUTES.length} prose-only routes: past a handful this has ` +
         "become the allowlist MAX_UNREFERENCED_ROUTES refuses to be. Render one.",
     );

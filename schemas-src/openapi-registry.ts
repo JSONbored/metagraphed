@@ -347,6 +347,18 @@ import {
   SubnetServicesArtifactSchema,
 } from "./routes/subnet-services.ts";
 import {
+  EmissionSlotPartsSchema,
+  EmissionSlotsSchema,
+  EmissionSplitSchema,
+  GammaShareSchema,
+  SubnetEmissionSplitArtifactSchema,
+  SubnetLifecycleStateSchema,
+} from "./routes/subnet-emission-split.ts";
+import {
+  ChainEmissionSplitEntrySchema,
+  ChainEmissionSplitsArtifactSchema,
+} from "./routes/chain-emission-splits.ts";
+import {
   SubnetSwapStateSchema,
   SubnetSwapArtifactSchema,
 } from "./routes/subnet-swap.ts";
@@ -952,6 +964,14 @@ register(GammaDepositSchema, "GammaDeposit");
 register(GammaDepositsArtifactSchema, "GammaDepositsArtifact");
 register(SubnetServiceSchema, "SubnetService");
 register(SubnetServicesArtifactSchema, "SubnetServicesArtifact");
+register(EmissionSlotPartsSchema, "EmissionSlotParts");
+register(EmissionSlotsSchema, "EmissionSlots");
+register(GammaShareSchema, "GammaShare");
+register(EmissionSplitSchema, "EmissionSplit");
+register(SubnetLifecycleStateSchema, "SubnetLifecycleState");
+register(SubnetEmissionSplitArtifactSchema, "SubnetEmissionSplitArtifact");
+register(ChainEmissionSplitEntrySchema, "ChainEmissionSplitEntry");
+register(ChainEmissionSplitsArtifactSchema, "ChainEmissionSplitsArtifact");
 register(SubnetSwapStateSchema, "SubnetSwapState");
 register(SubnetSwapArtifactSchema, "SubnetSwapArtifact");
 register(SubnetAlphaAssetsStateSchema, "SubnetAlphaAssetsState");

@@ -228,6 +228,27 @@ const FAMILY_ANCHORS: Readonly<Record<string, Family>> = {
   // Views only: the chain core's views tell time by the block (ADR 0029
   // phase 1b). Creates no table.
   "0059_chain_core_block_time.sql": { tables: [], anchors: [] },
+  // The first `state` tables (ADR 0029 phase 2, MET-7365): each subnet's
+  // emission split and lifecycle state as validity ranges, and the
+  // watermark both families share, read by the emission split routes.
+  "0060_subnet_emission_state.sql": {
+    tables: [
+      "state.subnet_emission_splits",
+      "state.subnet_lifecycle_states",
+      "state.observations",
+    ],
+    anchors: [
+      {
+        file: "schemas-src/routes/subnet-emission-split.ts",
+        symbol: "SubnetEmissionSplitArtifactSchema",
+      },
+      {
+        file: "schemas-src/routes/chain-emission-splits.ts",
+        symbol: "ChainEmissionSplitsArtifactSchema",
+      },
+      { file: "src/pg-subnet-emission.ts", symbol: "FROM observations" },
+    ],
+  },
 };
 
 /** The legacy-port files that predate the gate, pinned exactly. Shrink-only:

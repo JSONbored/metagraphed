@@ -28,6 +28,7 @@ const owners = {
   realtime: "owner",
   retained: "owner",
   search: "owner",
+  state: "owner",
 };
 const credentials = (owner: NativeCronOwner) =>
   Object.fromEntries(

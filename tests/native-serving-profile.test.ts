@@ -23,6 +23,7 @@ const owners = {
   realtime: "owner",
   retained: "owner",
   search: "owner",
+  state: "owner",
 };
 
 test("every declared serving write is a declared relation of its schema", () => {

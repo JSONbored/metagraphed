@@ -26,6 +26,7 @@ import { createPgAccountMultisigsStore } from "./pg-multisigs.ts";
 import { createPgSubnetGammaStore } from "./pg-subnet-gamma.ts";
 import { createPgGammaDepositsStore } from "./pg-gamma-deposits.ts";
 import { createPgSubnetServicesStore } from "./pg-subnet-services.ts";
+import { createPgSubnetEmissionStore } from "./pg-subnet-emission.ts";
 import { createPgSubnetSwapStore } from "./pg-subnet-swap.ts";
 import { createPgSubnetAlphaAssetsStore } from "./pg-subnet-alpha-assets.ts";
 import { createPgSubnetLimitOrdersStore } from "./pg-subnet-limit-orders.ts";
@@ -75,6 +76,7 @@ export function createNativeStateBindings(
   const retained = nativeSource(sources, "retained");
   const chain = nativeSource(sources, "chain");
   const chainViews = nativeSource(sources, "chain_views");
+  const state = nativeSource(sources, "state");
   const capture = createPgNeuronCaptureStore(app, decoder, limits.capture);
   onStartupCleanup(() => capture.close());
   const rpcUsage = createPgRpcUsageStore(app, limits.rpcUsage);
@@ -106,6 +108,7 @@ export function createNativeStateBindings(
     SUBNET_GAMMA_STORE: createPgSubnetGammaStore(app),
     GAMMA_DEPOSITS_STORE: createPgGammaDepositsStore(app),
     SUBNET_SERVICES_STORE: createPgSubnetServicesStore(app),
+    SUBNET_EMISSION_STORE: createPgSubnetEmissionStore(state),
     SUBNET_SWAP_STORE: createPgSubnetSwapStore(app),
     SUBNET_ALPHA_ASSETS_STORE: createPgSubnetAlphaAssetsStore(app),
     SUBNET_LIMIT_ORDERS_STORE: createPgSubnetLimitOrdersStore(app),

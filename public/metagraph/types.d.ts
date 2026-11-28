@@ -1896,6 +1896,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/chain/emission-splits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch every subnet's emission split
+         * @description Fetch every subnet's current emission split and lifecycle state (MET-7365, runtime spec 497) in one response: each subnet's five fixed slots (burn, recycle, owner, validator, miner) and gamma shares, as fractions and exact u64 parts, beside its lifecycle stage, epoch consensus and lease origin, with how many subnets left the runtime's default split (owner 18%, validators 41%, miners the rest) and how many route emission to gamma. With no capture observed, the list is empty and every count null.
+         */
+        get: operations["chainEmissionSplits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/chain/fees": {
         parameters: {
             query?: never;
@@ -4353,6 +4373,26 @@ export interface paths {
         };
         /** @description Fetch one subnet's emission-pipeline series. One subnet's stored pipeline inputs and legacy price share OVER TIME (#9625). /chain/emission-pipeline decomposes the v440 pipeline for every subnet as of ONE BLOCK; subnet_snapshots has persisted pipeline inputs alongside its legacy emission_share daily since 2026-08-02 -- emission_share, tao_in_pool_tao, the TAO split (tao_in_emission_tao pool-liquidity injection vs excess_tao chain buys), alpha_in/out_emission, miner_burned_fraction, emission_enabled, first_emission_block, alpha_price_tao, each pinned by pipeline_block/pipeline_block_hash -- and no route read the series, so 'was this subnet's miner burn climbing before its emission dropped?' was unanswerable from data already in the table. THE DEPTH IS FIVE DAYS AND THE ROUTE SAYS SO. subnet_snapshots holds 50,762 rows across 409 days; the PIPELINE columns hold 645 across 5 (measured 2026-08-06, 129 subnets a day, no gaps). oldest_day/newest_day and point_count come from the ROWS, not the window requested, and first_captured_day rides on every response so a caller receiving 5 points for a 90d window reads it as 'the series begins here' rather than '85 days were dropped'. A DAY CAN REPEAT THE PREVIOUS DAY'S OBSERVATION, AND THAT IS PUBLISHED. The daily snapshot writer carries the last pipeline capture forward when a fresh one has not landed for that day -- measured 2026-08-06, that day's row was captured at 05:00 UTC carrying block 8777280, yesterday's, while the chain was at 8782513. So two consecutive points can be THE SAME OBSERVATION, and a consumer reading them as two daily samples would conclude a value was flat when it was simply not re-measured. pipeline_block rides on every point, each point declares repeats_previous_observation, and distinct_observations is reported beside point_count -- the number of times the pipeline was actually READ, which is the honest denominator for any claim about how it moved. ?window= is 7d, 30d (default), 90d or 180d -- windows rather than a free day count, because the source is a daily snapshot. An EMPTY series is a measurement, not an error: a subnet registered after the capture began, or a window narrower than the days that exist, both return one legitimately. Mainnet-only: subnet_snapshots carries no network dimension. Artifact-normalized moving-price share: alpha_price_tao divided by the sum of reported alpha prices, including Root when Root reports a price. Legacy snapshot rows do not retain the historical runtime eligibility inputs needed to certify v440 Stage 1. This is neither a verified runtime Stage-1 share nor final TAO emission. For the separately reconstructed, pinned live pipeline, use /api/v1/chain/emission-pipeline and inspect verification.verified. */
         get: operations["subnetEmissionPipelineHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/emission-split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's emission split and lifecycle state
+         * @description Fetch one subnet's emission split as the chain declares it (MET-7365, runtime spec 497): where its emission goes across the five fixed slots SubtensorModule.SubnetEmissionWeights holds — burn, recycle, owner, validator and miner — and the gamma shares SubnetGammaEmission routes to other subnets' gamma, each as a fraction of the subnet's emission and in the runtime's exact u64 parts; with its lifecycle stage (SubnetState: registered, started, pending_dissolution, dissolving), its epoch consensus (yuma or null) and whether it was created through a lease. `history` and `lifecycle_history` are the validity ranges since the capture began, newest first. The owner's cut is per subnet since v497, from 0% to 33%: never assume 18%. With no capture observed, observed_block is null and there is no split.
+         */
+        get: operations["subnetEmissionSplit"];
         put?: never;
         post?: never;
         delete?: never;
@@ -7547,6 +7587,59 @@ export interface components {
             }[];
             window: ("7d" | "30d") | null;
         };
+        /** @description One subnet's current split, with its current lifecycle state beside it. */
+        ChainEmissionSplitEntry: {
+            /** @description Alpha destroyed outright (it still counts toward issuance) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            burn: number;
+            /** @description SubnetCreatedViaLease: the subnet was registered through a lease. Such a subnet may not set its owner slot below the default. */
+            created_via_lease: boolean;
+            /**
+             * @description SubnetEpochConsensus: `yuma`, or `null` -- the largest-stake validator's weights and stake-proportional dividends.
+             * @enum {string}
+             */
+            epoch_consensus: "yuma" | "null";
+            /** @description The split's gamma shares, ascending by target netuid. */
+            gamma_shares: components["schemas"]["GammaShare"][];
+            /** @description True when this is the runtime's default split for a subnet that never set one: owner 18% (InitialSubnetOwnerCut, 11796/65535), validators 41%, miners the rest, and no gamma shares. */
+            is_default: boolean;
+            /** @description Miner incentive (split across mechanisms by MechanismEmissionSplit) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            miner: number;
+            netuid: number;
+            /** @description The subnet owner's cut as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            owner: number;
+            parts: components["schemas"]["EmissionSlotParts"];
+            /** @description Alpha removed from issuance as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            recycle: number;
+            /**
+             * @description SubnetState: `registered` (its start call has not completed), `started`, `pending_dissolution` (it has left the active set and waits for cleanup) or `dissolving` (on_idle is cleaning it up).
+             * @enum {string}
+             */
+            stage: "registered" | "started" | "pending_dissolution" | "dissolving";
+            /** @description The first capture block at which this split was observed. The change happened between the previous capture and this block, about 75 blocks at the 15-minute cadence; the event log (SubnetEmissionWeightsSet) has the exact block. */
+            valid_from: number;
+            /** @description The first capture block at which another split was observed (exclusive). Null while it is the current split. */
+            valid_to: number | null;
+            /** @description Validator dividends (root's alpha is carved out of this slot) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            validator: number;
+        };
+        /** @description Every subnet's current emission split and lifecycle state from chain storage (runtime spec 497). Mirrors GET /api/v1/chain/emission-splits. */
+        ChainEmissionSplitsArtifact: {
+            /** @description How many of them carry a split other than the runtime's default (owner 18%, validators 41%, miners the rest, no gamma shares). */
+            custom_count: number | null;
+            /** @description The runtime's default split, for comparison: InitialSubnetOwnerCut (11796/65535) for the owner, half the rest for validators, and the remainder for miners. */
+            default_split: components["schemas"]["EmissionSlots"];
+            /** @description How many of them route any part of their emission to gamma. */
+            gamma_share_count: number | null;
+            /** @description When that capture ran, as an ISO timestamp. */
+            observed_at: string | null;
+            /** @description The newest finalized block the capture read every subnet at. Null when no capture has been observed: the subnet list is then empty and every count null. */
+            observed_block: number | null;
+            schema_version: number;
+            /** @description How many subnets the chain held at the observed block. */
+            subnet_count: number | null;
+            /** @description Every subnet the chain held, ascending by netuid. */
+            subnets: components["schemas"]["ChainEmissionSplitEntry"][];
+        };
         /** @description Paginated all-events feed from the chain_events lakehouse table. Mirrors GET /api/v1/chain-events (and MCP list_chain_events). Distinct from Subscription.chainEvents. */
         ChainEventsFeedArtifact: {
             count: number;
@@ -9112,6 +9205,55 @@ export interface components {
                 verified: boolean;
             };
         };
+        /** @description The five fixed slots in exact u64 parts. */
+        EmissionSlotParts: {
+            /** @description The burn slot in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text. */
+            burn: string;
+            /** @description The miner slot in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text. */
+            miner: string;
+            /** @description The owner slot in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text. */
+            owner: string;
+            /** @description The recycle slot in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text. */
+            recycle: string;
+            /** @description The validator slot in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text. */
+            validator: string;
+        };
+        /** @description The five fixed slots `[burn, recycle, owner, validator, miner]`, as fractions and exact parts. */
+        EmissionSlots: {
+            /** @description Alpha destroyed outright (it still counts toward issuance) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            burn: number;
+            /** @description Miner incentive (split across mechanisms by MechanismEmissionSplit) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            miner: number;
+            /** @description The subnet owner's cut as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            owner: number;
+            parts: components["schemas"]["EmissionSlotParts"];
+            /** @description Alpha removed from issuance as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            recycle: number;
+            /** @description Validator dividends (root's alpha is carved out of this slot) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            validator: number;
+        };
+        /** @description One emission split with its validity range. The five slots and the gamma shares sum to exactly u64::MAX. */
+        EmissionSplit: {
+            /** @description Alpha destroyed outright (it still counts toward issuance) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            burn: number;
+            /** @description The split's gamma shares, ascending by target netuid. */
+            gamma_shares: components["schemas"]["GammaShare"][];
+            /** @description True when this is the runtime's default split for a subnet that never set one: owner 18% (InitialSubnetOwnerCut, 11796/65535), validators 41%, miners the rest, and no gamma shares. */
+            is_default: boolean;
+            /** @description Miner incentive (split across mechanisms by MechanismEmissionSplit) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            miner: number;
+            /** @description The subnet owner's cut as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            owner: number;
+            parts: components["schemas"]["EmissionSlotParts"];
+            /** @description Alpha removed from issuance as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            recycle: number;
+            /** @description The first capture block at which this split was observed. The change happened between the previous capture and this block, about 75 blocks at the 15-minute cadence; the event log (SubnetEmissionWeightsSet) has the exact block. */
+            valid_from: number;
+            /** @description The first capture block at which another split was observed (exclusive). Null while it is the current split. */
+            valid_to: number | null;
+            /** @description Validator dividends (root's alpha is carved out of this slot) as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            validator: number;
+        };
         EmissionSubnetChange: {
             block_number: number | null;
             enabled: boolean | null;
@@ -9643,6 +9785,15 @@ export interface components {
             /** @description The chain's Gamma deposits, largest balance first. */
             deposits: components["schemas"]["GammaDeposit"][];
             schema_version: number;
+        };
+        /** @description One gamma share (SubnetGammaEmission): a part of the subnet's alpha emission converted each epoch into the target subnet's gamma for the subnet owner hotkey. At most 10% each, at most sixteen. */
+        GammaShare: {
+            /** @description This gamma share in the runtime's exact u64 parts of u64::MAX (18446744073709551615), as decimal text. */
+            parts: string;
+            /** @description This gamma share as a fraction of the subnet's emission, rounded to nine places; `parts` holds the exact value. */
+            share: number;
+            /** @description The subnet whose gamma this share converts into each epoch. */
+            target_netuid: number;
         };
         Gaps: {
             gap_notes: string[];
@@ -12496,6 +12647,25 @@ export interface components {
             total_stake_alpha: number | null;
             validator_count: number;
         };
+        /** @description One subnet's emission split and lifecycle state from chain storage (runtime spec 497). Mirrors GET /api/v1/subnets/{netuid}/emission-split. */
+        SubnetEmissionSplitArtifact: {
+            /** @description Whether the chain held this subnet at the observed block. False for a subnet dissolved since, or never registered; null with no observation. */
+            exists: boolean | null;
+            /** @description Every split this subnet has had since the capture began, newest first, at most 100. */
+            history: components["schemas"]["EmissionSplit"][];
+            /** @description The subnet's current lifecycle state, or null when it does not exist at the observed block. */
+            lifecycle: components["schemas"]["SubnetLifecycleState"] | null;
+            /** @description Every lifecycle state this subnet has had since the capture began, newest first, at most 100. */
+            lifecycle_history: components["schemas"]["SubnetLifecycleState"][];
+            netuid: number;
+            /** @description When that capture ran, as an ISO timestamp. */
+            observed_at: string | null;
+            /** @description The newest finalized block the capture read every subnet's split and state at. Null when no capture has been observed (store unbound, or the capture has not run): the response then carries no split at all. */
+            observed_block: number | null;
+            schema_version: number;
+            /** @description The subnet's current emission split, or null when it has none at the observed block. */
+            split: components["schemas"]["EmissionSplit"] | null;
+        };
         /** @description Per-day split of one subnet's emission by recipient class — owner, validators, miners — over a 7d/30d/90d window, newest first. The validator/miner split is MEASURED from the per-UID neuron_daily rollup; the owner leg and every absolute figure are RECONSTRUCTED, because the owner's cut is paid outside the UID set and `SubnetOwnerCut` is unset on chain. A subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/emission-split/history. */
         SubnetEmissionSplitHistoryArtifact: {
             /** @description Per-field { kind, storage } provenance map: every value is labelled measured (with the pallet-qualified storage item it was read from) or reconstructed (our arithmetic over measurements, storage null). ADR 0023 decision 5. */
@@ -13077,6 +13247,25 @@ export interface components {
             next_cursor?: string | null;
             offset?: number | null;
             schema_version: number;
+        };
+        /** @description One lifecycle state with its validity range. */
+        SubnetLifecycleState: {
+            /** @description SubnetCreatedViaLease: the subnet was registered through a lease. Such a subnet may not set its owner slot below the default. */
+            created_via_lease: boolean;
+            /**
+             * @description SubnetEpochConsensus: `yuma`, or `null` -- the largest-stake validator's weights and stake-proportional dividends.
+             * @enum {string}
+             */
+            epoch_consensus: "yuma" | "null";
+            /**
+             * @description SubnetState: `registered` (its start call has not completed), `started`, `pending_dissolution` (it has left the active set and waits for cleanup) or `dissolving` (on_idle is cleaning it up).
+             * @enum {string}
+             */
+            stage: "registered" | "started" | "pending_dissolution" | "dissolving";
+            /** @description The first capture block at which this state was observed. */
+            valid_from: number;
+            /** @description The first capture block at which another state was observed (exclusive). Null while it is current. */
+            valid_to: number | null;
         };
         /** @description One captured limit order: its chain key, owner, type, amount, raw price and state with their capture stamp. */
         SubnetLimitOrder: {
@@ -31351,6 +31540,159 @@ export interface operations {
             };
         };
     };
+    chainEmissionSplits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "custom_count": 1,
+                     *         "default_split": {
+                     *           "burn": 0.5,
+                     *           "miner": 0.5,
+                     *           "owner": 0.5,
+                     *           "parts": {
+                     *             "burn": "1844674407370955161",
+                     *             "miner": "1844674407370955161",
+                     *             "owner": "1844674407370955161",
+                     *             "recycle": "1844674407370955161",
+                     *             "validator": "1844674407370955161"
+                     *           },
+                     *           "recycle": 0.5,
+                     *           "validator": 0.5
+                     *         },
+                     *         "gamma_share_count": 1,
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_block": 5000000,
+                     *         "schema_version": 1,
+                     *         "subnet_count": 1,
+                     *         "subnets": [
+                     *           {
+                     *             "burn": 0.5,
+                     *             "created_via_lease": false,
+                     *             "epoch_consensus": "yuma",
+                     *             "gamma_shares": [
+                     *               {
+                     *                 "parts": "1844674407370955161",
+                     *                 "share": 0.5,
+                     *                 "target_netuid": 7
+                     *               }
+                     *             ],
+                     *             "is_default": false,
+                     *             "miner": 0.5,
+                     *             "netuid": 7,
+                     *             "owner": 0.5,
+                     *             "parts": {
+                     *               "burn": "1844674407370955161",
+                     *               "miner": "1844674407370955161",
+                     *               "owner": "1844674407370955161",
+                     *               "recycle": "1844674407370955161",
+                     *               "validator": "1844674407370955161"
+                     *             },
+                     *             "recycle": 0.5,
+                     *             "stage": "registered",
+                     *             "valid_from": 1,
+                     *             "valid_to": 1,
+                     *             "validator": 0.5
+                     *           }
+                     *         ]
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["ChainEmissionSplitsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     chainFees: {
         parameters: {
             query?: {
@@ -48210,6 +48552,186 @@ export interface operations {
                      */
                     "application/json": components["schemas"]["SuccessEnvelope"] & {
                         data?: components["schemas"]["PipelineHistoryArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetEmissionSplit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "exists": false,
+                     *         "history": [
+                     *           {
+                     *             "burn": 0.5,
+                     *             "gamma_shares": [
+                     *               {
+                     *                 "parts": "1844674407370955161",
+                     *                 "share": 0.5,
+                     *                 "target_netuid": 7
+                     *               }
+                     *             ],
+                     *             "is_default": false,
+                     *             "miner": 0.5,
+                     *             "owner": 0.5,
+                     *             "parts": {
+                     *               "burn": "1844674407370955161",
+                     *               "miner": "1844674407370955161",
+                     *               "owner": "1844674407370955161",
+                     *               "recycle": "1844674407370955161",
+                     *               "validator": "1844674407370955161"
+                     *             },
+                     *             "recycle": 0.5,
+                     *             "valid_from": 1,
+                     *             "valid_to": 1,
+                     *             "validator": 0.5
+                     *           }
+                     *         ],
+                     *         "lifecycle": {
+                     *           "created_via_lease": false,
+                     *           "epoch_consensus": "yuma",
+                     *           "stage": "registered",
+                     *           "valid_from": 1,
+                     *           "valid_to": 1
+                     *         },
+                     *         "lifecycle_history": [
+                     *           {
+                     *             "created_via_lease": false,
+                     *             "epoch_consensus": "yuma",
+                     *             "stage": "registered",
+                     *             "valid_from": 1,
+                     *             "valid_to": 1
+                     *           }
+                     *         ],
+                     *         "netuid": 7,
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_block": 5000000,
+                     *         "schema_version": 1,
+                     *         "split": {
+                     *           "burn": 0.5,
+                     *           "gamma_shares": [
+                     *             {
+                     *               "parts": "1844674407370955161",
+                     *               "share": 0.5,
+                     *               "target_netuid": 7
+                     *             }
+                     *           ],
+                     *           "is_default": false,
+                     *           "miner": 0.5,
+                     *           "owner": 0.5,
+                     *           "parts": {
+                     *             "burn": "1844674407370955161",
+                     *             "miner": "1844674407370955161",
+                     *             "owner": "1844674407370955161",
+                     *             "recycle": "1844674407370955161",
+                     *             "validator": "1844674407370955161"
+                     *           },
+                     *           "recycle": 0.5,
+                     *           "valid_from": 1,
+                     *           "valid_to": 1,
+                     *           "validator": 0.5
+                     *         }
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetEmissionSplitArtifact"];
                     };
                 };
             };

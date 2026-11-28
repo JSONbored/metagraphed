@@ -1475,6 +1475,14 @@ import {
   GetSubnetServicesOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-services.ts";
 import {
+  GetSubnetEmissionSplitInputSchema,
+  GetSubnetEmissionSplitOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-emission-split.ts";
+import {
+  GetChainEmissionSplitsInputSchema,
+  GetChainEmissionSplitsOutputSchema,
+} from "../schemas-src/mcp-tools/get-chain-emission-splits.ts";
+import {
   GetSubnetSwapInputSchema,
   GetSubnetSwapOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-swap.ts";
@@ -1493,6 +1501,12 @@ import {
 import { buildSubnetGamma, loadSubnetGamma } from "./subnet-gamma.ts";
 import { buildGammaDeposits, loadGammaDeposits } from "./gamma-deposits.ts";
 import { buildSubnetServices, loadSubnetServices } from "./subnet-services.ts";
+import {
+  buildChainEmissionSplits,
+  buildSubnetEmissionSplit,
+  loadChainEmissionSplits,
+  loadSubnetEmissionSplit,
+} from "./subnet-emission-split.ts";
 import { buildSubnetSwap, loadSubnetSwap } from "./subnet-swap.ts";
 import {
   buildSubnetAlphaAssets,
@@ -9747,6 +9761,56 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_emission_split",
+    title: "Get a subnet's emission split",
+    description:
+      "Fetch one subnet's emission split as the chain declares it " +
+      "(runtime spec 497): where its emission goes across the five fixed " +
+      "slots SubtensorModule.SubnetEmissionWeights holds -- burn, recycle, " +
+      "owner, validator, miner -- and the gamma shares SubnetGammaEmission " +
+      "routes to other subnets' gamma, each as a fraction of the subnet's " +
+      "emission and in exact u64 parts; with its lifecycle stage " +
+      "(registered, started, pending_dissolution, dissolving), its epoch " +
+      "consensus (yuma or null) and lease origin, and the validity-range " +
+      "history of both. The owner's cut is per subnet since v497, from 0% " +
+      "to 33%: use this rather than assuming 18%. With no capture observed, " +
+      "observed_block is null and there is no split. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/emission-split.",
+    inputSchema: inputJsonSchema(GetSubnetEmissionSplitInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetEmissionSplitInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // Same loadSubnetEmissionSplit -> buildSubnetEmissionSplit decline
+      // contract the REST handler and the GraphQL resolver share.
+      return buildSubnetEmissionSplit(
+        await loadSubnetEmissionSplit(ctx.env, netuid),
+        netuid,
+      );
+    },
+  },
+  {
+    name: "get_chain_emission_splits",
+    title: "Get every subnet's emission split",
+    description:
+      "Fetch every subnet's current emission split and lifecycle state " +
+      "(runtime spec 497) in one call: each subnet's burn, recycle, owner, " +
+      "validator and miner slots and its gamma shares, as fractions and " +
+      "exact u64 parts, beside its lifecycle stage, epoch consensus and " +
+      "lease origin, with how many subnets left the runtime's default split " +
+      "(owner 18%, validators 41%, miners the rest) and how many route " +
+      "emission to gamma. With no capture observed, the list is empty and " +
+      "every count null. Mirrors GET /api/v1/chain/emission-splits.",
+    inputSchema: inputJsonSchema(GetChainEmissionSplitsInputSchema),
+    async handler(
+      _args: z.infer<typeof GetChainEmissionSplitsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      return buildChainEmissionSplits(await loadChainEmissionSplits(ctx.env));
+    },
+  },
+  {
     name: "get_subnet_swap",
     title: "Get a subnet's balancer Swap state",
     description:
@@ -16180,6 +16244,10 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
   get_subnet_gamma: () => outputJsonSchema(GetSubnetGammaOutputSchema),
   get_gamma_deposits: () => outputJsonSchema(GetGammaDepositsOutputSchema),
   get_subnet_services: () => outputJsonSchema(GetSubnetServicesOutputSchema),
+  get_subnet_emission_split: () =>
+    outputJsonSchema(GetSubnetEmissionSplitOutputSchema),
+  get_chain_emission_splits: () =>
+    outputJsonSchema(GetChainEmissionSplitsOutputSchema),
   get_subnet_swap: () => outputJsonSchema(GetSubnetSwapOutputSchema),
   get_subnet_alpha_assets: () =>
     outputJsonSchema(GetSubnetAlphaAssetsOutputSchema),

@@ -26286,6 +26286,104 @@ describe("graphql — subnet_services (#13164)", () => {
   });
 });
 
+// The emission split fields (MET-7365): same loaders/builders as the REST
+// routes and the MCP tools, so the decline and the served split match exactly.
+describe("graphql — subnet_emission_split / chain_emission_splits (MET-7365)", () => {
+  const SUBNET = `{ subnet_emission_split(netuid: 3) {
+      schema_version netuid observed_block observed_at exists
+      lifecycle { stage epoch_consensus created_via_lease valid_from valid_to }
+      split {
+        owner validator miner burn recycle is_default valid_from valid_to
+        parts { owner validator miner burn recycle }
+        gamma_shares { target_netuid share parts }
+      }
+      history { valid_from valid_to owner }
+      lifecycle_history { stage valid_from }
+    } }`;
+  const CHAIN = `{ chain_emission_splits {
+      observed_block subnet_count custom_count gamma_share_count
+      default_split { owner parts { owner } }
+      subnets { netuid stage epoch_consensus owner is_default gamma_shares { target_netuid share } }
+    } }`;
+  const observation = { block_number: "300", observed_at_ms: "1795900000000" };
+  const split = {
+    netuid: 3,
+    burn_parts: "0",
+    recycle_parts: "0",
+    owner_parts: "3320413933267719290",
+    validator_parts: "6640827866535438581",
+    miner_parts: "6640827866535438583",
+    gamma_shares: [{ target: 51, parts: "1844674407370955161" }],
+    valid_from: "200",
+    valid_to: null,
+  };
+  const lifecycle = {
+    netuid: 3,
+    stage: "started",
+    epoch_consensus: "yuma",
+    created_via_lease: false,
+    valid_from: "100",
+    valid_to: null,
+  };
+  const env = {
+    SUBNET_EMISSION_STORE: {
+      write: async () => ({ written: true, opened: 0, closed: 0 }),
+      current: async () => ({
+        observation,
+        splits: [split],
+        lifecycle: [lifecycle],
+      }),
+      subnet: async () => ({
+        observation,
+        splits: [split],
+        lifecycle: [lifecycle],
+      }),
+    },
+  } as unknown as Env;
+
+  test("no bound store resolves to the schema-stable decline, never null", async () => {
+    const one = await gql(SUBNET);
+    assert.equal(one.status, 200);
+    assert.equal(one.body.errors, undefined);
+    assert.equal(one.body.data.subnet_emission_split.observed_block, null);
+    assert.equal(one.body.data.subnet_emission_split.split, null);
+    const all = await gql(CHAIN);
+    assert.equal(all.body.errors, undefined);
+    assert.equal(all.body.data.chain_emission_splits.subnet_count, null);
+    assert.deepEqual(all.body.data.chain_emission_splits.subnets, []);
+    assert.equal(
+      all.body.data.chain_emission_splits.default_split.parts.owner,
+      "3320329489486196244",
+    );
+  });
+
+  test("a bound store serves the split and the chain-wide set", async () => {
+    const one = await gql(SUBNET, env);
+    assert.equal(one.body.errors, undefined);
+    const data = one.body.data.subnet_emission_split;
+    assert.equal(data.exists, true);
+    assert.equal(data.split.owner, 0.18);
+    assert.deepEqual(data.split.gamma_shares, [
+      { target_netuid: 51, share: 0.1, parts: "1844674407370955161" },
+    ]);
+    assert.equal(data.lifecycle.stage, "started");
+    const all = await gql(CHAIN, env);
+    assert.equal(all.body.errors, undefined);
+    assert.equal(all.body.data.chain_emission_splits.custom_count, 1);
+    assert.equal(all.body.data.chain_emission_splits.subnets[0].netuid, 3);
+  });
+
+  test("an impossible netuid is BAD_USER_INPUT", async () => {
+    const { body } = await gql(
+      "{ subnet_emission_split(netuid: -1) { netuid } }",
+    );
+    const errors = (body.errors ?? []) as Array<{
+      extensions?: { code?: string };
+    }>;
+    assert.equal(errors[0]?.extensions?.code, "BAD_USER_INPUT");
+  });
+});
+
 // The subnet_swap field (#13165): same loader/builder as the REST route and
 // the MCP tool, so the decline and the served state match exactly.
 describe("graphql — subnet_swap (#13165)", () => {

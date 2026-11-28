@@ -3307,6 +3307,48 @@ export interface SubnetEmissionSplitHistory {
 }
 
 /**
+ * A subnet's emission split as the chain DECLARES it (MET-7365, runtime spec
+ * 497): the five fixed slots and the gamma shares, as fractions of the
+ * subnet's emission. The history above is what was measured paid; this is
+ * what the runtime is set to pay, owner cut included -- per subnet since
+ * v497, never an assumed 18%.
+ */
+export interface DeclaredEmissionSplit {
+  burn: number;
+  recycle: number;
+  owner: number;
+  validator: number;
+  miner: number;
+  gamma_shares: { target_netuid: number; share: number }[];
+  is_default: boolean;
+  /** The first capture block this split was observed at. */
+  valid_from: number;
+}
+
+export interface SubnetDeclaredEmissionSplit {
+  netuid: number;
+  /** Null when no capture has been observed: then there is no split. */
+  observed_block: number | null;
+  stage: string | null;
+  epoch_consensus: string | null;
+  split: DeclaredEmissionSplit | null;
+}
+
+export interface ChainEmissionSplitRow extends DeclaredEmissionSplit {
+  netuid: number;
+  stage: string;
+  epoch_consensus: string;
+}
+
+export interface ChainEmissionSplits {
+  observed_block: number | null;
+  subnet_count: number | null;
+  custom_count: number | null;
+  gamma_share_count: number | null;
+  subnets: ChainEmissionSplitRow[];
+}
+
+/**
  * Miner fairness (#10931). DESCRIPTIVE ONLY — there is no score field here and
  * the render must not invent one.
  */

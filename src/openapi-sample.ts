@@ -52,6 +52,10 @@ function valueForPattern(pattern: string, name = ""): string {
       // JSON number is the wrong type for one (the emission pipeline's
       // aggregate identity tolerance). 1000 rao is the real tolerance.
       return "1000";
+    case "^(0|[1-9][0-9]{0,19})$":
+      // u64 parts of u64::MAX in canonical decimal (an emission split's slots
+      // and gamma shares, MET-7365): 10%, SN3's real share to SN51's gamma.
+      return "1844674407370955161";
     case "^[1-9A-HJ-NP-Za-km-z]{47,48}$":
       return /counterparty|^to$|address/.test(n)
         ? SAMPLE_COUNTERPARTY_SS58

@@ -42,6 +42,7 @@ export function nativeEnvironmentFixture(
       realtime: owner,
       retained: owner,
       search: owner,
+      state: owner,
     },
     settings: {
       api: {

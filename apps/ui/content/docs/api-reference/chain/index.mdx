@@ -3,7 +3,7 @@ title: Chain
 description: Every Chain endpoint in the metagraphed API, with its method and path.
 ---
 
-63 endpoints.
+64 endpoints.
 
 - [Chain Activity](/docs/api-reference/chain/chain-activity) — `GET /api/v1/chain/activity`\
   Fetch daily network-activity aggregates (extrinsic/event/block counts, success rate, unique signers) over a 7d or 30d window, newest day first.
@@ -35,6 +35,8 @@ description: Every Chain endpoint in the metagraphed API, with its method and pa
   Fetch network-wide neuron-deregistration activity over a 7d or 30d window across the subnets with observed deregistration activity (subnets with no NeuronDeregistered events are absent): a per-subnet leaderboard (NeuronDeregistered event count, distinct deregistered hotkeys, and average deregistrations per hotkey) ranked by total deregistrations, a network rollup with the true distinct hotkey count (a hotkey deregistered on several subnets counts once) and total deregistrations, and a distribution summary (count, mean, min, p25, median, p75, p90, max) of the per-subnet re-deregistration intensity.
 - [Chain Deregistrations By Network](/docs/api-reference/chain/chain-deregistrations-by-network) — `GET /api/v1/{network}/chain/deregistrations`\
   Network-scoped form of /api/v1/chain/deregistrations — prefix the route with a network to choose which chain answers it.
+- [Chain Emission Splits](/docs/api-reference/chain/chain-emission-splits) — `GET /api/v1/chain/emission-splits`\
+  Fetch every subnet's current emission split and lifecycle state (MET-7365, runtime spec 497) in one response: each subnet's five fixed slots (burn, recycle, owner, validator, miner) and gamma shares, as fractions and exact u64 parts, beside its lifecycle stage, epoch consensus and lease origin, with how many subnets left the runtime's default split (owner 18%, validators 41%, miners the rest) and how many route emission to gamma.
 - [Chain Events Feed](/docs/api-reference/chain/chain-events-feed) — `GET /api/v1/chain-events`\
   Fetch the recent all-events feed (newest first) from the chain_events lakehouse table — every raw pallet.method event, distinct from the curated account-attributed stream.
 - [Chain Events Feed By Network](/docs/api-reference/chain/chain-events-feed-by-network) — `GET /api/v1/{network}/chain-events`\

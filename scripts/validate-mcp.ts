@@ -2467,6 +2467,10 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
   ["get_subnet_gamma", HARNESS_SERVES_NO_ROWS],
   ["get_gamma_deposits", HARNESS_SERVES_NO_ROWS],
   ["get_subnet_services", HARNESS_SERVES_NO_ROWS],
+  // MET-7365: the state store is not stood up in this harness, so the
+  // emission split tools can only show their decline.
+  ["get_subnet_emission_split", HARNESS_SERVES_NO_ROWS],
+  ["get_chain_emission_splits", HARNESS_SERVES_NO_ROWS],
   // #13165: the balancer Swap state and AlphaAssets accounting have no
   // producer until the engine's capture lands, so the harness can only see
   // the decline.

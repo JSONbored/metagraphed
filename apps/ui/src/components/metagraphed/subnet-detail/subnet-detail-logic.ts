@@ -6,6 +6,7 @@
  * sees -- a rank, a delta, a residual -- is testable without a DOM.
  */
 import type {
+  DeclaredEmissionSplit,
   EmissionSplitPoint,
   MetagraphNeuron,
   SubnetEconomics,
@@ -361,4 +362,29 @@ export function seriesOf(
   pick: (point: SubnetHistoryPoint) => number | null | undefined,
 ): (number | null | undefined)[] {
   return points.map(pick);
+}
+
+/**
+ * The split the chain DECLARES (MET-7365), one row a recipient, largest
+ * first. Burn and recycle are one row because both take alpha out of the
+ * subnet's circulation; a slot the subnet does not use is left out rather
+ * than drawn as a zero, and each gamma share names the subnet it converts
+ * into.
+ */
+export function declaredSplitRows(
+  split: DeclaredEmissionSplit | null,
+): { key: string; label: string; share: number }[] {
+  if (!split) return [];
+  const rows = [
+    { key: "owner", label: "Owner", share: split.owner },
+    { key: "validator", label: "Validators", share: split.validator },
+    { key: "miner", label: "Miners", share: split.miner },
+    { key: "burn", label: "Burn + recycle", share: split.burn + split.recycle },
+    ...split.gamma_shares.map((gamma) => ({
+      key: `gamma-${gamma.target_netuid}`,
+      label: `Gamma, SN${gamma.target_netuid}`,
+      share: gamma.share,
+    })),
+  ];
+  return rows.filter((row) => row.share > 0).sort((a, b) => b.share - a.share);
 }

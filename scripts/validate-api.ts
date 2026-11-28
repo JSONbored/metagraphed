@@ -1826,6 +1826,32 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/64/emission-split",
+    (body) => {
+      // MET-7365: no state store is bound in this harness, so the one honest
+      // body is the decline -- no observation, so no split and no history,
+      // and the runtime's default is never served in their place.
+      assert.equal(body.data.netuid, 64);
+      assert.equal(body.data.observed_block, null);
+      assert.equal(body.data.exists, null);
+      assert.equal(body.data.split, null);
+      assert.deepEqual(body.data.history, []);
+      assert.deepEqual(body.data.lifecycle_history, []);
+    },
+  ],
+  [
+    "/api/v1/chain/emission-splits",
+    (body) => {
+      // MET-7365: the same decline, chain-wide; the default split it carries
+      // for comparison is the runtime's own (InitialSubnetOwnerCut 11796/65535).
+      assert.equal(body.data.observed_block, null);
+      assert.equal(body.data.subnet_count, null);
+      assert.equal(body.data.custom_count, null);
+      assert.deepEqual(body.data.subnets, []);
+      assert.equal(body.data.default_split.parts.owner, "3320329489486196244");
+    },
+  ],
+  [
     "/api/v1/subnets/64/swap",
     (body) => {
       // #13165: no swap store is bound in this harness, so the one honest

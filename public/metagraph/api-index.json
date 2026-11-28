@@ -914,6 +914,24 @@
     },
     {
       "contract_version": "2026-07-03.2",
+      "id": "subnet-emission-split",
+      "path": "/metagraph/subnets/{netuid}/emission-split.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetEmissionSplitArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
+      "id": "chain-emission-splits",
+      "path": "/metagraph/chain/emission-splits.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ChainEmissionSplitsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "contract_version": "2026-07-03.2",
       "id": "chain-gamma",
       "path": "/metagraph/chain/gamma.json",
       "retirement": null,
@@ -2759,7 +2777,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 191,
+    "mainnet_only_route_count": 193,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },
@@ -9007,6 +9025,38 @@
         "mainnet"
       ],
       "path": "/api/v1/chain/baskets",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/subnets/{netuid}/emission-split.json",
+      "cache": "short",
+      "description": "Fetch one subnet's emission split as the chain declares it (MET-7365, runtime spec 497): where its emission goes across the five fixed slots SubtensorModule.SubnetEmissionWeights holds — burn, recycle, owner, validator and miner — and the gamma shares SubnetGammaEmission routes to other subnets' gamma, each as a fraction of the subnet's emission and in the runtime's exact u64 parts; with its lifecycle stage (SubnetState: registered, started, pending_dissolution, dissolving), its epoch consensus (yuma or null) and whether it was created through a lease. `history` and `lifecycle_history` are the validity ranges since the capture began, newest first. The owner's cut is per subnet since v497, from 0% to 33%: never assume 18%. With no capture observed, observed_block is null and there is no split.",
+      "id": "subnet-emission-split",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/subnets/{netuid}/emission-split",
+      "public": true,
+      "query_collection": null,
+      "query_filter_names": [],
+      "query_parameters": []
+    },
+    {
+      "artifact_path": "/metagraph/chain/emission-splits.json",
+      "cache": "short",
+      "description": "Fetch every subnet's current emission split and lifecycle state (MET-7365, runtime spec 497) in one response: each subnet's five fixed slots (burn, recycle, owner, validator, miner) and gamma shares, as fractions and exact u64 parts, beside its lifecycle stage, epoch consensus and lease origin, with how many subnets left the runtime's default split (owner 18%, validators 41%, miners the rest) and how many route emission to gamma. With no capture observed, the list is empty and every count null.",
+      "id": "chain-emission-splits",
+      "mainnet_only": true,
+      "method": "GET",
+      "networks": [
+        "mainnet"
+      ],
+      "path": "/api/v1/chain/emission-splits",
       "public": true,
       "query_collection": null,
       "query_filter_names": [],

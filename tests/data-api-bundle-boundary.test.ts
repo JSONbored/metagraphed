@@ -369,11 +369,20 @@ describe("data-api's bundle boundary", () => {
     // coverage query is already in the graph through src/chain-core-read.ts,
     // and the hot tier's note that it routes on it (+164). Same 2,512 bytes
     // of margin.
+    // The emission split family (MET-7365, runtime spec 497): +4,786 source
+    // bytes, for 4,983,915, all of it declarations -- the two routes' and
+    // artifacts' contract entries and their mainnet-only listing in
+    // src/contracts.ts (+3,446), the no-query listing in
+    // schemas-src/route-queries.ts (+397), the path patterns in
+    // workers/config.ts (+362), the two computed-tier patterns in
+    // src/artifact-storage.ts (+354) and the parts pattern's sample in
+    // src/openapi-sample.ts (+227). The store, the builders and the capture
+    // stay out of data-api's graph. Same 2,512 bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_981_641,
+      firstParty < 4_986_427,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

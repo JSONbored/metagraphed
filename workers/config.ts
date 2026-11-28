@@ -733,6 +733,13 @@ export const GAMMA_DEPOSITS_PATH = "/api/v1/gamma/deposits";
 // services store.
 export const SUBNET_SERVICES_PATH_PATTERN =
   /^\/api\/v1\/subnets\/(\d+)\/services$/;
+// One subnet's emission split and lifecycle state (MET-7365), live from the
+// state store.
+export const SUBNET_EMISSION_SPLIT_PATH_PATTERN =
+  /^\/api\/v1\/subnets\/(\d+)\/emission-split$/;
+// Every subnet's emission split and lifecycle state (MET-7365), live from the
+// state store.
+export const CHAIN_EMISSION_SPLITS_PATH = "/api/v1/chain/emission-splits";
 // One subnet's current balancer-based Swap state (#13165), live from the
 // swap store, no static file.
 export const SUBNET_SWAP_PATH_PATTERN = /^\/api\/v1\/subnets\/(\d+)\/swap$/;

@@ -1115,6 +1115,28 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "One subnet's emission split from chain storage (MET-7365, runtime spec 497) — the five fixed slots SubtensorModule.SubnetEmissionWeights holds (burn, recycle, owner, validator, miner) and the gamma shares SubnetGammaEmission holds, as fractions and as the runtime's exact u64 parts — with its lifecycle state (SubnetState, SubnetEpochConsensus, SubnetCreatedViaLease) and the validity-range history of both, newest first. Served live from the state store at /api/v1/subnets/{netuid}/emission-split (no static file). With no capture observed, observed_block is null and there is no split: the runtime's default is never served in its place.",
+      "id": "subnet-emission-split",
+      "path": "/metagraph/subnets/{netuid}/emission-split.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetEmissionSplitArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "Every subnet's current emission split and lifecycle state from chain storage (MET-7365, runtime spec 497), with how many carry a split other than the runtime's default and how many route emission to gamma. Served live from the state store at /api/v1/chain/emission-splits (no static file). With no capture observed, the list is empty and every count null.",
+      "id": "chain-emission-splits",
+      "path": "/metagraph/chain/emission-splits.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/ChainEmissionSplitsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "The chain-wide Gamma state (#13164) — the global GammaEnabled switch beside every subnet's newest captured Gamma state, ordered by netuid and store-capped — served live from the Gamma store at /api/v1/chain/gamma (no static file). enabled: null with an empty subnet list and a null subnet_count until the engine's Gamma capture lands: an unfilled store is never served as a measured Gamma-less chain.",
       "id": "chain-gamma",
       "path": "/metagraph/chain/gamma.json",
@@ -3266,7 +3288,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 191,
+    "mainnet_only_route_count": 193,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

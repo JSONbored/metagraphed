@@ -65,6 +65,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // #13164: the chain's Gamma deposits, computed live from the deposits
   // store, same reasoning.
   /^gamma\/deposits\.json$/,
+  // MET-7365: every subnet's emission split, computed live from the state
+  // store -- a baked copy would freeze a split the chain moves.
+  /^chain\/emission-splits\.json$/,
   /^endpoints\.json$/,
   /^endpoints\/(?:\d+|\{netuid\})\.json$/,
   /^evidence\/(?:\d+|\{netuid\})\.json$/,
@@ -191,6 +194,9 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // #13164: one subnet's on-chain service-URL registry, computed live from
   // the services store, same reasoning.
   /^subnets\/(?:\d+|\{netuid\})\/services\.json$/,
+  // MET-7365: one subnet's emission split and lifecycle state, computed live
+  // from the state store, same reasoning.
+  /^subnets\/(?:\d+|\{netuid\})\/emission-split\.json$/,
   // #13165: one subnet's balancer Swap state and AlphaAssets accounting,
   // computed live from their stores -- a baked copy would freeze a state the
   // engine has yet to fill.
