@@ -36,13 +36,12 @@ import { bytesToHex, storageMapPrefix } from "./twox-storage-key.ts";
 import {
   decode,
   decoded,
-  enumerate,
   finalizedAt,
-  netuidAt,
   netuidSuffix,
   RPC_TIMEOUT_MS,
   type Rpc,
   storageAt,
+  subnetNetuids,
 } from "./chain-storage-read.ts";
 
 /** u64::MAX: the whole of a subnet's emission, in the runtime's parts. */
@@ -169,19 +168,10 @@ export async function loadSubnetEmissionSnapshot(
     }),
 ): Promise<SubnetEmissionSnapshot> {
   const { at, block } = await finalizedAt(rpc);
-  const stateKeys = await enumerate(rpc, KEY.state, at);
-  if (stateKeys === null)
-    throw new Error("SubnetState is larger than its read bound");
-  const netuids = stateKeys
-    .map((key) => {
-      const suffix = key.slice(KEY.state.length);
-      // A key that names no netuid cannot be told apart from a subnet that is
-      // gone, and closing a live subnet's rows would be a wrong answer.
-      if (!/^[0-9a-f]{4}$/.test(suffix))
-        throw new Error("SubnetState holds a key that names no netuid");
-      return netuidAt(suffix, 0);
-    })
-    .sort((a, b) => a - b);
+  // A key that names no netuid cannot be told apart from a subnet that is
+  // gone, and closing a live subnet's rows would be a wrong answer: the
+  // listing refuses rather than guess (src/chain-storage-read.ts).
+  const netuids = await subnetNetuids(rpc, at);
   const items = [
     KEY.state,
     KEY.weights,

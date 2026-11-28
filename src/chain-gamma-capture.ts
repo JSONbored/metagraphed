@@ -26,6 +26,12 @@
 //   TaoUsdPrice                     { accepted: u64, feed: u64, fed_at: u64 }
 //   TaoUsdPriceOracle               AccountId
 //
+// Every per-subnet item and GammaEnabled is a ValueQuery: a key the block does
+// not hold reads as the runtime's default (false, or zero), which is a value
+// like any other and is captured as one. NULL is left for what does not
+// decode, never for what the chain simply defaults. The subnets are the ones
+// SubnetState lists, the same set the emission capture reads.
+//
 // Where v497 moved a shape the v490 column cannot hold, the column is left
 // NULL rather than filled with something else under its name:
 // `SubnetGammaEmission` is now a list of (target, share) pairs, so
@@ -53,6 +59,7 @@ import {
   RPC_TIMEOUT_MS,
   type Rpc,
   storageAt,
+  subnetNetuids,
 } from "./chain-storage-read.ts";
 
 /** The tables one capture writes, in one transaction. */
@@ -70,7 +77,6 @@ export const SUBNET_GAMMA_RETENTION_MS = 30 * 86_400_000;
 /** One bounded sweep per tick, like every capture lane's retention. */
 export const SUBNET_GAMMA_PRUNE_MAX_ROWS = 5_000;
 
-const MAX_NETUIDS = 1_024;
 /** TaoUsdPrice is in gamma units per TAO, and gamma is 10^9 units a dollar. */
 const GAMMA_UNITS_PER_USD = 1e9;
 
@@ -87,7 +93,6 @@ const KEY = Object.freeze({
   services: prefix("Services"),
   taoUsd: prefix("TaoUsdPrice"),
   oracle: prefix("TaoUsdPriceOracle"),
-  totalNetworks: prefix("TotalNetworks"),
 });
 
 export const decodeBool = (hex: string) => decode(hex, (s) => s.bool());
@@ -210,16 +215,10 @@ export async function loadChainGammaSnapshot(
 
   const singles = await storageAt(
     rpc,
-    [KEY.enabled, KEY.taoUsd, KEY.oracle, KEY.totalNetworks],
+    [KEY.enabled, KEY.taoUsd, KEY.oracle],
     at,
   );
-  const total = Number(
-    decoded(singles.get(KEY.totalNetworks), decodeU16, miss) ?? 0,
-  );
-  const netuids = Array.from(
-    { length: Math.min(total, MAX_NETUIDS) },
-    (_, n) => n,
-  );
+  const netuids = await subnetNetuids(rpc, at);
   const maps = [
     KEY.subnetEnabled,
     KEY.price,
@@ -256,32 +255,26 @@ export async function loadChainGammaSnapshot(
     unconverted.set(netuid, (unconverted.get(netuid) ?? 0n) + BigInt(value));
   }
 
-  const subnets = netuids
-    .map((netuid) => {
-      const valueOf = (item: string) =>
-        perNetuid.get(item + netuidSuffix(netuid));
-      return {
-        netuid,
-        enabled: decoded(valueOf(KEY.subnetEnabled), decodeBool, miss),
-        price: decoded(valueOf(KEY.price), decodeU128, miss),
-        pending: decoded(valueOf(KEY.pending), decodeU64, miss),
-        unconverted:
-          unconvertedKeys === null
-            ? null
-            : (unconverted.get(netuid) ?? 0n).toString(),
-        whitelisted: decoded(valueOf(KEY.whitelisted), decodeBool, miss),
-      };
-    })
-    // A subnet no Gamma state names is not a row: absence of every value is
-    // the chain's default, which the newest capture of a gamma subnet shows.
-    .filter(
-      (row) =>
-        row.enabled !== null ||
-        row.price !== null ||
-        row.pending !== null ||
-        row.whitelisted !== null ||
-        (row.unconverted !== null && row.unconverted !== "0"),
-    );
+  const subnets = netuids.map((netuid) => {
+    const held = <T>(item: string, read: (hex: string) => T, fallback: T) =>
+      valueQuery(
+        perNetuid.get(item + netuidSuffix(netuid)),
+        read,
+        fallback,
+        miss,
+      );
+    return {
+      netuid,
+      enabled: held(KEY.subnetEnabled, decodeBool, false),
+      price: held(KEY.price, decodeU128, "0"),
+      pending: held(KEY.pending, decodeU64, "0"),
+      unconverted:
+        unconvertedKeys === null
+          ? null
+          : (unconverted.get(netuid) ?? 0n).toString(),
+      whitelisted: held(KEY.whitelisted, decodeBool, false),
+    };
+  });
 
   const pairs = <T>(
     keys: string[] | null,
@@ -321,7 +314,7 @@ export async function loadChainGammaSnapshot(
   const price = decoded(singles.get(KEY.taoUsd), decodeTaoUsdPrice, miss);
   return {
     block,
-    enabled: decoded(singles.get(KEY.enabled), decodeBool, miss),
+    enabled: valueQuery(singles.get(KEY.enabled), decodeBool, false, miss),
     subnets,
     services,
     deposits,
@@ -335,8 +328,15 @@ export async function loadChainGammaSnapshot(
   };
 }
 
-function decodeU16(hex: string): number {
-  return Number(decode(hex, (s) => s.uint(2)));
+/** A ValueQuery's value: the runtime's default when the block holds no key,
+ * the decoded value otherwise, and null (counted) when it does not decode. */
+function valueQuery<T>(
+  value: string | undefined,
+  read: (hex: string) => T,
+  fallback: T,
+  miss: { undecoded: number },
+): T | null {
+  return value === undefined ? fallback : decoded(value, read, miss);
 }
 
 /** The statements one capture writes, in order, for one transaction. Pure. */
