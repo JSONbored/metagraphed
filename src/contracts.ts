@@ -1586,6 +1586,20 @@ export const PUBLIC_ARTIFACTS = [
     COMPUTED_LIVE,
   ),
   artifact(
+    "subnet-commitments",
+    "/metagraph/subnets/{netuid}/commitments.json",
+    "A subnet's current on-chain commitments from chain storage (MET-7365, runtime spec 497): what each hotkey published with Commitments.set_commitment — its deposit and Data fields (raw and big-raw bytes with their printable text, content hashes, timelock ciphertexts with their drand round, the bonds-reset flag) — and the timelocked payloads Commitments.RevealedCommitments holds as revealed, paged most recently committed first. Served live from the state store at /api/v1/subnets/{netuid}/commitments (no static file). With no capture observed, observed_block and total are null and there are no rows.",
+    "SubnetCommitmentsArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
+    "subnet-hotkey-commitment",
+    "/metagraph/subnets/{netuid}/commitments/{hotkey}.json",
+    "One hotkey's on-chain commitment and reveals on one subnet (MET-7365, runtime spec 497), current and as validity ranges since the capture began, newest first. Served live from the state store at /api/v1/subnets/{netuid}/commitments/{hotkey} (no static file). With no capture observed, observed_block and exists are null and there is no state.",
+    "HotkeyCommitmentArtifact",
+    COMPUTED_LIVE,
+  ),
+  artifact(
     "chain-gamma",
     "/metagraph/chain/gamma.json",
     "The chain-wide Gamma state (#13164) — the global GammaEnabled switch beside every subnet's newest captured Gamma state, ordered by netuid and store-capped — served live from the Gamma store at /api/v1/chain/gamma (no static file). enabled: null with an empty subnet list and a null subnet_count until the engine's Gamma capture lands: an unfilled store is never served as a measured Gamma-less chain.",
@@ -3685,6 +3699,31 @@ export const API_ROUTES = [
     ["chain", "analytics"],
     [],
     [],
+  ),
+  route(
+    "subnet-commitments",
+    "GET",
+    "/api/v1/subnets/{netuid}/commitments",
+    "/metagraph/subnets/{netuid}/commitments.json",
+    "Fetch what a subnet's miners and validators have published on chain (MET-7365, runtime spec 497): each hotkey's current commitment — the deposit and Data fields it set with Commitments.set_commitment, such as model revisions, peer ids, endpoints, content hashes and timelocked payloads, each with its bytes and its text where printable — and the timelock payloads the chain has revealed for it. Most recently committed first; ?limit (<=256) / ?offset. With no capture observed, observed_block and total are null and there are no rows.",
+    "short",
+    ["subnets", "analytics"],
+    [],
+    [{ name: "netuid", schema: { type: "integer", minimum: 0 } }],
+  ),
+  route(
+    "subnet-hotkey-commitment",
+    "GET",
+    "/api/v1/subnets/{netuid}/commitments/{hotkey}",
+    "/metagraph/subnets/{netuid}/commitments/{hotkey}.json",
+    "Fetch one hotkey's on-chain commitment and reveals on one subnet (MET-7365, runtime spec 497), current and as the validity ranges it has held since the capture began, newest first (at most 100). The hotkey is an SS58 address; a malformed one is a 400. With no capture observed, observed_block and exists are null and there is no state.",
+    "short",
+    ["subnets", "analytics"],
+    [],
+    [
+      { name: "netuid", schema: { type: "integer", minimum: 0 } },
+      { name: "hotkey", schema: { type: "string" } },
+    ],
   ),
   route(
     "chain-gamma",
@@ -5873,6 +5912,9 @@ export const MAINNET_ONLY_ROUTE_PATHS: readonly string[] = [
   // carry no network dimension.
   "/api/v1/subnets/{netuid}/emission-split",
   "/api/v1/chain/emission-splits",
+  // MET-7365: state.commitments carries no network dimension either.
+  "/api/v1/subnets/{netuid}/commitments",
+  "/api/v1/subnets/{netuid}/commitments/{hotkey}",
   // #13165: app.swap_balancer and app.alpha_assets have no network column --
   // a testnet-addressed request would be served MAINNET balancer state the
   // day the captures fill.
@@ -6789,6 +6831,8 @@ export const OPERATION_SUMMARIES: Record<string, string> = {
   "subnet-emission-split":
     "Fetch one subnet's emission split and lifecycle state",
   "chain-emission-splits": "Fetch every subnet's emission split",
+  "subnet-commitments": "Fetch one subnet's on-chain commitments",
+  "subnet-hotkey-commitment": "Fetch one hotkey's commitment on a subnet",
   "chain-gamma": "Fetch the chain-wide Gamma state",
   "gamma-deposits": "Fetch the chain's Gamma deposits",
   "account-locks": "Fetch one account's conviction-lock state",

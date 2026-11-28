@@ -6,6 +6,8 @@
  * sees -- a rank, a delta, a residual -- is testable without a DOM.
  */
 import type {
+  CommitmentField,
+  CommitmentReveal,
   DeclaredEmissionSplit,
   EmissionSplitPoint,
   MetagraphNeuron,
@@ -387,4 +389,50 @@ export function declaredSplitRows(
     })),
   ];
   return rows.filter((row) => row.share > 0).sort((a, b) => b.share - a.share);
+}
+
+const HASH_LABELS: Record<string, string> = {
+  blake2_256: "BLAKE2-256 hash",
+  sha256: "SHA-256 hash",
+  keccak256: "Keccak-256 hash",
+  sha3_256: "SHA3-256 hash",
+};
+
+/**
+ * What one commitment says, in a line (MET-7365): its printable fields' text,
+ * joined, and otherwise what each field is -- a content hash, a timelock and
+ * the drand round it opens at, the bonds-reset flag. A hotkey holding only
+ * revealed payloads reads as its newest reveal. Bounded, because a field may
+ * be half a kilobyte and the table is a lookup, not a reader.
+ */
+export function commitmentSummary(
+  fields: readonly CommitmentField[],
+  reveals: readonly CommitmentReveal[],
+  max = 120,
+): string {
+  const parts = fields
+    .map((field) => {
+      if (field.text) return field.text;
+      if (field.kind in HASH_LABELS) return HASH_LABELS[field.kind]!;
+      if (field.kind === "timelock")
+        return field.reveal_round === null
+          ? "timelocked"
+          : `timelocked until round ${field.reveal_round}`;
+      if (field.kind === "timelock_failed") return "timelock that failed to reveal";
+      if (field.kind === "reset_bonds") return "bonds reset";
+      if (field.kind === "none") return "";
+      return `${field.kind} bytes`;
+    })
+    .filter((part) => part !== "");
+  const newest = reveals.reduce<CommitmentReveal | null>(
+    (best, reveal) => (best === null || reveal.block > best.block ? reveal : best),
+    null,
+  );
+  const line =
+    parts.length > 0
+      ? parts.join(" · ")
+      : newest
+        ? `revealed: ${newest.text ?? "binary payload"}`
+        : "empty";
+  return line.length > max ? `${line.slice(0, max - 1)}…` : line;
 }

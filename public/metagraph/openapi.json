@@ -7842,6 +7842,95 @@
           "schema_version": 1
         }
       },
+      "HotkeyCommitmentArtifactResponse": {
+        "value": {
+          "data": {
+            "current": {
+              "commitment": {
+                "block": 5000000,
+                "deposit": "1844674407370955161",
+                "fields": [
+                  {
+                    "hex": "0x6869",
+                    "kind": "none",
+                    "reveal_round": 1,
+                    "text": "example"
+                  }
+                ]
+              },
+              "reveals": [
+                {
+                  "block": 5000000,
+                  "hex": "0x6869",
+                  "text": "example"
+                }
+              ],
+              "valid_from": 1,
+              "valid_to": 1
+            },
+            "exists": false,
+            "history": [
+              {
+                "commitment": {
+                  "block": 5000000,
+                  "deposit": "1844674407370955161",
+                  "fields": [
+                    {
+                      "hex": "0x6869",
+                      "kind": "none",
+                      "reveal_round": 1,
+                      "text": "example"
+                    }
+                  ]
+                },
+                "reveals": [
+                  {
+                    "block": 5000000,
+                    "hex": "0x6869",
+                    "text": "example"
+                  }
+                ],
+                "valid_from": 1,
+                "valid_to": 1
+              }
+            ],
+            "hotkey": "example",
+            "netuid": 7,
+            "observed_at": "2026-06-01T00:00:00.000Z",
+            "observed_block": 5000000,
+            "schema_version": 1
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "catalog_paging": {
+              "reason": "catalog_changed"
+            },
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "observed_through": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
       "IndexerLagArtifactResponse": {
         "value": {
           "data": {
@@ -10454,6 +10543,73 @@
             "notes": "Example description.",
             "schema_version": 1,
             "slug": "example-subnet"
+          },
+          "meta": {
+            "artifact_path": "example",
+            "cache": "short",
+            "catalog_paging": {
+              "reason": "catalog_changed"
+            },
+            "contract_version": "2026-06-29.1",
+            "generated_at": "2026-06-01T00:00:00.000Z",
+            "observed_through": "2026-06-01T00:00:00.000Z",
+            "pagination": {
+              "collection": "example",
+              "cursor": 1,
+              "limit": 1,
+              "next_cursor": 1,
+              "order": "asc",
+              "returned": 1,
+              "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+              "sort": "example",
+              "total": 1
+            },
+            "published_at": "2026-06-01T00:00:00.000Z",
+            "source": "live-cron-prober",
+            "stale_contract": {
+              "built_under": "example",
+              "live": "example"
+            }
+          },
+          "ok": true,
+          "schema_version": 1
+        }
+      },
+      "SubnetCommitmentsArtifactResponse": {
+        "value": {
+          "data": {
+            "commitments": [
+              {
+                "commitment": {
+                  "block": 5000000,
+                  "deposit": "1844674407370955161",
+                  "fields": [
+                    {
+                      "hex": "0x6869",
+                      "kind": "none",
+                      "reveal_round": 1,
+                      "text": "example"
+                    }
+                  ]
+                },
+                "hotkey": "example",
+                "reveals": [
+                  {
+                    "block": 5000000,
+                    "hex": "0x6869",
+                    "text": "example"
+                  }
+                ],
+                "valid_from": 1
+              }
+            ],
+            "limit": 1,
+            "netuid": 7,
+            "observed_at": "2026-06-01T00:00:00.000Z",
+            "observed_block": 5000000,
+            "offset": 1,
+            "schema_version": 1,
+            "total": 1
           },
           "meta": {
             "artifact_path": "example",
@@ -31216,6 +31372,177 @@
         ],
         "type": "object"
       },
+      "Commitment": {
+        "additionalProperties": false,
+        "description": "A hotkey's commitment on one subnet (Commitments.CommitmentOf).",
+        "properties": {
+          "block": {
+            "description": "The block the chain stamped the commitment with when it was set.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "deposit": {
+            "description": "The deposit reserved for it, in rao (u64 atomic units as a decimal string).",
+            "pattern": "^(0|[1-9][0-9]{0,19})$",
+            "type": "string"
+          },
+          "fields": {
+            "description": "Its Data fields, in the order they were committed.",
+            "items": {
+              "$ref": "#/components/schemas/CommitmentField"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "block",
+          "deposit",
+          "fields"
+        ],
+        "type": "object"
+      },
+      "CommitmentField": {
+        "additionalProperties": false,
+        "description": "One Data field of a commitment, as the chain holds it.",
+        "properties": {
+          "hex": {
+            "anyOf": [
+              {
+                "pattern": "^0x(?:[0-9a-f]{2})*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The field's bytes as 0x-prefixed lowercase hex. Null for `none` and `reset_bonds`, which carry none."
+          },
+          "kind": {
+            "description": "The Data variant: `raw` (up to 128 bytes) and `big_raw` bytes; a BLAKE2-256, SHA-256, Keccak-256 or SHA3-256 hash; a `timelock` ciphertext the chain reveals at its drand round, or one whose reveal failed; the bonds-reset flag; or `none`.",
+            "enum": [
+              "none",
+              "raw",
+              "big_raw",
+              "blake2_256",
+              "sha256",
+              "keccak256",
+              "sha3_256",
+              "timelock",
+              "timelock_failed",
+              "reset_bonds"
+            ],
+            "type": "string"
+          },
+          "reveal_round": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A timelock's drand round. Null for every other kind."
+          },
+          "text": {
+            "description": "The bytes as UTF-8 text, when they are printable. Null for binary bytes and for fields with none.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "hex",
+          "text",
+          "reveal_round"
+        ],
+        "type": "object"
+      },
+      "CommitmentReveal": {
+        "additionalProperties": false,
+        "description": "One revealed timelock commitment.",
+        "properties": {
+          "block": {
+            "description": "The block the chain revealed it at.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "hex": {
+            "description": "The revealed payload as the chain keeps it, 0x-prefixed hex.",
+            "pattern": "^0x(?:[0-9a-f]{2})*$",
+            "type": "string"
+          },
+          "text": {
+            "description": "The revealed payload as UTF-8 text, when it is printable. The chain keeps a reveal as SCALE bytes, so this is the payload inside them.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "block",
+          "hex",
+          "text"
+        ],
+        "type": "object"
+      },
+      "CommitmentState": {
+        "additionalProperties": false,
+        "description": "One hotkey's commitment and reveals with their validity range.",
+        "properties": {
+          "commitment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Commitment"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The commitment, or null when the hotkey holds reveals but no commitment."
+          },
+          "reveals": {
+            "description": "The hotkey's revealed timelock commitments on this subnet, in the chain's order. Empty when it has none.",
+            "items": {
+              "$ref": "#/components/schemas/CommitmentReveal"
+            },
+            "type": "array"
+          },
+          "valid_from": {
+            "description": "The first capture block at which this state was observed. The capture is hourly, so the change happened in the 300 or so blocks before it; `commitment.block` is the chain's own.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The first capture block at which another state was observed, or none (exclusive). Null while it is current."
+          }
+        },
+        "required": [
+          "valid_from",
+          "valid_to",
+          "commitment",
+          "reveals"
+        ],
+        "type": "object"
+      },
       "CompareArtifact": {
         "additionalProperties": false,
         "properties": {
@@ -39944,6 +40271,82 @@
           "netuid",
           "source",
           "windows"
+        ],
+        "type": "object"
+      },
+      "HotkeyCommitmentArtifact": {
+        "additionalProperties": false,
+        "description": "One hotkey's on-chain commitment on one subnet, with its history (runtime spec 497). Mirrors GET /api/v1/subnets/{netuid}/commitments/{hotkey}.",
+        "properties": {
+          "current": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CommitmentState"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Its current commitment and reveals, or null when the chain holds none at the observed block."
+          },
+          "exists": {
+            "description": "Whether the chain held a commitment or reveals for this hotkey on this subnet at the observed block. Null with no observation.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "history": {
+            "description": "Every state it has had on this subnet since the capture began, newest first, at most 100.",
+            "items": {
+              "$ref": "#/components/schemas/CommitmentState"
+            },
+            "type": "array"
+          },
+          "hotkey": {
+            "description": "The hotkey, SS58.",
+            "type": "string"
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "description": "When that capture ran, as an ISO timestamp.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observed_block": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The newest finalized block the capture read every subnet's commitments at. Null when no capture has been observed (store unbound, or the capture has not run): the response then carries no commitments at all."
+          },
+          "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "hotkey",
+          "observed_block",
+          "observed_at",
+          "exists",
+          "current",
+          "history"
         ],
         "type": "object"
       },
@@ -48737,6 +49140,124 @@
           "schema_version",
           "netuid",
           "candidates"
+        ],
+        "type": "object"
+      },
+      "SubnetCommitmentEntry": {
+        "additionalProperties": false,
+        "description": "One hotkey's current commitment and reveals on the subnet.",
+        "properties": {
+          "commitment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Commitment"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The commitment, or null when the hotkey holds reveals but no commitment."
+          },
+          "hotkey": {
+            "description": "The committing hotkey, SS58.",
+            "type": "string"
+          },
+          "reveals": {
+            "description": "The hotkey's revealed timelock commitments on this subnet, in the chain's order. Empty when it has none.",
+            "items": {
+              "$ref": "#/components/schemas/CommitmentReveal"
+            },
+            "type": "array"
+          },
+          "valid_from": {
+            "description": "The first capture block at which this state was observed. The capture is hourly, so the change happened in the 300 or so blocks before it; `commitment.block` is the chain's own.",
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "hotkey",
+          "valid_from",
+          "commitment",
+          "reveals"
+        ],
+        "type": "object"
+      },
+      "SubnetCommitmentsArtifact": {
+        "additionalProperties": false,
+        "description": "A subnet's current on-chain commitments and reveals from chain storage (runtime spec 497). Mirrors GET /api/v1/subnets/{netuid}/commitments.",
+        "properties": {
+          "commitments": {
+            "description": "One page of them, the most recently committed first (hotkeys with only reveals last), then by public key.",
+            "items": {
+              "$ref": "#/components/schemas/SubnetCommitmentEntry"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "maximum": 9007199254740991,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "netuid": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "observed_at": {
+            "description": "When that capture ran, as an ISO timestamp.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observed_block": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The newest finalized block the capture read every subnet's commitments at. Null when no capture has been observed (store unbound, or the capture has not run): the response then carries no commitments at all."
+          },
+          "offset": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "schema_version": {
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "maximum": 9007199254740991,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many hotkeys hold a commitment or reveals on this subnet at the observed block. Null with no observation."
+          }
+        },
+        "required": [
+          "schema_version",
+          "netuid",
+          "observed_block",
+          "observed_at",
+          "total",
+          "limit",
+          "offset",
+          "commitments"
         ],
         "type": "object"
       },
@@ -101348,6 +101869,264 @@
         "tags": [
           "candidates",
           "subnets"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/commitments": {
+      "get": {
+        "description": "Fetch what a subnet's miners and validators have published on chain (MET-7365, runtime spec 497): each hotkey's current commitment — the deposit and Data fields it set with Commitments.set_commitment, such as model revisions, peer ids, endpoints, content hashes and timelocked payloads, each with its bytes and its text where printable — and the timelock payloads the chain has revealed for it. Most recently committed first; ?limit (<=256) / ?offset. With no capture observed, observed_block and total are null and there are no rows.",
+        "operationId": "subnetCommitments",
+        "parameters": [
+          {
+            "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Maximum number of rows to return in one page (at most 256). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "maximum": 256,
+              "minimum": 1,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          },
+          {
+            "description": "Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset.",
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 1000000,
+              "minimum": 0,
+              "type": "integer",
+              "x-serving-bound": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "SubnetCommitmentsArtifactResponse": {
+                    "$ref": "#/components/examples/SubnetCommitmentsArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/SubnetCommitmentsArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch one subnet's on-chain commitments",
+        "tags": [
+          "subnets",
+          "analytics"
+        ],
+        "x-metagraphed-mainnet-only": true,
+        "x-metagraphed-networks": [
+          "mainnet"
+        ]
+      }
+    },
+    "/api/v1/subnets/{netuid}/commitments/{hotkey}": {
+      "get": {
+        "description": "Fetch one hotkey's on-chain commitment and reveals on one subnet (MET-7365, runtime spec 497), current and as the validity ranges it has held since the capture began, newest first (at most 100). The hotkey is an SS58 address; a malformed one is a 400. With no capture observed, observed_block and exists are null and there is no state.",
+        "operationId": "subnetHotkeyCommitment",
+        "parameters": [
+          {
+            "description": "The subnet's numeric id on the Bittensor network, as used by the chain itself.",
+            "example": 1,
+            "in": "path",
+            "name": "netuid",
+            "required": true,
+            "schema": {
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "An SS58-encoded hotkey address identifying one validator identity.",
+            "example": "5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3",
+            "in": "path",
+            "name": "hotkey",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "examples": {
+                  "HotkeyCommitmentArtifactResponse": {
+                    "$ref": "#/components/examples/HotkeyCommitmentArtifactResponse"
+                  }
+                },
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "properties": {
+                        "data": {
+                          "$ref": "#/components/schemas/HotkeyCommitmentArtifact"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  ]
+                }
+              }
+            },
+            "description": "Canonical artifact wrapped in the Metagraphed API envelope.",
+            "headers": {
+              "cache-control": {
+                "$ref": "#/components/headers/CacheControl"
+              },
+              "etag": {
+                "$ref": "#/components/headers/ETag"
+              },
+              "x-metagraph-contract-version": {
+                "$ref": "#/components/headers/ContractVersion"
+              }
+            }
+          },
+          "304": {
+            "description": "ETag matched and the cached response is still valid."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Query parameters were malformed or unsupported."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Artifact or API route was not found."
+          },
+          "405": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "HTTP method is not supported."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unexpected backend error."
+          }
+        },
+        "summary": "Fetch one hotkey's commitment on a subnet",
+        "tags": [
+          "subnets",
+          "analytics"
         ],
         "x-metagraphed-mainnet-only": true,
         "x-metagraphed-networks": [

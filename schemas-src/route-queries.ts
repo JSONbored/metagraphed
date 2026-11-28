@@ -117,6 +117,8 @@ import {
   VALIDATOR_ECONOMICS_LIMIT_DEFAULT,
   VALIDATOR_ECONOMICS_LIMIT_MAX,
   TREND_WINDOWS,
+  SUBNET_COMMITMENTS_LIMIT_DEFAULT,
+  SUBNET_COMMITMENTS_LIMIT_MAX,
 } from "../src/route-limits.ts";
 import {
   BLOCK_PAGINATION,
@@ -309,6 +311,9 @@ export const NO_QUERY_PARAMETERS: readonly string[] = [
   // MET-7365: every subnet's current split -- one row per subnet the chain
   // holds, a set the chain itself bounds.
   "/api/v1/chain/emission-splits",
+  // MET-7365: one hotkey's commitment on one subnet -- its current state and
+  // its validity ranges, bounded in the store (COMMITMENT_HISTORY_LIMIT).
+  "/api/v1/subnets/{netuid}/commitments/{hotkey}",
   // #13165: per-netuid balancer Swap card -- one current state, not a series.
   "/api/v1/subnets/{netuid}/swap",
   // #13165: per-netuid AlphaAssets card -- one current state, not a series.
@@ -977,6 +982,17 @@ export const ROUTE_QUERY_SCHEMAS = lazySchemaMap({
       limit: limitSchema(MAX_LIMIT, FEED_PAGINATION.defaultLimit).optional(),
       offset: offsetSchema().optional(),
       format: formatSchema().optional(),
+    }),
+  // MET-7365: a subnet's current commitments, one per hotkey that set one.
+  // No `cursor`: a capture moves rows hourly, so an offset page is what a
+  // caller can honestly be promised.
+  "/api/v1/subnets/{netuid}/commitments": () =>
+    z.object({
+      limit: limitSchema(
+        SUBNET_COMMITMENTS_LIMIT_MAX,
+        SUBNET_COMMITMENTS_LIMIT_DEFAULT,
+      ).optional(),
+      offset: offsetSchema().optional(),
     }),
   "/api/v1/subnets/{netuid}/validators": () =>
     z.object({

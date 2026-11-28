@@ -180,9 +180,10 @@ export const NATIVE_SOURCE_RELATIONS = Object.freeze({
     "chain_event_rows",
     "extrinsic_rows",
   ]),
-  // Decoded on-chain state over time (ADR 0029 phase 2, migration 0060):
-  // validity ranges a producer lane writes and the routes read.
+  // Decoded on-chain state over time (ADR 0029 phase 2, migrations 0060 and
+  // 0061): validity ranges a producer lane writes and the routes read.
   state: Object.freeze([
+    "commitments",
     "observations",
     "subnet_emission_splits",
     "subnet_lifecycle_states",

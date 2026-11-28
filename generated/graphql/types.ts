@@ -2289,6 +2289,54 @@ export type ColdkeySwapPolicy = {
   reannouncement_delay?: Maybe<Scalars['Int']['output']>;
 };
 
+/** A hotkey's commitment on one subnet (Commitments.CommitmentOf). */
+export type Commitment = {
+  __typename?: 'Commitment';
+  /** The block the chain stamped the commitment with when it was set. */
+  block: Scalars['Int']['output'];
+  /** The deposit reserved for it, in rao (u64 atomic units as a decimal string). */
+  deposit: Scalars['String']['output'];
+  /** Its Data fields, in the order they were committed. */
+  fields: Array<CommitmentField>;
+};
+
+/** One Data field of a commitment, as the chain holds it. */
+export type CommitmentField = {
+  __typename?: 'CommitmentField';
+  /** The field's bytes as 0x-prefixed lowercase hex. Null for `none` and `reset_bonds`, which carry none. */
+  hex?: Maybe<Scalars['String']['output']>;
+  /** The Data variant: `raw` (up to 128 bytes) and `big_raw` bytes; a BLAKE2-256, SHA-256, Keccak-256 or SHA3-256 hash; a `timelock` ciphertext the chain reveals at its drand round, or one whose reveal failed; the bonds-reset flag; or `none`. */
+  kind: Scalars['String']['output'];
+  /** A timelock's drand round. Null for every other kind. */
+  reveal_round?: Maybe<Scalars['Int']['output']>;
+  /** The bytes as UTF-8 text, when they are printable. Null for binary bytes and for fields with none. */
+  text?: Maybe<Scalars['String']['output']>;
+};
+
+/** One revealed timelock commitment. */
+export type CommitmentReveal = {
+  __typename?: 'CommitmentReveal';
+  /** The block the chain revealed it at. */
+  block: Scalars['Int']['output'];
+  /** The revealed payload as the chain keeps it, 0x-prefixed hex. */
+  hex: Scalars['String']['output'];
+  /** The revealed payload as UTF-8 text, when it is printable. The chain keeps a reveal as SCALE bytes, so this is the payload inside them. */
+  text?: Maybe<Scalars['String']['output']>;
+};
+
+/** One hotkey's commitment and reveals with their validity range. */
+export type CommitmentState = {
+  __typename?: 'CommitmentState';
+  /** The commitment, or null when the hotkey holds reveals but no commitment. */
+  commitment?: Maybe<Commitment>;
+  /** The hotkey's revealed timelock commitments on this subnet, in the chain's order. Empty when it has none. */
+  reveals: Array<CommitmentReveal>;
+  /** The first capture block at which this state was observed. The capture is hourly, so the change happened in the 300 or so blocks before it; `commitment.block` is the chain's own. */
+  valid_from: Scalars['Int']['output'];
+  /** The first capture block at which another state was observed, or none (exclusive). Null while it is current. */
+  valid_to?: Maybe<Scalars['Int']['output']>;
+};
+
 export type Compare = {
   __typename?: 'Compare';
   dimensions?: Maybe<Array<Scalars['String']['output']>>;
@@ -3347,6 +3395,25 @@ export type HealthTrends = {
   windows: Scalars['JSON']['output'];
 };
 
+/** One hotkey's on-chain commitment on one subnet, with its history (runtime spec 497). Mirrors GET /api/v1/subnets/{netuid}/commitments/{hotkey}. */
+export type HotkeyCommitment = {
+  __typename?: 'HotkeyCommitment';
+  /** Its current commitment and reveals, or null when the chain holds none at the observed block. */
+  current?: Maybe<CommitmentState>;
+  /** Whether the chain held a commitment or reveals for this hotkey on this subnet at the observed block. Null with no observation. */
+  exists?: Maybe<Scalars['Boolean']['output']>;
+  /** Every state it has had on this subnet since the capture began, newest first, at most 100. */
+  history: Array<CommitmentState>;
+  /** The hotkey, SS58. */
+  hotkey: Scalars['String']['output'];
+  netuid: Scalars['Int']['output'];
+  /** When that capture ran, as an ISO timestamp. */
+  observed_at?: Maybe<Scalars['String']['output']>;
+  /** The newest finalized block the capture read every subnet's commitments at. Null when no capture has been observed (store unbound, or the capture has not run): the response then carries no commitments at all. */
+  observed_block?: Maybe<Scalars['Int']['output']>;
+  schema_version: Scalars['Int']['output'];
+};
+
 /** One subnet's hotkey swap lineage for the account: written on each successful hotkey swap on that subnet. */
 export type HotkeyLineageEntry = {
   __typename?: 'HotkeyLineageEntry';
@@ -4161,6 +4228,8 @@ export type Query = {
   subnet_burn_history: SubnetBurnHistory;
   /** One subnet's unpromoted candidate-surface queue — the baked per-subnet /metagraph/candidates/{netuid}.json artifact the REST route and get_subnet_candidates MCP tool read. Filter with kind, provider, state, id, and confidence; sort with sort + order; and page with limit (1-100) / cursor, exactly as REST does — an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the candidates rows. Null when no candidate artifact has been baked for the netuid (rather than a GraphQL error). Distinct from candidates(...) (the filterable network-wide candidate catalog). Mirrors GET /api/v1/subnets/{netuid}/candidates. */
   subnet_candidates?: Maybe<Scalars['JSON']['output']>;
+  /** A subnet's current on-chain commitments (MET-7365, runtime spec 497): each hotkey's deposit and Data fields from Commitments.set_commitment, with their bytes and printable text, and the timelock payloads the chain has revealed, most recently committed first and paged. With no capture observed, observed_block and total are null and there are no rows. Mirrors GET /api/v1/subnets/{netuid}/commitments. */
+  subnet_commitments: SubnetCommitments;
   /** Per-subnet stake and emission concentration over the current neurons snapshot: raw-UID and per-entity Gini/HHI/Nakamoto/top-K share for stake and emission, validator-only stake concentration, and a uids-per-entity Sybil signal; a subnet with no neurons resolves to a schema-stable zeroed card (metric blocks null), never null. Mirrors GET /api/v1/subnets/{netuid}/concentration. */
   subnet_concentration: SubnetConcentration;
   /** Per-subnet per-day stake and emission concentration trend from the neuron_daily rollup over a 7d/30d/90d window (default 30d): each day's stake/emission Gini, Nakamoto coefficient, and top-10% share, newest first; a subnet with no daily rollup resolves to a schema-stable empty series (point_count 0), never null. Mirrors GET /api/v1/subnets/{netuid}/concentration/history. */
@@ -4201,6 +4270,8 @@ export type Query = {
   subnet_history: SubnetHistory;
   /** Who OWNS a subnet's alpha: the top coldkeys by alpha held on that netuid, each with its share of the subnet total and how many hotkeys it holds through, plus whole-subnet aggregates (distinct holder count, total measured alpha, top5/top10/top20 concentration). The reverse index of account_positions, which reads the same ledger one coldkey (one account) at a time, and distinct from subnet_concentration: that card is computed off registered UIDs' stake, while this one includes alpha staked to UNREGISTERED hotkeys. Ranked in ALPHA, not TAO. limit caps the rows (default 20, max 100); the aggregates are always computed over the FULL holder set, so holder_count is not the length of what you got back. TWO STATES DECLINE rather than answer, both with an empty holders list, a degraded block and NULL counts: pool_totals_unproven while the pool ledger has no complete pass, and root_not_in_alpha_map for netuid 0, which the chain's Alpha map does not cover. An empty holders list WITHOUT a degraded block is therefore a measurement. Mainnet only. Mirrors GET /api/v1/subnets/{netuid}/holders. */
   subnet_holders: SubnetHolders;
+  /** One hotkey's on-chain commitment and reveals on one subnet (MET-7365, runtime spec 497), current and as validity ranges since the capture began, newest first. With no capture observed, observed_block and exists are null. Mirrors GET /api/v1/subnets/{netuid}/commitments/{hotkey}. */
+  subnet_hotkey_commitment: HotkeyCommitment;
   /** One subnet's live on-chain hyperparameters (latest snapshot only). The hyperparameters block is null when the subnet has no captured row -- a schema-stable card, never a GraphQL error, matching the Query.block ref-lookup convention. Mirrors GET /api/v1/subnets/{netuid}/hyperparameters. */
   subnet_hyperparameters?: Maybe<SubnetHyperparameters>;
   /** One subnet's append-only hyperparameter-change history, newest first, one entry per observed change. Forward-only: entries exist only from when the diff-on-change write started. A subnet with no recorded changes resolves to an empty entry list, never null. Mirrors GET /api/v1/subnets/{netuid}/hyperparameters/history. */
@@ -5351,6 +5422,13 @@ export type QuerySubnet_CandidatesArgs = {
 };
 
 
+export type QuerySubnet_CommitmentsArgs = {
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  netuid: Scalars['Int']['input'];
+  offset?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QuerySubnet_ConcentrationArgs = {
   netuid: Scalars['Int']['input'];
 };
@@ -5503,6 +5581,12 @@ export type QuerySubnet_HistoryArgs = {
 
 export type QuerySubnet_HoldersArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
+  netuid: Scalars['Int']['input'];
+};
+
+
+export type QuerySubnet_Hotkey_CommitmentArgs = {
+  hotkey: Scalars['String']['input'];
   netuid: Scalars['Int']['input'];
 };
 
@@ -6819,6 +6903,36 @@ export type SubnetBurnHistoryPoint = {
   __typename?: 'SubnetBurnHistoryPoint';
   burn_tao: Scalars['Float']['output'];
   observed_at: Scalars['String']['output'];
+};
+
+/** One hotkey's current commitment and reveals on the subnet. */
+export type SubnetCommitmentEntry = {
+  __typename?: 'SubnetCommitmentEntry';
+  /** The commitment, or null when the hotkey holds reveals but no commitment. */
+  commitment?: Maybe<Commitment>;
+  /** The committing hotkey, SS58. */
+  hotkey: Scalars['String']['output'];
+  /** The hotkey's revealed timelock commitments on this subnet, in the chain's order. Empty when it has none. */
+  reveals: Array<CommitmentReveal>;
+  /** The first capture block at which this state was observed. The capture is hourly, so the change happened in the 300 or so blocks before it; `commitment.block` is the chain's own. */
+  valid_from: Scalars['Int']['output'];
+};
+
+/** A subnet's current on-chain commitments and reveals from chain storage (runtime spec 497). Mirrors GET /api/v1/subnets/{netuid}/commitments. */
+export type SubnetCommitments = {
+  __typename?: 'SubnetCommitments';
+  /** One page of them, the most recently committed first (hotkeys with only reveals last), then by public key. */
+  commitments: Array<SubnetCommitmentEntry>;
+  limit: Scalars['Int']['output'];
+  netuid: Scalars['Int']['output'];
+  /** When that capture ran, as an ISO timestamp. */
+  observed_at?: Maybe<Scalars['String']['output']>;
+  /** The newest finalized block the capture read every subnet's commitments at. Null when no capture has been observed (store unbound, or the capture has not run): the response then carries no commitments at all. */
+  observed_block?: Maybe<Scalars['Int']['output']>;
+  offset: Scalars['Int']['output'];
+  schema_version: Scalars['Int']['output'];
+  /** How many hotkeys hold a commitment or reveals on this subnet at the observed block. Null with no observation. */
+  total?: Maybe<Scalars['Int']['output']>;
 };
 
 export type SubnetComputeDeclaration = {
@@ -9563,6 +9677,10 @@ export type ResolversTypes = ResolversObject<{
   ColdkeyLineage: ResolverTypeWrapper<ColdkeyLineage>;
   ColdkeySwapAnnouncement: ResolverTypeWrapper<ColdkeySwapAnnouncement>;
   ColdkeySwapPolicy: ResolverTypeWrapper<ColdkeySwapPolicy>;
+  Commitment: ResolverTypeWrapper<Commitment>;
+  CommitmentField: ResolverTypeWrapper<CommitmentField>;
+  CommitmentReveal: ResolverTypeWrapper<CommitmentReveal>;
+  CommitmentState: ResolverTypeWrapper<CommitmentState>;
   Compare: ResolverTypeWrapper<Compare>;
   CompareEconomics: ResolverTypeWrapper<CompareEconomics>;
   CompareHealth: ResolverTypeWrapper<CompareHealth>;
@@ -9641,6 +9759,7 @@ export type ResolversTypes = ResolversObject<{
   HealthPercentilesArtifactSurfacesLatencyMs: ResolverTypeWrapper<HealthPercentilesArtifactSurfacesLatencyMs>;
   HealthProbeSummary: ResolverTypeWrapper<HealthProbeSummary>;
   HealthTrends: ResolverTypeWrapper<HealthTrends>;
+  HotkeyCommitment: ResolverTypeWrapper<HotkeyCommitment>;
   HotkeyLineageEntry: ResolverTypeWrapper<HotkeyLineageEntry>;
   Hyperparameters: ResolverTypeWrapper<Hyperparameters>;
   HyperparamsHistoryEntry: ResolverTypeWrapper<HyperparamsHistoryEntry>;
@@ -9742,6 +9861,8 @@ export type ResolversTypes = ResolversObject<{
   SubnetBurn: ResolverTypeWrapper<SubnetBurn>;
   SubnetBurnHistory: ResolverTypeWrapper<SubnetBurnHistory>;
   SubnetBurnHistoryPoint: ResolverTypeWrapper<SubnetBurnHistoryPoint>;
+  SubnetCommitmentEntry: ResolverTypeWrapper<SubnetCommitmentEntry>;
+  SubnetCommitments: ResolverTypeWrapper<SubnetCommitments>;
   SubnetComputeDeclaration: ResolverTypeWrapper<SubnetComputeDeclaration>;
   SubnetComputeDeclarationEvidence: ResolverTypeWrapper<SubnetComputeDeclarationEvidence>;
   SubnetConcentration: ResolverTypeWrapper<SubnetConcentration>;
@@ -10088,6 +10209,10 @@ export type ResolversParentTypes = ResolversObject<{
   ColdkeyLineage: ColdkeyLineage;
   ColdkeySwapAnnouncement: ColdkeySwapAnnouncement;
   ColdkeySwapPolicy: ColdkeySwapPolicy;
+  Commitment: Commitment;
+  CommitmentField: CommitmentField;
+  CommitmentReveal: CommitmentReveal;
+  CommitmentState: CommitmentState;
   Compare: Compare;
   CompareEconomics: CompareEconomics;
   CompareHealth: CompareHealth;
@@ -10166,6 +10291,7 @@ export type ResolversParentTypes = ResolversObject<{
   HealthPercentilesArtifactSurfacesLatencyMs: HealthPercentilesArtifactSurfacesLatencyMs;
   HealthProbeSummary: HealthProbeSummary;
   HealthTrends: HealthTrends;
+  HotkeyCommitment: HotkeyCommitment;
   HotkeyLineageEntry: HotkeyLineageEntry;
   Hyperparameters: Hyperparameters;
   HyperparamsHistoryEntry: HyperparamsHistoryEntry;
@@ -10266,6 +10392,8 @@ export type ResolversParentTypes = ResolversObject<{
   SubnetBurn: SubnetBurn;
   SubnetBurnHistory: SubnetBurnHistory;
   SubnetBurnHistoryPoint: SubnetBurnHistoryPoint;
+  SubnetCommitmentEntry: SubnetCommitmentEntry;
+  SubnetCommitments: SubnetCommitments;
   SubnetComputeDeclaration: SubnetComputeDeclaration;
   SubnetComputeDeclarationEvidence: SubnetComputeDeclarationEvidence;
   SubnetConcentration: SubnetConcentration;
@@ -12161,6 +12289,32 @@ export type ColdkeySwapPolicyResolvers<ContextType = GqlContext, ParentType exte
   reannouncement_delay?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
+export type CommitmentResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Commitment'] = ResolversParentTypes['Commitment']> = ResolversObject<{
+  block?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  deposit?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  fields?: Resolver<Array<ResolversTypes['CommitmentField']>, ParentType, ContextType>;
+}>;
+
+export type CommitmentFieldResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CommitmentField'] = ResolversParentTypes['CommitmentField']> = ResolversObject<{
+  hex?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  kind?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  reveal_round?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  text?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type CommitmentRevealResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CommitmentReveal'] = ResolversParentTypes['CommitmentReveal']> = ResolversObject<{
+  block?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  hex?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  text?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+}>;
+
+export type CommitmentStateResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['CommitmentState'] = ResolversParentTypes['CommitmentState']> = ResolversObject<{
+  commitment?: Resolver<Maybe<ResolversTypes['Commitment']>, ParentType, ContextType>;
+  reveals?: Resolver<Array<ResolversTypes['CommitmentReveal']>, ParentType, ContextType>;
+  valid_from?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  valid_to?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+}>;
+
 export type CompareResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['Compare'] = ResolversParentTypes['Compare']> = ResolversObject<{
   dimensions?: Resolver<Maybe<Array<ResolversTypes['String']>>, ParentType, ContextType>;
   observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
@@ -12999,6 +13153,17 @@ export type HealthTrendsResolvers<ContextType = GqlContext, ParentType extends R
   windows?: Resolver<ResolversTypes['JSON'], ParentType, ContextType>;
 }>;
 
+export type HotkeyCommitmentResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['HotkeyCommitment'] = ResolversParentTypes['HotkeyCommitment']> = ResolversObject<{
+  current?: Resolver<Maybe<ResolversTypes['CommitmentState']>, ParentType, ContextType>;
+  exists?: Resolver<Maybe<ResolversTypes['Boolean']>, ParentType, ContextType>;
+  history?: Resolver<Array<ResolversTypes['CommitmentState']>, ParentType, ContextType>;
+  hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  observed_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
 export type HotkeyLineageEntryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['HotkeyLineageEntry'] = ResolversParentTypes['HotkeyLineageEntry']> = ResolversObject<{
   captured_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
@@ -13550,6 +13715,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_burn?: Resolver<Maybe<ResolversTypes['SubnetBurn']>, ParentType, ContextType, RequireFields<QuerySubnet_BurnArgs, 'netuid'>>;
   subnet_burn_history?: Resolver<ResolversTypes['SubnetBurnHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Burn_HistoryArgs, 'netuid'>>;
   subnet_candidates?: Resolver<Maybe<ResolversTypes['JSON']>, ParentType, ContextType, RequireFields<QuerySubnet_CandidatesArgs, 'netuid'>>;
+  subnet_commitments?: Resolver<ResolversTypes['SubnetCommitments'], ParentType, ContextType, RequireFields<QuerySubnet_CommitmentsArgs, 'netuid'>>;
   subnet_concentration?: Resolver<ResolversTypes['SubnetConcentration'], ParentType, ContextType, RequireFields<QuerySubnet_ConcentrationArgs, 'netuid'>>;
   subnet_concentration_history?: Resolver<ResolversTypes['SubnetConcentrationHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Concentration_HistoryArgs, 'netuid'>>;
   subnet_conviction?: Resolver<ResolversTypes['SubnetConviction'], ParentType, ContextType, RequireFields<QuerySubnet_ConvictionArgs, 'netuid'>>;
@@ -13570,6 +13736,7 @@ export type QueryResolvers<ContextType = GqlContext, ParentType extends Resolver
   subnet_health_trends?: Resolver<ResolversTypes['SubnetHealthTrends'], ParentType, ContextType, RequireFields<QuerySubnet_Health_TrendsArgs, 'netuid'>>;
   subnet_history?: Resolver<ResolversTypes['SubnetHistory'], ParentType, ContextType, RequireFields<QuerySubnet_HistoryArgs, 'netuid'>>;
   subnet_holders?: Resolver<ResolversTypes['SubnetHolders'], ParentType, ContextType, RequireFields<QuerySubnet_HoldersArgs, 'netuid'>>;
+  subnet_hotkey_commitment?: Resolver<ResolversTypes['HotkeyCommitment'], ParentType, ContextType, RequireFields<QuerySubnet_Hotkey_CommitmentArgs, 'hotkey' | 'netuid'>>;
   subnet_hyperparameters?: Resolver<Maybe<ResolversTypes['SubnetHyperparameters']>, ParentType, ContextType, RequireFields<QuerySubnet_HyperparametersArgs, 'netuid'>>;
   subnet_hyperparameters_history?: Resolver<ResolversTypes['SubnetHyperparamsHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Hyperparameters_HistoryArgs, 'netuid'>>;
   subnet_identity_history?: Resolver<ResolversTypes['SubnetIdentityHistory'], ParentType, ContextType, RequireFields<QuerySubnet_Identity_HistoryArgs, 'netuid'>>;
@@ -14355,6 +14522,24 @@ export type SubnetBurnHistoryResolvers<ContextType = GqlContext, ParentType exte
 export type SubnetBurnHistoryPointResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetBurnHistoryPoint'] = ResolversParentTypes['SubnetBurnHistoryPoint']> = ResolversObject<{
   burn_tao?: Resolver<ResolversTypes['Float'], ParentType, ContextType>;
   observed_at?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+}>;
+
+export type SubnetCommitmentEntryResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetCommitmentEntry'] = ResolversParentTypes['SubnetCommitmentEntry']> = ResolversObject<{
+  commitment?: Resolver<Maybe<ResolversTypes['Commitment']>, ParentType, ContextType>;
+  hotkey?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  reveals?: Resolver<Array<ResolversTypes['CommitmentReveal']>, ParentType, ContextType>;
+  valid_from?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+}>;
+
+export type SubnetCommitmentsResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetCommitments'] = ResolversParentTypes['SubnetCommitments']> = ResolversObject<{
+  commitments?: Resolver<Array<ResolversTypes['SubnetCommitmentEntry']>, ParentType, ContextType>;
+  limit?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  netuid?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  observed_at?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
+  observed_block?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  offset?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  schema_version?: Resolver<ResolversTypes['Int'], ParentType, ContextType>;
+  total?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
 }>;
 
 export type SubnetComputeDeclarationResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['SubnetComputeDeclaration'] = ResolversParentTypes['SubnetComputeDeclaration']> = ResolversObject<{
@@ -16392,6 +16577,10 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   ColdkeyLineage?: ColdkeyLineageResolvers<ContextType>;
   ColdkeySwapAnnouncement?: ColdkeySwapAnnouncementResolvers<ContextType>;
   ColdkeySwapPolicy?: ColdkeySwapPolicyResolvers<ContextType>;
+  Commitment?: CommitmentResolvers<ContextType>;
+  CommitmentField?: CommitmentFieldResolvers<ContextType>;
+  CommitmentReveal?: CommitmentRevealResolvers<ContextType>;
+  CommitmentState?: CommitmentStateResolvers<ContextType>;
   Compare?: CompareResolvers<ContextType>;
   CompareEconomics?: CompareEconomicsResolvers<ContextType>;
   CompareHealth?: CompareHealthResolvers<ContextType>;
@@ -16469,6 +16658,7 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   HealthPercentilesArtifactSurfacesLatencyMs?: HealthPercentilesArtifactSurfacesLatencyMsResolvers<ContextType>;
   HealthProbeSummary?: HealthProbeSummaryResolvers<ContextType>;
   HealthTrends?: HealthTrendsResolvers<ContextType>;
+  HotkeyCommitment?: HotkeyCommitmentResolvers<ContextType>;
   HotkeyLineageEntry?: HotkeyLineageEntryResolvers<ContextType>;
   Hyperparameters?: HyperparametersResolvers<ContextType>;
   HyperparamsHistoryEntry?: HyperparamsHistoryEntryResolvers<ContextType>;
@@ -16567,6 +16757,8 @@ export type Resolvers<ContextType = GqlContext> = ResolversObject<{
   SubnetBurn?: SubnetBurnResolvers<ContextType>;
   SubnetBurnHistory?: SubnetBurnHistoryResolvers<ContextType>;
   SubnetBurnHistoryPoint?: SubnetBurnHistoryPointResolvers<ContextType>;
+  SubnetCommitmentEntry?: SubnetCommitmentEntryResolvers<ContextType>;
+  SubnetCommitments?: SubnetCommitmentsResolvers<ContextType>;
   SubnetComputeDeclaration?: SubnetComputeDeclarationResolvers<ContextType>;
   SubnetComputeDeclarationEvidence?: SubnetComputeDeclarationEvidenceResolvers<ContextType>;
   SubnetConcentration?: SubnetConcentrationResolvers<ContextType>;

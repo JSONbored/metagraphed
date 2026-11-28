@@ -197,6 +197,10 @@ export const R2_ONLY_PATTERNS: RegExp[] = [
   // MET-7365: one subnet's emission split and lifecycle state, computed live
   // from the state store, same reasoning.
   /^subnets\/(?:\d+|\{netuid\})\/emission-split\.json$/,
+  // MET-7365: a subnet's on-chain commitments and one hotkey's, computed live
+  // from the state store -- a baked copy would freeze what miners re-commit.
+  /^subnets\/(?:\d+|\{netuid\})\/commitments\.json$/,
+  /^subnets\/(?:\d+|\{netuid\})\/commitments\/(?:[1-9A-HJ-NP-Za-km-z]{47,48}|\{hotkey\})\.json$/,
   // #13165: one subnet's balancer Swap state and AlphaAssets accounting,
   // computed live from their stores -- a baked copy would freeze a state the
   // engine has yet to fill.

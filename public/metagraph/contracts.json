@@ -1137,6 +1137,28 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
+      "description": "A subnet's current on-chain commitments from chain storage (MET-7365, runtime spec 497): what each hotkey published with Commitments.set_commitment — its deposit and Data fields (raw and big-raw bytes with their printable text, content hashes, timelock ciphertexts with their drand round, the bonds-reset flag) — and the timelocked payloads Commitments.RevealedCommitments holds as revealed, paged most recently committed first. Served live from the state store at /api/v1/subnets/{netuid}/commitments (no static file). With no capture observed, observed_block and total are null and there are no rows.",
+      "id": "subnet-commitments",
+      "path": "/metagraph/subnets/{netuid}/commitments.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/SubnetCommitmentsArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
+      "description": "One hotkey's on-chain commitment and reveals on one subnet (MET-7365, runtime spec 497), current and as validity ranges since the capture began, newest first. Served live from the state store at /api/v1/subnets/{netuid}/commitments/{hotkey} (no static file). With no capture observed, observed_block and exists are null and there is no state.",
+      "id": "subnet-hotkey-commitment",
+      "path": "/metagraph/subnets/{netuid}/commitments/{hotkey}.json",
+      "retirement": null,
+      "schema_ref": "#/components/schemas/HotkeyCommitmentArtifact",
+      "status": "live",
+      "storage_tier": "r2"
+    },
+    {
+      "content_type": "application/json",
+      "contract_version": "2026-07-03.2",
       "description": "The chain-wide Gamma state (#13164) — the global GammaEnabled switch beside every subnet's newest captured Gamma state, ordered by netuid and store-capped — served live from the Gamma store at /api/v1/chain/gamma (no static file). enabled: null with an empty subnet list and a null subnet_count until the engine's Gamma capture lands: an unfilled store is never served as a measured Gamma-less chain.",
       "id": "chain-gamma",
       "path": "/metagraph/chain/gamma.json",
@@ -3288,7 +3310,7 @@
       "testnet"
     ],
     "default": "mainnet",
-    "mainnet_only_route_count": 193,
+    "mainnet_only_route_count": 195,
     "note": "Omit the network segment for mainnet. `finney` aliases `mainnet` and `test` aliases `testnet`. `local` is served but hosts no registry data — it returns a setup pointer for a self-run node.",
     "path_form": "/api/v1/{network}/..."
   },

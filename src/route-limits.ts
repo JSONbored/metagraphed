@@ -605,3 +605,14 @@ export const DEFAULT_SUBNET_REVENUE_WINDOW = "1d";
  * lever that does nothing -- the exact defect #10925 exists to remove.
  */
 export const ATTRIBUTION_WINDOW_DAYS = 30;
+
+/**
+ * One page of a subnet's commitments (MET-7365): a subnet holds one per
+ * hotkey that set one, about 230 on average across finney's 130 at block
+ * 9,604,440, so the default page is most of a subnet and the bound all of
+ * most. The store holds the bound too (src/pg-commitments.ts).
+ */
+export const SUBNET_COMMITMENTS_LIMIT_DEFAULT = 100;
+export const SUBNET_COMMITMENTS_LIMIT_MAX = 256;
+/** The most history rows one hotkey's commitment route reads. */
+export const COMMITMENT_HISTORY_LIMIT = 100;

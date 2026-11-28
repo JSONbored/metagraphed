@@ -2471,6 +2471,9 @@ const COLLECTIONS_UNEXERCISED_REASONS = new Map<string, string>([
   // emission split tools can only show their decline.
   ["get_subnet_emission_split", HARNESS_SERVES_NO_ROWS],
   ["get_chain_emission_splits", HARNESS_SERVES_NO_ROWS],
+  // MET-7365: the commitments live in the same unstood state store.
+  ["get_subnet_commitments", HARNESS_SERVES_NO_ROWS],
+  ["get_subnet_hotkey_commitment", HARNESS_SERVES_NO_ROWS],
   // #13165: the balancer Swap state and AlphaAssets accounting have no
   // producer until the engine's capture lands, so the harness can only see
   // the decline.
