@@ -356,11 +356,18 @@ describe("data-api's bundle boundary", () => {
     // stored batch into the typed chain tables. Its writer is a type-only
     // import there (the state bindings build it), so nothing new enters the
     // graph. Same 2,512 bytes of margin.
+    // The block-detail hot tier reads the chain core (ADR 0029 phase 1b,
+    // #13287): +14,975 source bytes, for 4,976,456 -- every statement in
+    // src/chain-detail-hot-tier.ts gains its chain-core twin, kept with its
+    // documentation in src/chain-core-read.ts (CHAIN_CORE_DETAIL: the views,
+    // the coverage window, the account index's two ordered scans), which holds
+    // no dependency of its own and enters the graph with it. Same 2,512 bytes
+    // of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_963_993,
+      firstParty < 4_978_968,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

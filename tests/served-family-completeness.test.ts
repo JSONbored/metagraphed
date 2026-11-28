@@ -225,6 +225,9 @@ const FAMILY_ANCHORS: Readonly<Record<string, Family>> = {
   // ALTER and views only: block economics on chain.blocks and the views the
   // chain_views source reads (ADR 0029 phase 1b). Creates no table.
   "0058_chain_core_reads.sql": { tables: [], anchors: [] },
+  // Views only: the chain core's views tell time by the block (ADR 0029
+  // phase 1b). Creates no table.
+  "0059_chain_core_block_time.sql": { tables: [], anchors: [] },
 };
 
 /** The legacy-port files that predate the gate, pinned exactly. Shrink-only:
