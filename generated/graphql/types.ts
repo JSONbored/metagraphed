@@ -7281,6 +7281,12 @@ export type SubnetEmissionSplitHistoryPoint = {
   earning_miner_count?: Maybe<Scalars['Int']['output']>;
   /** Validator-permit UIDs that recorded emission above zero on this day. */
   earning_validator_count?: Maybe<Scalars['Int']['output']>;
+  /** `total_alpha x gamma_share`. Reconstructed. */
+  gamma_alpha?: Maybe<Scalars['Float']['output']>;
+  /** The day's gamma shares together: alpha converted into other subnets' gamma for the owner hotkey (MET-7385). 0 on every day paid under the runtime default. Reconstructed. */
+  gamma_share?: Maybe<Scalars['Float']['output']>;
+  /** gamma_alpha, priced the same way; null as above. */
+  gamma_usd_day?: Maybe<Scalars['Float']['output']>;
   /** Emission to non-validator UIDs, alpha-denominated -- the BURN SINK excluded (#11094): the SubnetOwnerHotkey UID carrying the MinerBurned fraction is its own `burned_alpha` leg, so this is what miners actually receive. */
   miner_alpha?: Maybe<Scalars['Float']['output']>;
   miner_count?: Maybe<Scalars['Int']['output']>;
@@ -7293,13 +7299,21 @@ export type SubnetEmissionSplitHistoryPoint = {
   neuron_count?: Maybe<Scalars['Int']['output']>;
   /** The owner leg, `total_alpha x owner_cut`. RECONSTRUCTED. It is NOT summed from the rows — the owner cut is paid outside the UID set, so no per-UID row carries it. */
   owner_alpha?: Maybe<Scalars['Float']['output']>;
-  /** The owner share applied to this day. `SubnetOwnerCut` is 11796/65535 — 18%, not 1/6 — and is UNSET on chain, so this is the runtime default rather than a read. Published so a reader can see which constant produced the reconstructed fields. */
+  /** The owner share applied to this day (MET-7385). Before runtime 497 (2026-11-26 on) every subnet's was the runtime default `SubnetOwnerCut`, 11796/65535 — 18%, not 1/6; since, it is the subnet's own SubnetEmissionWeights owner slot, from 0% to 33%. `split_source` says which. Null when the day's split is unobserved. */
   owner_cut?: Maybe<Scalars['Float']['output']>;
-  /** Owner share of the whole day. Reconstructed. `owner_share + validator_share + miner_share` sums to 1 within rao precision. */
+  /** Owner share of the whole day. Reconstructed. `owner_share + removed_share + gamma_share + validator_share + miner_share` sums to 1 within rao precision. */
   owner_share?: Maybe<Scalars['Float']['output']>;
   /** owner_alpha x alpha_price_tao x tao_usd; null as above. */
   owner_usd_day?: Maybe<Scalars['Float']['output']>;
+  /** `total_alpha x removed_share`. Reconstructed. */
+  removed_alpha?: Maybe<Scalars['Float']['output']>;
+  /** The day's burn and recycle slots together: alpha that left circulation rather than reaching anyone (MET-7385). 0 on every day paid under the runtime default. Reconstructed. */
+  removed_share?: Maybe<Scalars['Float']['output']>;
+  /** removed_alpha, priced the same way; null as above. */
+  removed_usd_day?: Maybe<Scalars['Float']['output']>;
   snapshot_date: Scalars['String']['output'];
+  /** Which split reconstructed this day: `runtime_default` (a day before runtime 497, paid under the global owner cut), `declared` (the subnet's SubnetEmissionWeights and SubnetGammaEmission in force at the day's end, from the state capture), `first_observed` (a day between the upgrade and the capture's first observation, carried back from the first observed split only where it cannot have differed: it is the default, or the day's UID emission per unit of alpha out matches it) or `unobserved` (no split is known, so every owner, removed, gamma and validator/miner share of the day is null; the measured `*_share_of_uid` ratios are still published). */
+  split_source?: Maybe<Scalars['String']['output']>;
   /** The day's last PRICED usd_per_tao observation from the TAO/USD index (#9609) -- the rate every *_usd_day leg below used. Null before the series began (2026-08-02) or on an unpriceable day; the legs are null with it. */
   tao_usd?: Maybe<Scalars['Float']['output']>;
   /** The whole day's alpha emission: `alpha_out_emission x 7200 blocks`. RECONSTRUCTED. Null when the day's snapshot carries no `alpha_out_emission` — the measured legs are still published beside it, because a validator/miner split is a real answer even when the day's total is not known. */
@@ -7313,7 +7327,7 @@ export type SubnetEmissionSplitHistoryPoint = {
   /** Emission to validator-permit UIDs. ALPHA-denominated for every non-root subnet — safe to compare within one subnet, never across subnets without the price join. */
   validator_alpha?: Maybe<Scalars['Float']['output']>;
   validator_count?: Maybe<Scalars['Int']['output']>;
-  /** Validator share of the WHOLE day, owner leg included — so it is strictly below `validator_share_of_uid`, which is a share of the distributable remainder only. Reconstructed. */
+  /** Validator share of the WHOLE day: the day's validator and miner slots together times the MEASURED `validator_share_of_uid` — so it is strictly below that ratio, which is a share of the UID set's emission only. Reconstructed. */
   validator_share?: Maybe<Scalars['Float']['output']>;
   /** Validator share of the observed per-UID emission. MEASURED and parameter-free — a ratio of two sums this response also publishes. Null when the day emitted nothing, never 0, which would read as 'validators received none of it'. */
   validator_share_of_uid?: Maybe<Scalars['Float']['output']>;
@@ -8021,7 +8035,7 @@ export type SubnetOwnerCaptureBlindSpot = {
 export type SubnetOwnerCapturePoint = {
   __typename?: 'SubnetOwnerCapturePoint';
   neuron_count?: Maybe<Scalars['Int']['output']>;
-  /** L2 as a share of the WHOLE day, `owner_uid_alpha / total_alpha`. RECONSTRUCTED, because the denominator is. ATTRIBUTED, NOT CAPTURED: this is emission that landed on owner-held UIDs, not what the owner ultimately keeps — the stake behind those UIDs (L3) and any application-layer treasury cut (L4) are outside what the chain shows. See `blind_spots`. */
+  /** L2 as a share of the WHOLE day: `owner_attributed_share_of_uid` times what of the day the UID set was paid (its split's validator and miner slots). RECONSTRUCTED, because that factor is. Not `owner_uid_alpha / total_alpha`: the rows sum one tempo's emission and `total_alpha` is the whole day's, which understated this share by the tempos in a day until MET-7385. ATTRIBUTED, NOT CAPTURED: this is emission that landed on owner-held UIDs, not what the owner ultimately keeps — the stake behind those UIDs (L3) and any application-layer treasury cut (L4) are outside what the chain shows. See `blind_spots`. */
   owner_attributed_share?: Maybe<Scalars['Float']['output']>;
   /** `owner_uid_alpha / uid_alpha`. MEASURED and parameter-free — a ratio of two observed sums this response also publishes, carrying no owner-cut assumption. Null when the day emitted nothing to any UID, never 0. */
   owner_attributed_share_of_uid?: Maybe<Scalars['Float']['output']>;
@@ -8029,13 +8043,15 @@ export type SubnetOwnerCapturePoint = {
   owner_combined_share?: Maybe<Scalars['Float']['output']>;
   /** The L1 leg in alpha, `total_alpha x owner_cut_share`. RECONSTRUCTED — it is not summed from per-UID rows, because the owner cut is paid outside the UID set entirely. */
   owner_cut_alpha?: Maybe<Scalars['Float']['output']>;
-  /** L1 — the protocol owner cut applied to this day. `SubnetOwnerCut` is 11796/65535 (18%, not 1/6) and is UNSET on chain, so this is the runtime default rather than a read. Every subnet pays it and no subnet chooses it. */
+  /** L1 — the owner's slot of this day's split. Before runtime 497 every subnet paid the runtime default `SubnetOwnerCut`, 11796/65535 (18%, not 1/6); since, each subnet chooses its own, from 0% to 33% (MET-7385). Null when the day's split is unobserved. */
   owner_cut_share?: Maybe<Scalars['Float']['output']>;
   /** L2 — emission that landed on UIDs held by the `owner_coldkey`. MEASURED from neuron_daily. Alpha-denominated: comparable within one subnet, never across subnets without the price join. */
   owner_uid_alpha?: Maybe<Scalars['Float']['output']>;
   /** How many UIDs on this day were held by the declared `owner_coldkey`. NULL when the `owner_coldkey` is unknown — which is a different fact from 0, and 0 is the one that reads as 'the owner runs nothing here'. */
   owner_uid_count?: Maybe<Scalars['Int']['output']>;
   snapshot_date: Scalars['String']['output'];
+  /** Which split reconstructed this day, exactly as /emission-split/history names it (MET-7385): the runtime default before runtime 497 (2026-11-26 on), the subnet's declared SubnetEmissionWeights since, the first observed split carried back over the days between, or `unobserved` — every reconstructed share of the day null. */
+  split_source?: Maybe<Scalars['String']['output']>;
   /** The whole day's alpha emission, `alpha_out_emission x 7200 blocks`. RECONSTRUCTED, and the same basis /owner-cut and /emission-split/history use, so the three cannot disagree about what a day of emission is. */
   total_alpha?: Maybe<Scalars['Float']['output']>;
   /** Emission across the whole UID set on this day. NOT the day's total — the owner cut is paid outside the UID set, so this is the distributable remainder. See `total_alpha`. */
@@ -14787,6 +14803,9 @@ export type SubnetEmissionSplitHistoryPointResolvers<ContextType = GqlContext, P
   burned_usd_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   earning_miner_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   earning_validator_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
+  gamma_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  gamma_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  gamma_usd_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   miner_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   miner_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   miner_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -14797,7 +14816,11 @@ export type SubnetEmissionSplitHistoryPointResolvers<ContextType = GqlContext, P
   owner_cut?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   owner_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   owner_usd_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  removed_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  removed_share?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
+  removed_usd_day?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  split_source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   tao_usd?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   total_tao?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
@@ -15335,6 +15358,7 @@ export type SubnetOwnerCapturePointResolvers<ContextType = GqlContext, ParentTyp
   owner_uid_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   owner_uid_count?: Resolver<Maybe<ResolversTypes['Int']>, ParentType, ContextType>;
   snapshot_date?: Resolver<ResolversTypes['String'], ParentType, ContextType>;
+  split_source?: Resolver<Maybe<ResolversTypes['String']>, ParentType, ContextType>;
   total_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
   uid_alpha?: Resolver<Maybe<ResolversTypes['Float']>, ParentType, ContextType>;
 }>;

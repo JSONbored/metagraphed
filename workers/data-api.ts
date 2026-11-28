@@ -143,6 +143,10 @@ import {
   EMISSION_SPLIT_HISTORY_ROW_CAP,
 } from "../src/emission-split.ts";
 import {
+  selectedSubnetEmissionStore,
+  type SubnetEmissionHistory,
+} from "../src/subnet-emission-store.ts";
+import {
   buildSubnetOwnerCapture,
   OWNER_CAPTURE_HISTORY_ROW_CAP,
 } from "../src/owner-capture.ts";
@@ -8106,7 +8110,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     /^\/api\/v1\/subnets\/(\d+)\/emission-split\/history$/,
   );
   if (emissionSplitHistoryMatch) {
-    return async (sql) => {
+    return async (sql, env) => {
       const netuid = Number(emissionSplitHistoryMatch[1]);
       const cutoff = windowCutoffDate(
         url,
@@ -8165,6 +8169,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
             Number(row.usd_per_tao),
           ]),
       );
+      const splits = await subnetSplitHistory(env, netuid);
       return json(
         buildSubnetEmissionSplitHistory(rows, netuid, {
           window: windowLabelFor(
@@ -8173,6 +8178,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
             DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
           ),
           capped: rows.length >= EMISSION_SPLIT_HISTORY_ROW_CAP,
+          splits,
           burnHotkey: await resolveBurnHotkey(sql, netuid),
           usdPerTaoByDay,
         }),
@@ -8357,7 +8363,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
     /^\/api\/v1\/subnets\/(\d+)\/owner-capture$/,
   );
   if (ownerCaptureMatch) {
-    return async (sql) => {
+    return async (sql, env) => {
       const netuid = Number(ownerCaptureMatch[1]);
       const cutoff = windowCutoffDate(
         url,
@@ -8419,6 +8425,7 @@ function matchNeuronsStoreRoute(url: URL): NeuronsStoreRouteHandler | null {
           capped: rows.length >= OWNER_CAPTURE_HISTORY_ROW_CAP,
           ownerColdkey,
           positions,
+          splits: await subnetSplitHistory(env, netuid),
         }),
       );
     };
@@ -9485,6 +9492,24 @@ async function readNativeNeuronView(
   }
 }
 
+/**
+ * One subnet's split validity ranges from the state store (MET-7385), or null
+ * when it is unbound or unreadable: the days since runtime 497 then read as
+ * unobserved rather than failing a route whose measured half stands on its
+ * own.
+ */
+async function subnetSplitHistory(
+  env: unknown,
+  netuid: number,
+): Promise<SubnetEmissionHistory | null> {
+  try {
+    return (await selectedSubnetEmissionStore(env)?.subnet(netuid)) ?? null;
+  } catch (error) {
+    console.error("subnet emission store read failed:", error);
+    return null;
+  }
+}
+
 async function readNativeSubnetEnrichmentRoutes(
   url: URL,
   env: DataApiEnv,
@@ -9562,6 +9587,7 @@ async function readNativeSubnetEnrichmentRoutes(
           capped: rows.length >= OWNER_CAPTURE_HISTORY_ROW_CAP,
           ownerColdkey,
           positions,
+          splits: await subnetSplitHistory(env, netuid),
         }),
       );
     }
@@ -9630,6 +9656,7 @@ async function readNativeSubnetEnrichmentRoutes(
       buildSubnetEmissionSplitHistory(rows, netuid, {
         window,
         capped: rows.length >= EMISSION_SPLIT_HISTORY_ROW_CAP,
+        splits: await subnetSplitHistory(env, netuid),
         burnHotkey,
         usdPerTaoByDay,
       }),

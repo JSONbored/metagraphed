@@ -3807,6 +3807,92 @@ test("no snapshot row, or a zero fraction, resolves no burn -- nothing excluded"
   }
 });
 
+// MET-7385: both per-day routes read the day's split from the state store,
+// and a store that cannot answer leaves the day unobserved, never the route
+// failed.
+test("emission-split history and owner-capture reconstruct a day over the store's split", async () => {
+  await insertDaily({
+    uid: 5,
+    hotkey: "5HotSplit",
+    coldkey: "5ColdSplit",
+    validator_permit: 0,
+    emission_tao: 2,
+    snapshot_date: dayAgo(1),
+  });
+  await seed(
+    `INSERT INTO subnet_snapshots (netuid, snapshot_date, alpha_out_emission, alpha_price_tao)
+     VALUES (?, ?, ?, ?)`,
+    [7, dayAgo(1), 1, 0.01],
+  );
+  // A split that has held for 20,000 blocks (about 67 h) at a capture now:
+  // owner 18%, the UID set 72%, 10% to another subnet's gamma.
+  const split = {
+    netuid: 7,
+    burn_parts: "0",
+    recycle_parts: "0",
+    owner_parts: "3320413933267719290",
+    validator_parts: "6640827866535438581",
+    miner_parts: "6640827866535438583",
+    gamma_shares: [{ target: 51, parts: "1844674407370955161" }],
+    valid_from: "980000",
+    valid_to: null,
+  };
+  const store = (subnet: () => Promise<unknown>) => ({
+    SUBNET_EMISSION_STORE: {
+      write: async () => ({ written: true, opened: 0, closed: 0 }),
+      current: async () => ({ observation: null, splits: [], lifecycle: [] }),
+      subnet,
+    },
+  });
+  const bound = env(
+    store(async () => ({
+      observation: {
+        block_number: "1000000",
+        observed_at_ms: String(Date.now()),
+      },
+      splits: [split],
+      lifecycle: [],
+    })),
+  );
+  const history = (await (
+    await call(req("/api/v1/subnets/7/emission-split/history"), bound)
+  ).json()) as Row;
+  const day = (history.points as Row[]).find(
+    (p) => p.snapshot_date === dayAgo(1),
+  ) as Row;
+  assert.equal(day.split_source, "declared");
+  assert.equal(day.gamma_share, 0.1);
+  const capture = (await (
+    await call(req("/api/v1/subnets/7/owner-capture"), bound)
+  ).json()) as Row;
+  const captured = (capture.points as Row[]).find(
+    (p) => p.snapshot_date === dayAgo(1),
+  ) as Row;
+  assert.equal(captured.split_source, "declared");
+  assert.equal(captured.owner_cut_share, 0.18);
+
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  try {
+    const failing = env(store(async () => Promise.reject(new Error("pool"))));
+    const res = await call(
+      req("/api/v1/subnets/7/emission-split/history"),
+      failing,
+    );
+    assert.equal(res.status, 200);
+    const point = (((await res.json()) as Row).points as Row[]).find(
+      (p) => p.snapshot_date === dayAgo(1),
+    ) as Row;
+    assert.equal(point.split_source, "unobserved");
+    assert.ok(
+      error.mock.calls.some((args) =>
+        String(args[0]).includes("subnet emission store"),
+      ),
+    );
+  } finally {
+    error.mockRestore();
+  }
+});
+
 test("emission-split serves the USD legs from the day's priced observation (#11095)", async () => {
   await insertDaily({
     uid: 5,
