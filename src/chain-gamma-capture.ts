@@ -142,9 +142,9 @@ class Scale {
     return this.take(Number(length));
   }
   account(): string {
-    const address = encodeAccountId32(this.take(32));
-    if (!address) throw new TypeError("account is not encodable");
-    return address;
+    // Thirty-two bytes always encode: encodeAccountId32 refuses only a key of
+    // another length, which take(32) cannot return.
+    return encodeAccountId32(this.take(32))!;
   }
   option<T>(read: () => T): T | null {
     const [tag] = this.take(1);
@@ -246,8 +246,11 @@ export function netuidAccountFromKey(
   if (!key.startsWith(itemPrefix)) return null;
   const rest = key.slice(itemPrefix.length);
   if (!/^[0-9a-fA-F]{100}$/.test(rest)) return null;
-  const account = encodeAccountId32(hexBytes("0x" + rest.slice(36)));
-  return account ? { netuid: netuidAt(rest, 0), account } : null;
+  // The tail is 64 hex digits, so the account always encodes (see account()).
+  return {
+    netuid: netuidAt(rest, 0),
+    account: encodeAccountId32(hexBytes("0x" + rest.slice(36)))!,
+  };
 }
 
 export interface ChainGammaSnapshot {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
-import { beforeEach, describe, test } from "vitest";
+import { afterEach, beforeEach, describe, test, vi } from "vitest";
 import {
   captureChainGamma,
   chainGammaStatements,
@@ -397,5 +397,188 @@ describe("the capture never throws, and says why it did nothing", () => {
       undecoded: 2,
       reason: "undecoded: 2",
     });
+  });
+});
+
+describe("every edge the reads can meet", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  test("compact lengths in every mode, and a length past the bound", () => {
+    // Mode 1, two bytes: a 100-byte URL.
+    const url100 = "https://" + "a".repeat(92);
+    assert.equal(
+      decodeServiceUrl("0x9101" + Buffer.from(url100).toString("hex")),
+      url100,
+    );
+    // Mode 2, four bytes: a 20,000-byte URL.
+    const url20k = "https://" + "b".repeat(19_992);
+    assert.equal(
+      decodeServiceUrl("0x82380100" + Buffer.from(url20k).toString("hex"))
+        .length,
+      20_000,
+    );
+    // Mode 3, the big-integer prefix: 2^32 bytes is refused before any read.
+    assert.throws(() => decodeServiceUrl("0x070000000001"), /too long/);
+  });
+
+  test("an RPC that answers the wrong shape refuses the snapshot", async () => {
+    const { rpc } = chain(storageFixture());
+    const edge =
+      (method: string, answer: unknown) =>
+      async (m: string, params: unknown[]) =>
+        m === method ? answer : rpc(m, params);
+    await assert.rejects(
+      loadChainGammaSnapshot("mainnet", edge("chain_getFinalizedHead", null)),
+      /no finalized head/,
+    );
+    await assert.rejects(
+      loadChainGammaSnapshot("mainnet", edge("chain_getHeader", {})),
+      /finalized header has no number/,
+    );
+    await assert.rejects(
+      loadChainGammaSnapshot("mainnet", edge("state_queryStorageAt", null)),
+      /answered no changes/,
+    );
+    await assert.rejects(
+      loadChainGammaSnapshot("mainnet", edge("state_getKeysPaged", null)),
+      /answered no keys/,
+    );
+  });
+
+  test("listings past the bound leave their maps unknown", async () => {
+    const { rpc } = chain(storageFixture());
+    const unbounded = (item: string) =>
+      Array.from(
+        { length: 1000 },
+        (_, i) => prefix(item) + String(i).padStart(4, "0"),
+      );
+    const snapshot = await loadChainGammaSnapshot(
+      "mainnet",
+      async (m, params) => {
+        const itemPrefix = params[0];
+        if (
+          m === "state_getKeysPaged" &&
+          itemPrefix === prefix("GammaDeposits")
+        )
+          return unbounded("GammaDeposits");
+        if (
+          m === "state_getKeysPaged" &&
+          itemPrefix === prefix("UnconvertedGammaEmission")
+        )
+          return unbounded("UnconvertedGammaEmission");
+        return rpc(m, params);
+      },
+    );
+    assert.equal(snapshot.deposits, null);
+    assert.deepEqual(
+      snapshot.subnets.map((s) => [s.netuid, s.unconverted]),
+      [
+        [1, null],
+        [3, null],
+      ],
+    );
+  });
+
+  test("absent values, a key it cannot parse, a null change and an undecodable total", async () => {
+    const storage = storageFixture();
+    storage.delete(prefix("TotalNetworks"));
+    storage.delete(prefix("TaoUsdPrice"));
+    storage.set(prefix("UnconvertedGammaEmission") + "0300" + "1c00", "0x0a");
+    const { rpc } = chain(storage);
+    const snapshot = await loadChainGammaSnapshot(
+      "mainnet",
+      async (m, params) => {
+        if (m === "state_getKeysPaged" && params[0] === prefix("Services"))
+          return [
+            ...((await rpc(m, params)) as string[]),
+            prefix("Services") + "0300",
+          ];
+        if (m === "state_queryStorageAt") {
+          const answer = (await rpc(m, params)) as { changes: unknown[] }[];
+          // A queried key the block does not hold comes back with a null value.
+          answer[0].changes.push([prefix("GammaEnabled") + "ff", null]);
+          return answer;
+        }
+        return rpc(m, params);
+      },
+    );
+    assert.deepEqual(snapshot.subnets, []);
+    assert.equal(snapshot.oracle, null);
+    assert.equal(snapshot.services?.length, 1);
+    // The truncated total and the key too short to name an account.
+    assert.equal(snapshot.undecoded, 2);
+  });
+
+  test("the default reader speaks JSON-RPC to the network's endpoint", async () => {
+    const { rpc } = chain(storageFixture());
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
+      urls.push(String(url));
+      const body = JSON.parse(String(init.body)) as {
+        id: number;
+        method: string;
+        params: unknown[];
+      };
+      return new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: await rpc(body.method, body.params),
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    });
+    const snapshot = await loadChainGammaSnapshot("testnet");
+    assert.equal(snapshot.block, 9_601_792);
+    assert.ok(urls.every((url) => url.includes("test.finney")));
+  });
+
+  test("a zero price is no USD figure, and a non-Error failure keeps its text", async () => {
+    const [statement] = chainGammaStatements(
+      {
+        block: 1,
+        enabled: null,
+        subnets: [],
+        services: null,
+        deposits: null,
+        oracle: { accepted: "0", feed: "0", fedAt: 5, oracle: null },
+        undecoded: 0,
+      },
+      1_795_900_000_000,
+    );
+    assert.equal(statement.values[1], null);
+    const ok = {
+      run: async () => ({ changes: 0 }),
+      transaction: async (s: readonly unknown[]) =>
+        s.map(() => ({ changes: 1 })),
+    };
+    assert.equal(
+      (
+        await captureChainGamma(null, {
+          db: ok,
+          load: async () => Promise.reject("archive down"),
+        })
+      ).reason,
+      "chain_read_failed: archive down",
+    );
+    assert.equal(
+      (
+        await captureChainGamma(null, {
+          db: { ...ok, transaction: async () => Promise.reject("pool gone") },
+          load: async () => ({
+            block: 1,
+            enabled: true,
+            subnets: [],
+            services: null,
+            deposits: null,
+            oracle: null,
+            undecoded: 0,
+          }),
+        })
+      ).reason,
+      "write_failed: pool gone",
+    );
   });
 });

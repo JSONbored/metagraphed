@@ -3125,6 +3125,41 @@ export const API_HANDLED_CRONS: readonly string[] = [
   EMISSION_DRIFT_CHECK_CRON,
 ];
 
+/**
+ * The Gamma, service and TAO/USD oracle state (MET-7365): one finalized
+ * block's storage in one transaction, with its own store and its own verdict.
+ * It never rejects, even when its store cannot open, so a failure is this
+ * lane's alone and never the burn series' it rides with.
+ */
+export async function runChainGammaLane(
+  env: Env,
+  ctx: { waitUntil?: (promise: Promise<unknown>) => void },
+): Promise<void> {
+  let ok = false;
+  let detail: string;
+  let store: { db: unknown; close: () => void } | undefined;
+  try {
+    store = producerStore(env, ctx, [...CHAIN_GAMMA_CAPTURE_TABLES]);
+    const gamma = await captureChainGamma(env, {
+      db: store.db as ChainGammaDb,
+    });
+    ok = gamma.ok;
+    // A capture that did not succeed always names its reason.
+    detail = gamma.reason ?? `captured ${gamma.captured}`;
+  } catch (error) {
+    detail = `store_unavailable: ${String(error)}`;
+  } finally {
+    store?.close();
+  }
+  await recordLaneVerdict(laneHealthStore(env), {
+    lane: "chain-gamma",
+    verdict: ok ? "ok" : "stale",
+    age_ms: null,
+    detail,
+    checked_at: Date.now(),
+  });
+}
+
 async function dispatchScheduled(
   controller: AppScheduledEvent,
   env: Env,
@@ -3365,30 +3400,9 @@ async function dispatchScheduled(
         // watches.
         ctx.waitUntil(runSubnetBurnCoverageWatchdog(env).then(() => undefined));
         // The Gamma, service and TAO/USD oracle state (MET-7365) rides the
-        // same tick: one finalized block's storage, one transaction. Its own
-        // store and its own verdict, so a failure here is this lane's alone
-        // and never the burn series'.
-        const gammaStore = producerStore(env, ctx, [
-          ...CHAIN_GAMMA_CAPTURE_TABLES,
-        ]);
-        try {
-          const gamma = await captureChainGamma(env, {
-            db: gammaStore.db as ChainGammaDb,
-          });
-          ctx.waitUntil(
-            recordLaneVerdict(laneHealthStore(env), {
-              lane: "chain-gamma",
-              verdict: gamma.ok ? "ok" : "stale",
-              age_ms: null,
-              detail: gamma.ok
-                ? `captured ${gamma.captured}`
-                : (gamma.reason ?? "capture failed"),
-              checked_at: Date.now(),
-            }).then(() => undefined),
-          );
-        } finally {
-          gammaStore.close();
-        }
+        // same tick, in the background like the watchdog: the burn result is
+        // what the cron reports.
+        ctx.waitUntil(runChainGammaLane(env, ctx));
         return result;
       } finally {
         store.close();
