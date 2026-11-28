@@ -51,6 +51,11 @@ import { buildBlockEvents, formatAccountEvent } from "./account-events.ts";
 import { decodeChainEventArgs } from "./chain-event-args.ts";
 import { parseJsonPreservingBigInts } from "./big-int-safe-json.ts";
 import { resolveBlocksSeam } from "./blocks-seam.ts";
+import {
+  CHAIN_CORE_DETAIL,
+  chainCoreNetwork,
+  chainViewsStore,
+} from "./chain-core-read.ts";
 import { type ChainNetworkId, DEFAULT_CHAIN_NETWORK } from "./chain-network.ts";
 import { type ChainFirehoseTopic } from "./chain-firehose-topics.ts";
 import { resolveDecodeWatermark } from "./decode-watermark.ts";
@@ -92,6 +97,33 @@ async function query(
     return selectedD1Store(env, CHAIN_DETAIL_HOT_TIER_TABLES)
       ? await restoreChainDetailPayloads(env, rows)
       : rows;
+  } catch {
+    return null;
+  }
+}
+
+/** The chain core's name for the network this tier serves (mainnet's alone). */
+const CORE_NETWORK = chainCoreNetwork(DEFAULT_CHAIN_NETWORK);
+
+/**
+ * Rows for one read, from the chain core's views where the native application
+ * binds them (ADR 0029 phase 1b), else from the D1-era tables. Where the core
+ * is bound it IS the hot tier: the old tables are not consulted beside it,
+ * because two stores answering one block could disagree, and the answer would
+ * depend on which one was asked. A failed core read is null, like a failed
+ * legacy one: the caller falls through to the lakehouse and then declines.
+ */
+async function read(
+  env: unknown,
+  legacy: { sql: string; params: unknown[] },
+  core: { sql: string; params: unknown[] },
+): Promise<Row[] | null> {
+  const store = chainViewsStore(env);
+  if (!store) return query(env, legacy.sql, legacy.params);
+  try {
+    return (await store.query<Row>(core.sql, core.params)).map((row) => ({
+      ...row,
+    }));
   } catch {
     return null;
   }
@@ -148,11 +180,21 @@ export interface ChainDetailCoverage {
 export async function chainDetailCoverage(
   env: unknown,
 ): Promise<ChainDetailCoverage | null> {
-  const rows = await query(
+  // Over the chain core, the window is what EVERY detail family holds
+  // completely (chain.coverage): headers are kept for all of history, so a
+  // block's presence alone says nothing about its extrinsics or events.
+  const rows = await read(
     env,
-    "SELECT MIN(block_number) AS floor, MAX(block_number) AS head, " +
-      "MAX(observed_at) AS observed FROM chain_detail_blocks",
-    [],
+    {
+      sql:
+        "SELECT MIN(block_number) AS floor, MAX(block_number) AS head, " +
+        "MAX(observed_at) AS observed FROM chain_detail_blocks",
+      params: [],
+    },
+    {
+      sql: CHAIN_CORE_DETAIL.coverage,
+      params: [CORE_NETWORK, CORE_NETWORK],
+    },
   );
   const row = rows?.[0];
   const floor = safeBlockNumber(row?.floor);
@@ -180,22 +222,45 @@ async function resolveHotRef(
   ref: string,
 ): Promise<{ height: number; covered: boolean } | null> {
   const asNumber = safeBlockNumber(ref);
+  // A block the chain core holds is COVERED only inside every detail family's
+  // complete range: its header is kept for all of history, its detail is not.
   if (asNumber !== null) {
-    const rows = await query(
+    const rows = await read(
       env,
-      "SELECT block_number FROM chain_detail_blocks WHERE block_number = ? LIMIT 1",
-      [asNumber],
+      {
+        sql: "SELECT block_number FROM chain_detail_blocks WHERE block_number = ? LIMIT 1",
+        params: [asNumber],
+      },
+      {
+        sql: CHAIN_CORE_DETAIL.coveredHeight,
+        params: [CORE_NETWORK, asNumber],
+      },
     );
     return { height: asNumber, covered: Boolean(rows?.length) };
   }
   if (!BLOCK_HASH.test(String(ref).trim())) return null;
-  const rows = await query(
+  const hash = String(ref).trim().toLowerCase();
+  const rows = await read(
     env,
-    "SELECT block_number FROM chain_detail_blocks WHERE block_hash = ? LIMIT 1",
-    [String(ref).trim().toLowerCase()],
+    {
+      sql: "SELECT block_number FROM chain_detail_blocks WHERE block_hash = ? LIMIT 1",
+      params: [hash],
+    },
+    {
+      // The hash resolves through the base table's own index; a hash the core
+      // holds outside the detail window resolves, and is not covered.
+      sql: CHAIN_CORE_DETAIL.coveredHash,
+      params: [CORE_NETWORK, hash.slice(2)],
+    },
   );
   const height = safeBlockNumber(rows?.[0]?.block_number);
-  return height === null ? null : { height, covered: true };
+  if (height === null) return null;
+  // The D1-era register holds only covered blocks, so a hash it resolves is
+  // covered; the chain core says so per row.
+  return {
+    height,
+    covered: chainViewsStore(env) ? rows?.[0]?.covered === true : true,
+  };
 }
 
 /** Every extrinsic in one covered block, in read order. */
@@ -216,10 +281,17 @@ async function resolveHotRef(
 export async function accountEventsHotFloorMs(
   env: unknown,
 ): Promise<number | null> {
-  const rows = await query(
+  const rows = await read(
     env,
-    "SELECT MIN(observed_at) AS floor_ms FROM chain_detail_account_events",
-    [],
+    {
+      sql: "SELECT MIN(observed_at) AS floor_ms FROM chain_detail_account_events",
+      params: [],
+    },
+    {
+      // The time of the first block the account index holds completely.
+      sql: CHAIN_CORE_DETAIL.accountEventsFloor,
+      params: [CORE_NETWORK],
+    },
   );
   if (rows === null || rows.length === 0) return null;
   return safeBlockNumber(rows[0]?.floor_ms);
@@ -311,12 +383,27 @@ export async function loadAccountEventsHotTier(
 ): Promise<Row[] | null> {
   const need = safeBlockNumber(limit);
   if (need === null || need <= 0) return null;
-  return query(
+  return read(
     env,
-    `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM chain_detail_account_events ` +
-      "WHERE hotkey = ? OR coldkey = ? " +
-      "ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ?",
-    [ss58, ss58, need],
+    {
+      sql:
+        `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM chain_detail_account_events ` +
+        "WHERE hotkey = ? OR coldkey = ? " +
+        "ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ?",
+      params: [ss58, ss58, need],
+    },
+    {
+      sql: CHAIN_CORE_DETAIL.accountEvents(ACCOUNT_EVENT_COLUMNS),
+      params: [
+        ss58,
+        CORE_NETWORK,
+        need,
+        CORE_NETWORK,
+        need,
+        CORE_NETWORK,
+        need,
+      ],
+    },
   );
 }
 
@@ -338,12 +425,19 @@ export async function loadAccountBasketClaimEventsHotTier(
   if (kinds.length === 0 || kinds.some((kind) => !/^[A-Za-z0-9]+$/.test(kind)))
     return null;
   const list = kinds.map((kind) => `'${kind}'`).join(",");
-  return query(
+  return read(
     env,
-    `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM chain_detail_account_events ` +
-      `WHERE (hotkey = ? OR coldkey = ?) AND event_kind IN (${list}) ` +
-      "ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ?",
-    [ss58, ss58, need],
+    {
+      sql:
+        `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM chain_detail_account_events ` +
+        `WHERE (hotkey = ? OR coldkey = ?) AND event_kind IN (${list}) ` +
+        "ORDER BY observed_at DESC, block_number DESC, event_index DESC LIMIT ?",
+      params: [ss58, ss58, need],
+    },
+    {
+      sql: CHAIN_CORE_DETAIL.accountKindEvents(ACCOUNT_EVENT_COLUMNS, list),
+      params: [CORE_NETWORK, ss58, ss58, need],
+    },
   );
 }
 
@@ -356,11 +450,18 @@ export async function loadBlockExtrinsicsHotTier(
   const limit = safeBlockNumber(page.limit);
   const offset = safeBlockNumber(page.offset ?? 0);
   if (limit === null || offset === null || limit <= 0) return null;
-  const rows = await query(
+  const rows = await read(
     env,
-    `SELECT ${EXTRINSIC_COLUMNS} FROM chain_detail_extrinsics ` +
-      "WHERE block_number = ? ORDER BY extrinsic_index ASC LIMIT ? OFFSET ?",
-    [height, limit, offset],
+    {
+      sql:
+        `SELECT ${EXTRINSIC_COLUMNS} FROM chain_detail_extrinsics ` +
+        "WHERE block_number = ? ORDER BY extrinsic_index ASC LIMIT ? OFFSET ?",
+      params: [height, limit, offset],
+    },
+    {
+      sql: CHAIN_CORE_DETAIL.blockExtrinsics(EXTRINSIC_COLUMNS),
+      params: [CORE_NETWORK, height, limit, offset],
+    },
   );
   if (rows === null) return null;
   return buildBlockExtrinsics(rows, ref, height, { limit, offset });
@@ -376,21 +477,37 @@ export async function loadBlockEventsHotTier(
   const limit = safeBlockNumber(page.limit);
   const offset = safeBlockNumber(page.offset ?? 0);
   if (limit === null || offset === null || limit <= 0) return null;
-  const rows = await query(
+  const rows = await read(
     env,
-    `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM chain_detail_account_events ` +
-      "WHERE block_number = ? ORDER BY event_index ASC LIMIT ? OFFSET ?",
-    [height, limit, offset],
+    {
+      sql:
+        `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM chain_detail_account_events ` +
+        "WHERE block_number = ? ORDER BY event_index ASC LIMIT ? OFFSET ?",
+      params: [height, limit, offset],
+    },
+    {
+      sql: CHAIN_CORE_DETAIL.blockAccountEvents(ACCOUNT_EVENT_COLUMNS),
+      params: [CORE_NETWORK, height, limit, offset],
+    },
   );
   if (rows === null) return null;
   // The block's TRUE event total, from the coverage register the sync writes
   // alongside these rows -- an indexed primary-key lookup, not a scan. Without
   // it `event_count` was just this page's length, so it tracked `limit` instead
   // of the block.
-  const totals = await query(
+  // Over the chain core the total is the rows its account index holds for the
+  // block, the same set the page reads (pallet accounts' fee and emission
+  // bookkeeping is not indexed; those events stay in chain-events).
+  const totals = await read(
     env,
-    "SELECT account_event_count FROM chain_detail_blocks WHERE block_number = ? LIMIT 1",
-    [height],
+    {
+      sql: "SELECT account_event_count FROM chain_detail_blocks WHERE block_number = ? LIMIT 1",
+      params: [height],
+    },
+    {
+      sql: CHAIN_CORE_DETAIL.blockAccountEventCount,
+      params: [CORE_NETWORK, height],
+    },
   );
   const totalCount = safeBlockNumber(totals?.[0]?.account_event_count);
   return buildBlockEvents(rows, ref, height, { limit, offset, totalCount });
@@ -546,6 +663,11 @@ export async function loadExtrinsicsHeadHotTier(
   if (need === null || need <= 0) return null;
   const where: string[] = [];
   const params: unknown[] = [];
+  // The chain core's reads carry every predicate below except the cursor,
+  // which it seeks by (block, index): its observed_at is the block's own time,
+  // so that order is the feed's order, and it is the one its indexes hold.
+  const coreWhere: string[] = [];
+  const coreParams: unknown[] = [];
   // THE BLOCK WINDOW IS PART OF THE QUESTION, and the first version of this
   // dropped it -- which is a WRONG ANSWER, not a slow one: a windowed request
   // would have been handed the newest N regardless of the window. The full
@@ -563,14 +685,14 @@ export async function loadExtrinsicsHeadHotTier(
   if (startBlock !== null && endBlock !== null && startBlock > endBlock) {
     return null;
   }
-  if (startBlock !== null) {
-    where.push("block_number >= ?");
-    params.push(startBlock);
-  }
-  if (endBlock !== null) {
-    where.push("block_number <= ?");
-    params.push(endBlock);
-  }
+  const both = (predicate: string, value: unknown) => {
+    where.push(predicate);
+    params.push(value);
+    coreWhere.push(predicate);
+    coreParams.push(value);
+  };
+  if (startBlock !== null) both("block_number >= ?", startBlock);
+  if (endBlock !== null) both("block_number <= ?", endBlock);
   for (const [value, predicate] of [
     [options.block, "block_number = ?"],
     [options.floorObservedAt, "observed_at >= ?"],
@@ -578,8 +700,7 @@ export async function loadExtrinsicsHeadHotTier(
     if (value == null) continue;
     const parsed = safeBlockNumber(value);
     if (parsed === null) return null;
-    where.push(predicate);
-    params.push(parsed);
+    both(predicate, parsed);
   }
   if (options.cursor != null) {
     if (
@@ -590,12 +711,13 @@ export async function loadExtrinsicsHeadHotTier(
       return null;
     where.push("(observed_at, block_number, extrinsic_index) < (?, ?, ?)");
     params.push(...options.cursor);
+    coreWhere.push("(block_number, extrinsic_index) < (?, ?)");
+    coreParams.push(options.cursor[1], options.cursor[2]);
   }
   if (options.ceilingObservedAt !== null) {
     const ceiling = safeBlockNumber(options.ceilingObservedAt);
     if (ceiling === null) return null;
-    where.push("observed_at <= ?");
-    params.push(ceiling);
+    both("observed_at <= ?", ceiling);
   }
   for (const [value, column] of [
     [options.signer, "signer"],
@@ -604,21 +726,26 @@ export async function loadExtrinsicsHeadHotTier(
   ] as [unknown, string][]) {
     if (value == null) continue;
     if (typeof value !== "string" || value === "") return null;
-    where.push(`${column} = ?`);
-    params.push(value);
+    both(`${column} = ?`, value);
   }
   if (options.success != null) {
     if (typeof options.success !== "boolean") return null;
-    where.push("success = ?");
-    params.push(options.success);
+    both("success = ?", options.success);
   }
-  return query(
+  return read(
     env,
-    `SELECT ${EXTRINSIC_COLUMNS} FROM chain_detail_extrinsics` +
-      (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
-      " ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC" +
-      " LIMIT ?",
-    [...params, need],
+    {
+      sql:
+        `SELECT ${EXTRINSIC_COLUMNS} FROM chain_detail_extrinsics` +
+        (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
+        " ORDER BY observed_at DESC, block_number DESC, extrinsic_index DESC" +
+        " LIMIT ?",
+      params: [...params, need],
+    },
+    {
+      sql: CHAIN_CORE_DETAIL.extrinsicFeed(EXTRINSIC_COLUMNS, coreWhere),
+      params: [CORE_NETWORK, ...coreParams, need],
+    },
   );
 }
 
@@ -668,12 +795,19 @@ export async function loadChainEventsHeadHotTier(
     where.push(`${column} = ?`);
     params.push(value);
   }
-  return query(
+  return read(
     env,
-    `SELECT ${CHAIN_EVENT_COLUMNS} FROM chain_detail_chain_events` +
-      (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
-      " ORDER BY block_number DESC, event_index DESC LIMIT ?",
-    [...params, need],
+    {
+      sql:
+        `SELECT ${CHAIN_EVENT_COLUMNS} FROM chain_detail_chain_events` +
+        (where.length ? ` WHERE ${where.join(" AND ")}` : "") +
+        " ORDER BY block_number DESC, event_index DESC LIMIT ?",
+      params: [...params, need],
+    },
+    {
+      sql: CHAIN_CORE_DETAIL.chainEventFeed(CHAIN_EVENT_COLUMNS, where),
+      params: [CORE_NETWORK, ...params, need],
+    },
   );
 }
 
@@ -685,11 +819,18 @@ export async function loadBlockChainEventsHotTier(
   count: number;
   events: ChainEventApi[];
 } | null> {
-  const rows = await query(
+  const rows = await read(
     env,
-    `SELECT ${CHAIN_EVENT_COLUMNS} FROM chain_detail_chain_events ` +
-      "WHERE block_number = ? ORDER BY event_index ASC",
-    [height],
+    {
+      sql:
+        `SELECT ${CHAIN_EVENT_COLUMNS} FROM chain_detail_chain_events ` +
+        "WHERE block_number = ? ORDER BY event_index ASC",
+      params: [height],
+    },
+    {
+      sql: CHAIN_CORE_DETAIL.blockChainEvents(CHAIN_EVENT_COLUMNS),
+      params: [CORE_NETWORK, height],
+    },
   );
   if (rows === null) return null;
   const events = rows
@@ -717,20 +858,34 @@ export async function loadExtrinsicHotTier(
     const block = safeBlockNumber(composite[1]);
     const index = safeBlockNumber(composite[2]);
     if (block === null || index === null) return null;
-    rows = await query(
+    rows = await read(
       env,
-      `SELECT ${EXTRINSIC_COLUMNS} FROM chain_detail_extrinsics ` +
-        "WHERE block_number = ? AND extrinsic_index = ? LIMIT 1",
-      [block, index],
+      {
+        sql:
+          `SELECT ${EXTRINSIC_COLUMNS} FROM chain_detail_extrinsics ` +
+          "WHERE block_number = ? AND extrinsic_index = ? LIMIT 1",
+        params: [block, index],
+      },
+      {
+        sql: CHAIN_CORE_DETAIL.extrinsicAt(EXTRINSIC_COLUMNS),
+        params: [CORE_NETWORK, block, index],
+      },
     );
   } else {
     const hash = String(ref).trim();
     if (!BLOCK_HASH.test(hash)) return null;
-    rows = await query(
+    rows = await read(
       env,
-      `SELECT ${EXTRINSIC_COLUMNS} FROM chain_detail_extrinsics ` +
-        "WHERE lower(extrinsic_hash) = ? LIMIT 1",
-      [hash.toLowerCase()],
+      {
+        sql:
+          `SELECT ${EXTRINSIC_COLUMNS} FROM chain_detail_extrinsics ` +
+          "WHERE lower(extrinsic_hash) = ? LIMIT 1",
+        params: [hash.toLowerCase()],
+      },
+      {
+        sql: CHAIN_CORE_DETAIL.extrinsicByHash(EXTRINSIC_COLUMNS),
+        params: [CORE_NETWORK, CORE_NETWORK, hash.slice(2).toLowerCase()],
+      },
     );
   }
   const row = rows?.[0];
@@ -740,12 +895,19 @@ export async function loadExtrinsicHotTier(
   const index = safeBlockNumber(row.extrinsic_index);
   let events: unknown[] = [];
   if (block !== null && index !== null) {
-    const found = await query(
+    const found = await read(
       env,
-      `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM chain_detail_account_events ` +
-        "WHERE block_number = ? AND extrinsic_index = ? " +
-        "ORDER BY event_index ASC LIMIT ?",
-      [block, index, MAX_EMBEDDED_EVENTS],
+      {
+        sql:
+          `SELECT ${ACCOUNT_EVENT_COLUMNS} FROM chain_detail_account_events ` +
+          "WHERE block_number = ? AND extrinsic_index = ? " +
+          "ORDER BY event_index ASC LIMIT ?",
+        params: [block, index, MAX_EMBEDDED_EVENTS],
+      },
+      {
+        sql: CHAIN_CORE_DETAIL.extrinsicAccountEvents(ACCOUNT_EVENT_COLUMNS),
+        params: [CORE_NETWORK, block, index, MAX_EMBEDDED_EVENTS],
+      },
     );
     // Events failing is not a reason to withhold the extrinsic -- the cold
     // tier makes the same call for the same reason.
