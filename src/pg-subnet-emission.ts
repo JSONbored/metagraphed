@@ -124,11 +124,12 @@ async function writeSnapshot(
 }
 
 /** The watermark both families share: the older of the two, so a reader is
- * never told the state is newer than the family that lags. */
+ * never told the state is newer than the family that lags. Scoped to its two
+ * families: the schema's other producers keep their own (0061's commitments). */
 const OBSERVATION_SQL =
   "SELECT min(block_number)::text AS block_number, " +
   "(extract(epoch FROM min(observed_at)) * 1000)::bigint::text AS observed_at_ms, " +
-  "count(*)::integer AS families FROM observations";
+  "count(*)::integer AS families FROM observations WHERE family IN (?, ?)";
 
 type ObservationRow = {
   block_number: string | null;
@@ -156,7 +157,7 @@ export function createPgSubnetEmissionStore(
     async current() {
       const [observation, splits, lifecycle] = [
         observationOf(
-          await database.read.query<ObservationRow>(OBSERVATION_SQL),
+          await database.read.query<ObservationRow>(OBSERVATION_SQL, FAMILIES),
         ),
         await database.read.query<Ranged<SplitRow>>(
           `SELECT ${SPLIT_COLUMNS}, ${RANGE_COLUMNS} FROM subnet_emission_splits ` +
@@ -176,7 +177,7 @@ export function createPgSubnetEmissionStore(
         throw new TypeError("Invalid native subnet emission identity");
       const [observation, splits, lifecycle] = [
         observationOf(
-          await database.read.query<ObservationRow>(OBSERVATION_SQL),
+          await database.read.query<ObservationRow>(OBSERVATION_SQL, FAMILIES),
         ),
         await database.read.query<Ranged<SplitRow>>(
           `SELECT ${SPLIT_COLUMNS}, ${RANGE_COLUMNS} FROM subnet_emission_splits ` +

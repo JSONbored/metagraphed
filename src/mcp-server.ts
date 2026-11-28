@@ -1483,6 +1483,23 @@ import {
   GetChainEmissionSplitsOutputSchema,
 } from "../schemas-src/mcp-tools/get-chain-emission-splits.ts";
 import {
+  GetSubnetCommitmentsInputSchema,
+  GetSubnetCommitmentsOutputSchema,
+  GetSubnetHotkeyCommitmentInputSchema,
+  GetSubnetHotkeyCommitmentOutputSchema,
+} from "../schemas-src/mcp-tools/get-subnet-commitments.ts";
+import {
+  buildHotkeyCommitment,
+  buildSubnetCommitments,
+  hotkeyPublicKey,
+  loadHotkeyCommitment,
+  loadSubnetCommitments,
+} from "./subnet-commitments.ts";
+import {
+  SUBNET_COMMITMENTS_LIMIT_DEFAULT,
+  SUBNET_COMMITMENTS_LIMIT_MAX,
+} from "./route-limits.ts";
+import {
   GetSubnetSwapInputSchema,
   GetSubnetSwapOutputSchema,
 } from "../schemas-src/mcp-tools/get-subnet-swap.ts";
@@ -9811,6 +9828,68 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     },
   },
   {
+    name: "get_subnet_commitments",
+    title: "Get a subnet's on-chain commitments",
+    description:
+      "Fetch what a subnet's miners and validators have published on chain " +
+      "(runtime spec 497): each hotkey's current commitment -- the deposit " +
+      "and Data fields it set with Commitments.set_commitment, such as model " +
+      "revisions, peer ids, endpoints, content hashes and timelocked " +
+      "payloads, each with its bytes and its text where printable -- and the " +
+      "timelock payloads the chain has revealed for it. Most recently " +
+      "committed first; page with limit (1-256, default 100) / offset. With " +
+      "no capture observed, observed_block and total are null and there are " +
+      "no rows. Mirrors GET /api/v1/subnets/{netuid}/commitments.",
+    inputSchema: inputJsonSchema(GetSubnetCommitmentsInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetCommitmentsInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      // CLAMPS where the REST route 400s -- the per-surface split, deliberate.
+      const limit = clampToolLimit(
+        args?.limit,
+        SUBNET_COMMITMENTS_LIMIT_DEFAULT,
+        SUBNET_COMMITMENTS_LIMIT_MAX,
+      );
+      const offset = optionalNonNegativeInt(args, "offset") ?? 0;
+      // Same loadSubnetCommitments -> buildSubnetCommitments decline
+      // contract the REST handler and the GraphQL resolver share.
+      return buildSubnetCommitments(
+        await loadSubnetCommitments(ctx.env, netuid, { limit, offset }),
+        netuid,
+        { limit, offset },
+      );
+    },
+  },
+  {
+    name: "get_subnet_hotkey_commitment",
+    title: "Get one hotkey's commitment on a subnet",
+    description:
+      "Fetch one hotkey's on-chain commitment and revealed timelock payloads " +
+      "on one subnet (runtime spec 497), current and as the validity ranges " +
+      "it has held since the capture began, newest first (at most 100). " +
+      "With no capture observed, observed_block and exists are null and " +
+      "there is no state. Mirrors GET " +
+      "/api/v1/subnets/{netuid}/commitments/{hotkey}.",
+    inputSchema: inputJsonSchema(GetSubnetHotkeyCommitmentInputSchema),
+    async handler(
+      args: z.infer<typeof GetSubnetHotkeyCommitmentInputSchema>,
+      ctx: McpCtx,
+    ) {
+      const netuid = requireNetuid(args);
+      const hotkey = requireHotkey(args);
+      const publicKey = hotkeyPublicKey(hotkey);
+      return buildHotkeyCommitment(
+        publicKey === null
+          ? null
+          : await loadHotkeyCommitment(ctx.env, netuid, publicKey),
+        netuid,
+        hotkey,
+      );
+    },
+  },
+  {
     name: "get_subnet_swap",
     title: "Get a subnet's balancer Swap state",
     description:
@@ -16248,6 +16327,10 @@ const TOOL_OUTPUT_SCHEMAS = lazyOutputSchemas<JsonSchemaLike>({
     outputJsonSchema(GetSubnetEmissionSplitOutputSchema),
   get_chain_emission_splits: () =>
     outputJsonSchema(GetChainEmissionSplitsOutputSchema),
+  get_subnet_commitments: () =>
+    outputJsonSchema(GetSubnetCommitmentsOutputSchema),
+  get_subnet_hotkey_commitment: () =>
+    outputJsonSchema(GetSubnetHotkeyCommitmentOutputSchema),
   get_subnet_swap: () => outputJsonSchema(GetSubnetSwapOutputSchema),
   get_subnet_alpha_assets: () =>
     outputJsonSchema(GetSubnetAlphaAssetsOutputSchema),

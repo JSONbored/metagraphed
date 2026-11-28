@@ -436,6 +436,8 @@ import {
   handleSubnetServices,
   handleSubnetEmissionSplit,
   handleChainEmissionSplits,
+  handleSubnetCommitments,
+  handleSubnetHotkeyCommitment,
   handleSubnetSwap,
   handleSubnetAlphaAssets,
   handleSubnetLimitOrders,
@@ -744,6 +746,11 @@ import {
 } from "../src/chain-gamma-capture.ts";
 import { captureSubnetEmission } from "../src/subnet-emission-capture.ts";
 import { selectedSubnetEmissionStore } from "../src/subnet-emission-store.ts";
+import {
+  captureCommitments,
+  commitmentsCaptureDue,
+} from "../src/commitments-capture.ts";
+import { selectedCommitmentsStore } from "../src/commitments-store.ts";
 import { runOperationalSurfacesSync } from "../src/operational-surfaces-sync.ts";
 import { runSchemaSnapshotsSync } from "../src/schema-snapshots-sync.ts";
 import { runSurfaceVerificationSync } from "../src/surface-verification-sync.ts";
@@ -886,6 +893,8 @@ import {
   SUBNET_SERVICES_PATH_PATTERN,
   SUBNET_EMISSION_SPLIT_PATH_PATTERN,
   CHAIN_EMISSION_SPLITS_PATH,
+  SUBNET_COMMITMENTS_PATH_PATTERN,
+  SUBNET_HOTKEY_COMMITMENT_PATH_PATTERN,
   SUBNET_SWAP_PATH_PATTERN,
   SUBNET_ALPHA_ASSETS_PATH_PATTERN,
   SUBNET_LIMIT_ORDERS_PATH_PATTERN,
@@ -3195,6 +3204,36 @@ export async function runSubnetEmissionLane(env: Env): Promise<void> {
   });
 }
 
+/**
+ * Every hotkey's commitment on every subnet (MET-7365): one finalized block's
+ * Commitments storage, written as validity ranges through the state store.
+ * Hourly -- the maps are 47,000 entries -- with its own verdict, and it never
+ * rejects, even when its store binding is malformed, so a failure is this
+ * lane's alone.
+ */
+export async function runCommitmentsLane(env: Env): Promise<void> {
+  let ok = false;
+  let detail: string;
+  try {
+    const capture = await captureCommitments(env, {
+      store: selectedCommitmentsStore(env),
+    });
+    ok = capture.ok;
+    detail =
+      capture.reason ??
+      `${capture.commitments} commitments, ${capture.changed} ranges changed`;
+  } catch (error) {
+    detail = `store_unavailable: ${String(error)}`;
+  }
+  await recordLaneVerdict(laneHealthStore(env), {
+    lane: "commitments",
+    verdict: ok ? "ok" : "stale",
+    age_ms: null,
+    detail,
+    checked_at: Date.now(),
+  });
+}
+
 async function dispatchScheduled(
   controller: AppScheduledEvent,
   env: Env,
@@ -3441,6 +3480,9 @@ async function dispatchScheduled(
         // Each subnet's emission split and lifecycle state (MET-7365), the
         // same way.
         ctx.waitUntil(runSubnetEmissionLane(env));
+        // Every hotkey's commitment (MET-7365), on the hour's first tick.
+        if (commitmentsCaptureDue(controller.scheduledTime))
+          ctx.waitUntil(runCommitmentsLane(env));
         return result;
       } finally {
         store.close();
@@ -7297,6 +7339,37 @@ async function dispatchRequest(
       // MET-7365: every subnet's emission split, through the same seam.
       return handleChainEmissionSplits(request, env);
     }
+    const commitmentsMatch = SUBNET_COMMITMENTS_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (commitmentsMatch) {
+      // MET-7365: a subnet's on-chain commitments, through the state store.
+      return handleSubnetCommitments(
+        request,
+        env,
+        Number(commitmentsMatch[1]),
+        resolved.url,
+      );
+    }
+    const hotkeyCommitmentMatch = SUBNET_HOTKEY_COMMITMENT_PATH_PATTERN.exec(
+      resolved.url.pathname,
+    );
+    if (hotkeyCommitmentMatch) {
+      // A shaped address with a bad checksum is a malformed parameter, not a
+      // hotkey that committed nothing (#10036).
+      if (!isFinneySs58Address(hotkeyCommitmentMatch[2]))
+        return errorResponse(
+          "invalid_ss58",
+          "hotkey must be a valid finney SS58 account address.",
+          400,
+        );
+      return handleSubnetHotkeyCommitment(
+        request,
+        env,
+        Number(hotkeyCommitmentMatch[1]),
+        hotkeyCommitmentMatch[2],
+      );
+    }
     const servicesMatch = SUBNET_SERVICES_PATH_PATTERN.exec(
       resolved.url.pathname,
     );
@@ -8391,6 +8464,9 @@ export function isMainnetOnlyApiPath(pathname: string) {
     // carry no network dimension.
     SUBNET_EMISSION_SPLIT_PATH_PATTERN.test(pathname) ||
     pathname === CHAIN_EMISSION_SPLITS_PATH ||
+    // MET-7365: state.commitments carries no network dimension either.
+    SUBNET_COMMITMENTS_PATH_PATTERN.test(pathname) ||
+    SUBNET_HOTKEY_COMMITMENT_PATH_PATTERN.test(pathname) ||
     // #13165: app.swap_balancer / app.alpha_assets carry no network
     // dimension.
     SUBNET_SWAP_PATH_PATTERN.test(pathname) ||

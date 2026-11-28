@@ -91,7 +91,9 @@ import { readFileSync } from "node:fs";
 // parameter, same class as account_locks above.
 // 181 -> 183 (#13166): account_proxies and account_multisigs hand-check
 // their ss58 PATH parameters, same class again.
-const CEILING = 183;
+// 183 -> 184 (MET-7365): subnet_hotkey_commitment hand-checks its hotkey
+// PATH parameter, same class again.
+const CEILING = 184;
 
 const SOURCE = "src/graphql.ts";
 

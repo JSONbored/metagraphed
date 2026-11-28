@@ -175,6 +175,11 @@ describe("sampleFromSchema", () => {
     const parts = s({ type: "string", pattern: "^(0|[1-9][0-9]{0,19})$" });
     assert.equal(parts, "1844674407370955161");
     assert.match(parts, /^(0|[1-9][0-9]{0,19})$/);
+    // Whole bytes as lowercase hex (MET-7365's commitments): an even count
+    // of digits, which a bare `0x` placeholder of odd length would not be.
+    const bytes = s({ type: "string", pattern: "^0x(?:[0-9a-f]{2})*$" });
+    assert.equal(bytes, "0x6869");
+    assert.match(bytes, /^0x(?:[0-9a-f]{2})*$/);
     assert.match(
       s({ type: "string", pattern: "^/metagraph/" }),
       /^\/metagraph\//,

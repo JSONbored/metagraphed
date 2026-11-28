@@ -1852,6 +1852,35 @@ const checks: [string, (body: Row) => void, CheckOptions?][] = [
     },
   ],
   [
+    "/api/v1/subnets/64/commitments",
+    (body) => {
+      // MET-7365: no state store in this harness either, so the decline --
+      // no observation, so no total and no rows, never an empty list that
+      // would say the subnet's hotkeys published nothing.
+      assert.equal(body.data.netuid, 64);
+      assert.equal(body.data.observed_block, null);
+      assert.equal(body.data.total, null);
+      assert.equal(body.data.limit, 100);
+      assert.equal(body.data.offset, 0);
+      assert.deepEqual(body.data.commitments, []);
+    },
+  ],
+  [
+    "/api/v1/subnets/64/commitments/5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+    (body) => {
+      // MET-7365: one hotkey's decline: no observation, no state.
+      assert.equal(body.data.netuid, 64);
+      assert.equal(
+        body.data.hotkey,
+        "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
+      );
+      assert.equal(body.data.observed_block, null);
+      assert.equal(body.data.exists, null);
+      assert.equal(body.data.current, null);
+      assert.deepEqual(body.data.history, []);
+    },
+  ],
+  [
     "/api/v1/subnets/64/swap",
     (body) => {
       // #13165: no swap store is bound in this harness, so the one honest

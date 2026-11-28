@@ -4262,6 +4262,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/subnets/{netuid}/commitments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one subnet's on-chain commitments
+         * @description Fetch what a subnet's miners and validators have published on chain (MET-7365, runtime spec 497): each hotkey's current commitment — the deposit and Data fields it set with Commitments.set_commitment, such as model revisions, peer ids, endpoints, content hashes and timelocked payloads, each with its bytes and its text where printable — and the timelock payloads the chain has revealed for it. Most recently committed first; ?limit (<=256) / ?offset. With no capture observed, observed_block and total are null and there are no rows.
+         */
+        get: operations["subnetCommitments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/subnets/{netuid}/commitments/{hotkey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Fetch one hotkey's commitment on a subnet
+         * @description Fetch one hotkey's on-chain commitment and reveals on one subnet (MET-7365, runtime spec 497), current and as the validity ranges it has held since the capture began, newest first (at most 100). The hotkey is an SS58 address; a malformed one is a 400. With no capture observed, observed_block and exists are null and there is no state.
+         */
+        get: operations["subnetHotkeyCommitment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/subnets/{netuid}/concentration": {
         parameters: {
             query?: never;
@@ -8444,6 +8484,49 @@ export interface components {
             /** @description SubtensorModule.ColdkeySwapReannouncementDelay: blocks after the initial delay before a new announcement can be made. Null when the capture did not carry it. */
             reannouncement_delay: number | null;
         };
+        /** @description A hotkey's commitment on one subnet (Commitments.CommitmentOf). */
+        Commitment: {
+            /** @description The block the chain stamped the commitment with when it was set. */
+            block: number;
+            /** @description The deposit reserved for it, in rao (u64 atomic units as a decimal string). */
+            deposit: string;
+            /** @description Its Data fields, in the order they were committed. */
+            fields: components["schemas"]["CommitmentField"][];
+        };
+        /** @description One Data field of a commitment, as the chain holds it. */
+        CommitmentField: {
+            /** @description The field's bytes as 0x-prefixed lowercase hex. Null for `none` and `reset_bonds`, which carry none. */
+            hex: string | null;
+            /**
+             * @description The Data variant: `raw` (up to 128 bytes) and `big_raw` bytes; a BLAKE2-256, SHA-256, Keccak-256 or SHA3-256 hash; a `timelock` ciphertext the chain reveals at its drand round, or one whose reveal failed; the bonds-reset flag; or `none`.
+             * @enum {string}
+             */
+            kind: "none" | "raw" | "big_raw" | "blake2_256" | "sha256" | "keccak256" | "sha3_256" | "timelock" | "timelock_failed" | "reset_bonds";
+            /** @description A timelock's drand round. Null for every other kind. */
+            reveal_round: number | null;
+            /** @description The bytes as UTF-8 text, when they are printable. Null for binary bytes and for fields with none. */
+            text: string | null;
+        };
+        /** @description One revealed timelock commitment. */
+        CommitmentReveal: {
+            /** @description The block the chain revealed it at. */
+            block: number;
+            /** @description The revealed payload as the chain keeps it, 0x-prefixed hex. */
+            hex: string;
+            /** @description The revealed payload as UTF-8 text, when it is printable. The chain keeps a reveal as SCALE bytes, so this is the payload inside them. */
+            text: string | null;
+        };
+        /** @description One hotkey's commitment and reveals with their validity range. */
+        CommitmentState: {
+            /** @description The commitment, or null when the hotkey holds reveals but no commitment. */
+            commitment: components["schemas"]["Commitment"] | null;
+            /** @description The hotkey's revealed timelock commitments on this subnet, in the chain's order. Empty when it has none. */
+            reveals: components["schemas"]["CommitmentReveal"][];
+            /** @description The first capture block at which this state was observed. The capture is hourly, so the change happened in the 300 or so blocks before it; `commitment.block` is the chain's own. */
+            valid_from: number;
+            /** @description The first capture block at which another state was observed, or none (exclusive). Null while it is current. */
+            valid_to: number | null;
+        };
         CompareArtifact: {
             dimensions?: string[];
             observed_at?: string | null;
@@ -10217,6 +10300,23 @@ export interface components {
                     uptime_ratio: number | null;
                 };
             };
+        };
+        /** @description One hotkey's on-chain commitment on one subnet, with its history (runtime spec 497). Mirrors GET /api/v1/subnets/{netuid}/commitments/{hotkey}. */
+        HotkeyCommitmentArtifact: {
+            /** @description Its current commitment and reveals, or null when the chain holds none at the observed block. */
+            current: components["schemas"]["CommitmentState"] | null;
+            /** @description Whether the chain held a commitment or reveals for this hotkey on this subnet at the observed block. Null with no observation. */
+            exists: boolean | null;
+            /** @description Every state it has had on this subnet since the capture began, newest first, at most 100. */
+            history: components["schemas"]["CommitmentState"][];
+            /** @description The hotkey, SS58. */
+            hotkey: string;
+            netuid: number;
+            /** @description When that capture ran, as an ISO timestamp. */
+            observed_at: string | null;
+            /** @description The newest finalized block the capture read every subnet's commitments at. Null when no capture has been observed (store unbound, or the capture has not run): the response then carries no commitments at all. */
+            observed_block: number | null;
+            schema_version: number;
         };
         /** @description One subnet's hotkey swap lineage for the account: written on each successful hotkey swap on that subnet. */
         HotkeyLineageEntry: {
@@ -12072,6 +12172,32 @@ export interface components {
             /** @constant */
             schema_version: 1;
             slug?: string;
+        };
+        /** @description One hotkey's current commitment and reveals on the subnet. */
+        SubnetCommitmentEntry: {
+            /** @description The commitment, or null when the hotkey holds reveals but no commitment. */
+            commitment: components["schemas"]["Commitment"] | null;
+            /** @description The committing hotkey, SS58. */
+            hotkey: string;
+            /** @description The hotkey's revealed timelock commitments on this subnet, in the chain's order. Empty when it has none. */
+            reveals: components["schemas"]["CommitmentReveal"][];
+            /** @description The first capture block at which this state was observed. The capture is hourly, so the change happened in the 300 or so blocks before it; `commitment.block` is the chain's own. */
+            valid_from: number;
+        };
+        /** @description A subnet's current on-chain commitments and reveals from chain storage (runtime spec 497). Mirrors GET /api/v1/subnets/{netuid}/commitments. */
+        SubnetCommitmentsArtifact: {
+            /** @description One page of them, the most recently committed first (hotkeys with only reveals last), then by public key. */
+            commitments: components["schemas"]["SubnetCommitmentEntry"][];
+            limit: number;
+            netuid: number;
+            /** @description When that capture ran, as an ISO timestamp. */
+            observed_at: string | null;
+            /** @description The newest finalized block the capture read every subnet's commitments at. Null when no capture has been observed (store unbound, or the capture has not run): the response then carries no commitments at all. */
+            observed_block: number | null;
+            offset: number;
+            schema_version: number;
+            /** @description How many hotkeys hold a commitment or reveals on this subnet at the observed block. Null with no observation. */
+            total: number | null;
         };
         /** @description Per-subnet stake & emission concentration card (#5901) over the current neurons snapshot. Metric blocks are null on a cold/empty subnet. Mirrors GET /api/v1/subnets/{netuid}/concentration. */
         SubnetConcentrationArtifact: {
@@ -47481,6 +47607,320 @@ export interface operations {
                      *     7,Allways
                      */
                     "text/csv": string;
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetCommitments: {
+        parameters: {
+            query?: {
+                /** @description Maximum number of rows to return in one page (at most 256). A larger value, or a non-positive one, is rejected with 400 `invalid_query` -- so a short page means the result set is exhausted, not that the server quietly capped you (#9916). Omitted, the server applies 100. */
+                limit?: number;
+                /** @description Number of rows to skip before the page begins. Correct only in combination with the page size the response actually returned -- prefer `cursor` for anything beyond the first few pages, since a row inserted mid-scan shifts every later offset. */
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "commitments": [
+                     *           {
+                     *             "commitment": {
+                     *               "block": 5000000,
+                     *               "deposit": "1844674407370955161",
+                     *               "fields": [
+                     *                 {
+                     *                   "hex": "0x6869",
+                     *                   "kind": "none",
+                     *                   "reveal_round": 1,
+                     *                   "text": "example"
+                     *                 }
+                     *               ]
+                     *             },
+                     *             "hotkey": "example",
+                     *             "reveals": [
+                     *               {
+                     *                 "block": 5000000,
+                     *                 "hex": "0x6869",
+                     *                 "text": "example"
+                     *               }
+                     *             ],
+                     *             "valid_from": 1
+                     *           }
+                     *         ],
+                     *         "limit": 1,
+                     *         "netuid": 7,
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_block": 5000000,
+                     *         "offset": 1,
+                     *         "schema_version": 1,
+                     *         "total": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["SubnetCommitmentsArtifact"];
+                    };
+                };
+            };
+            /** @description ETag matched and the cached response is still valid. */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Query parameters were malformed or unsupported. */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Artifact or API route was not found. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description HTTP method is not supported. */
+            405: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unexpected backend error. */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    subnetHotkeyCommitment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /**
+                 * @description The subnet's numeric id on the Bittensor network, as used by the chain itself.
+                 * @example 1
+                 */
+                netuid: number;
+                /**
+                 * @description An SS58-encoded hotkey address identifying one validator identity.
+                 * @example 5F4tQyWrhfGVcNhoqeiNsR6KjD4wMZ2kfhLj4oHYuyHbZAc3
+                 */
+                hotkey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Canonical artifact wrapped in the Metagraphed API envelope. */
+            200: {
+                headers: {
+                    "cache-control": components["headers"]["CacheControl"];
+                    etag: components["headers"]["ETag"];
+                    "x-metagraph-contract-version": components["headers"]["ContractVersion"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "data": {
+                     *         "current": {
+                     *           "commitment": {
+                     *             "block": 5000000,
+                     *             "deposit": "1844674407370955161",
+                     *             "fields": [
+                     *               {
+                     *                 "hex": "0x6869",
+                     *                 "kind": "none",
+                     *                 "reveal_round": 1,
+                     *                 "text": "example"
+                     *               }
+                     *             ]
+                     *           },
+                     *           "reveals": [
+                     *             {
+                     *               "block": 5000000,
+                     *               "hex": "0x6869",
+                     *               "text": "example"
+                     *             }
+                     *           ],
+                     *           "valid_from": 1,
+                     *           "valid_to": 1
+                     *         },
+                     *         "exists": false,
+                     *         "history": [
+                     *           {
+                     *             "commitment": {
+                     *               "block": 5000000,
+                     *               "deposit": "1844674407370955161",
+                     *               "fields": [
+                     *                 {
+                     *                   "hex": "0x6869",
+                     *                   "kind": "none",
+                     *                   "reveal_round": 1,
+                     *                   "text": "example"
+                     *                 }
+                     *               ]
+                     *             },
+                     *             "reveals": [
+                     *               {
+                     *                 "block": 5000000,
+                     *                 "hex": "0x6869",
+                     *                 "text": "example"
+                     *               }
+                     *             ],
+                     *             "valid_from": 1,
+                     *             "valid_to": 1
+                     *           }
+                     *         ],
+                     *         "hotkey": "example",
+                     *         "netuid": 7,
+                     *         "observed_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_block": 5000000,
+                     *         "schema_version": 1
+                     *       },
+                     *       "meta": {
+                     *         "artifact_path": "example",
+                     *         "cache": "short",
+                     *         "catalog_paging": {
+                     *           "reason": "catalog_changed"
+                     *         },
+                     *         "contract_version": "2026-06-29.1",
+                     *         "generated_at": "2026-06-01T00:00:00.000Z",
+                     *         "observed_through": "2026-06-01T00:00:00.000Z",
+                     *         "pagination": {
+                     *           "collection": "example",
+                     *           "cursor": 1,
+                     *           "limit": 1,
+                     *           "next_cursor": 1,
+                     *           "order": "asc",
+                     *           "returned": 1,
+                     *           "snapshot": "v1.a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1a3f1",
+                     *           "sort": "example",
+                     *           "total": 1
+                     *         },
+                     *         "published_at": "2026-06-01T00:00:00.000Z",
+                     *         "source": "live-cron-prober",
+                     *         "stale_contract": {
+                     *           "built_under": "example",
+                     *           "live": "example"
+                     *         }
+                     *       },
+                     *       "ok": true,
+                     *       "schema_version": 1
+                     *     }
+                     */
+                    "application/json": components["schemas"]["SuccessEnvelope"] & {
+                        data?: components["schemas"]["HotkeyCommitmentArtifact"];
+                    };
                 };
             };
             /** @description ETag matched and the cached response is still valid. */

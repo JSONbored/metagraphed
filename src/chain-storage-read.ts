@@ -46,6 +46,10 @@ export class Scale {
     this.offset += n;
     return out;
   }
+  /** `n` raw bytes: a fixed-size array, or a length the value itself states. */
+  fixed(n: number): Uint8Array {
+    return this.take(n);
+  }
   bool(): boolean {
     const [byte] = this.take(1);
     if (byte > 1) throw new RangeError("SCALE bool is out of range");
@@ -132,18 +136,21 @@ export async function finalizedAt(
 }
 
 /** The values of `keys` at `at`, keyed in lower case. A key the block does not
- * hold is absent from the map: its runtime default, never a value. */
+ * hold is absent from the map: its runtime default, never a value. At most
+ * `concurrency` calls are in flight: one unless a large read states more. */
 export async function storageAt(
   rpc: Rpc,
   keys: readonly string[],
   at: string,
+  concurrency = 1,
 ): Promise<Map<string, string>> {
   const values = new Map<string, string>();
-  for (let i = 0; i < keys.length; i += VALUES_PER_CALL) {
-    const result = await rpc("state_queryStorageAt", [
-      keys.slice(i, i + VALUES_PER_CALL),
-      at,
-    ]);
+  const chunks: (readonly string[])[] = [];
+  for (let i = 0; i < keys.length; i += VALUES_PER_CALL)
+    chunks.push(keys.slice(i, i + VALUES_PER_CALL));
+  let next = 0;
+  const read = async (chunk: readonly string[]) => {
+    const result = await rpc("state_queryStorageAt", [chunk, at]);
     const changes = Array.isArray(result)
       ? (result[0] as { changes?: unknown } | undefined)?.changes
       : null;
@@ -157,19 +164,36 @@ export async function storageAt(
       )
         values.set(change[0].toLowerCase(), change[1]);
     }
-  }
+  };
+  const reader = async () => {
+    while (next < chunks.length) {
+      const chunk = chunks[next];
+      next += 1;
+      try {
+        await read(chunk);
+      } catch (error) {
+        // The read has failed whole: the other readers start no more calls.
+        next = chunks.length;
+        throw error;
+      }
+    }
+  };
+  const readers = Math.max(1, Math.min(concurrency, chunks.length));
+  await Promise.all(Array.from({ length: readers }, reader));
   return values;
 }
 
-/** Every key of one map at `at`, or null when it is larger than the bound. */
+/** Every key of one map at `at`, or null when it is larger than the bound
+ * (`maxPages` pages of 1,000; a map known to be large states its own). */
 export async function enumerate(
   rpc: Rpc,
   itemPrefix: string,
   at: string,
+  maxPages = MAX_PAGES,
 ): Promise<string[] | null> {
   const keys: string[] = [];
   let start = itemPrefix;
-  for (let page = 0; page < MAX_PAGES; page += 1) {
+  for (let page = 0; page < maxPages; page += 1) {
     const result = await rpc("state_getKeysPaged", [
       itemPrefix,
       KEYS_PER_PAGE,

@@ -467,6 +467,20 @@ export const GRAPHQL_EXPOSURES: readonly GraphqlExposure[] = [
       "Every subnet's current emission split and lifecycle state (MET-7365, runtime spec 497), with how many left the runtime's default split and how many route emission to gamma. With no capture observed, the list is empty and every count null. Mirrors GET /api/v1/chain/emission-splits.",
   },
   {
+    field: "subnet_commitments",
+    operation: "subnet-commitments",
+    returns: "SubnetCommitments!",
+    description:
+      "A subnet's current on-chain commitments (MET-7365, runtime spec 497): each hotkey's deposit and Data fields from Commitments.set_commitment, with their bytes and printable text, and the timelock payloads the chain has revealed, most recently committed first and paged. With no capture observed, observed_block and total are null and there are no rows. Mirrors GET /api/v1/subnets/{netuid}/commitments.",
+  },
+  {
+    field: "subnet_hotkey_commitment",
+    operation: "subnet-hotkey-commitment",
+    returns: "HotkeyCommitment!",
+    description:
+      "One hotkey's on-chain commitment and reveals on one subnet (MET-7365, runtime spec 497), current and as validity ranges since the capture began, newest first. With no capture observed, observed_block and exists are null. Mirrors GET /api/v1/subnets/{netuid}/commitments/{hotkey}.",
+  },
+  {
     field: "subnet_services",
     operation: "subnet-services",
     returns: "SubnetServices!",

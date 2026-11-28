@@ -359,6 +359,15 @@ import {
   ChainEmissionSplitsArtifactSchema,
 } from "./routes/chain-emission-splits.ts";
 import {
+  CommitmentFieldSchema,
+  CommitmentRevealSchema,
+  CommitmentSchema,
+  CommitmentStateSchema,
+  HotkeyCommitmentArtifactSchema,
+  SubnetCommitmentEntrySchema,
+  SubnetCommitmentsArtifactSchema,
+} from "./routes/subnet-commitments.ts";
+import {
   SubnetSwapStateSchema,
   SubnetSwapArtifactSchema,
 } from "./routes/subnet-swap.ts";
@@ -972,6 +981,13 @@ register(SubnetLifecycleStateSchema, "SubnetLifecycleState");
 register(SubnetEmissionSplitArtifactSchema, "SubnetEmissionSplitArtifact");
 register(ChainEmissionSplitEntrySchema, "ChainEmissionSplitEntry");
 register(ChainEmissionSplitsArtifactSchema, "ChainEmissionSplitsArtifact");
+register(CommitmentFieldSchema, "CommitmentField");
+register(CommitmentRevealSchema, "CommitmentReveal");
+register(CommitmentSchema, "Commitment");
+register(CommitmentStateSchema, "CommitmentState");
+register(SubnetCommitmentEntrySchema, "SubnetCommitmentEntry");
+register(SubnetCommitmentsArtifactSchema, "SubnetCommitmentsArtifact");
+register(HotkeyCommitmentArtifactSchema, "HotkeyCommitmentArtifact");
 register(SubnetSwapStateSchema, "SubnetSwapState");
 register(SubnetSwapArtifactSchema, "SubnetSwapArtifact");
 register(SubnetAlphaAssetsStateSchema, "SubnetAlphaAssetsState");
