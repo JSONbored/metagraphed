@@ -1938,6 +1938,8 @@ import {
   loadNetworkParameters,
   readCachedNetworkParametersSnapshot,
 } from "./network-parameters.ts";
+import { loadOwnerShare, loadOwnerShares } from "./owner-share.ts";
+import { declineRetainedHistoryFailure } from "./retained-history-store.ts";
 import { loadSweepRecord, type SweepStoreDb } from "./attribution-sweep.ts";
 import { loadUpgradeRadar } from "./upgrade-radar.ts";
 import { buildNetworksPayload } from "./network-capabilities.ts";
@@ -10983,9 +10985,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     name: "get_subnet_owner_cut",
     title: "Get a subnet's owner-cut accrual and where it went",
     description:
-      "Fetch one subnet's owner-cut accrual and its disposition. The share is 18% -- " +
-      "SubnetOwnerCut is 11796/65535, NOT one sixth -- and is echoed on the response so " +
-      "you never have to assume it. READ `disposition.buckets.unresolved` AND " +
+      "Fetch one subnet's owner-cut accrual and its disposition. The share is the subnet's " +
+      "declared owner share -- its emission split's owner slot since runtime 497, 18% " +
+      "(11796/65535, NOT one sixth) for the default split -- and is echoed on the response " +
+      "so you never have to assume it. READ `disposition.buckets.unresolved` AND " +
       "`disposition.reconciles` BEFORE CITING ANY OF THIS. The cut is paid as STAKE rather " +
       "than as a liquid balance, so where it went is frequently not determinable from what " +
       "we index, and `unresolved` is a first-class answer rather than a failure -- it may " +
@@ -11007,19 +11010,10 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         );
       }
       const economics = await mcpEconomicsRow(ctx, netuid);
-      // The LIVE parameters read, not the served artifact: that artifact
-      // publishes no owner-cut field, so reading it returned undefined for
-      // every subnet and this tool reported "owner cut share not read" for all
-      // 129 (#10566's shape -- a decline standing in for a read that never
-      // happened). loadNetworkParameters is KV-cached.
-      // Injected when the caller supplies one, so a test drives the share
-      // without an outbound RPC -- the suite has no global fetch stub, and a
-      // live read here would put a public Bittensor node in the test path.
-      const loadParams =
-        (ctx as { loadNetworkParameters?: typeof loadNetworkParameters })
-          .loadNetworkParameters ?? loadNetworkParameters;
-      const parameters = await loadParams(ctx.env);
-      const ownerCut = parameters?.subnet_owner_cut_effective;
+      // The subnet's own declared share (MET-7385), the same read REST makes:
+      // since runtime 497 the network's SubnetOwnerCut is only the default
+      // split's owner slot. Null when the split is not observed.
+      const ownerCut = await loadOwnerShare(ctx.env, netuid);
       // #10930: the same flow read REST does, from the same cold-tier
       // function over the same window. Wiring this on one surface only would
       // have left an agent and a browser disagreeing about whether a subnet's
@@ -11029,24 +11023,28 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         typeof economics?.owner_coldkey === "string" && economics.owner_coldkey
           ? economics.owner_coldkey
           : null;
-      // Injected off ctx exactly like loadNetworkParameters above, so a test
-      // drives the flow read without a lakehouse binding -- the same seam REST
+      // Injected off ctx, so a test drives the flow read without a lakehouse
+      // binding -- the same seam REST
       // gets through its `deps` argument. Without it this arm is unreachable
       // in the suite, and an unreachable arm reads as a tested one.
       const loadFlows =
         (ctx as { loadStakeFlow?: typeof loadAccountStakeFlowColdTier })
           .loadStakeFlow ?? loadAccountStakeFlowColdTier;
+      // An unanswerable retained read leaves the streams unread, as REST
+      // does: the disposition answers `unresolved` and the accrual stands.
       const flows = ownerColdkey
-        ? await loadFlows(ctx.env, ownerColdkey, {
-            window: OWNER_CUT_FLOW_WINDOW,
-          })
+        ? await declineRetainedHistoryFailure(
+            loadFlows(ctx.env, ownerColdkey, {
+              window: OWNER_CUT_FLOW_WINDOW,
+            }),
+          )
         : null;
       const legs = ownerCutFlowLegs(flows?.rows ?? null, netuid);
       const view = loadSubnetOwnerCut({
         netuid,
         window_days: ATTRIBUTION_WINDOW_DAYS,
         economics,
-        owner_cut: typeof ownerCut === "number" ? ownerCut : null,
+        owner_cut: ownerCut,
         // #10926: the rate. Without it `accrual.usd` was null on every MCP
         // call while REST priced the same subnet from the same index.
         usd_per_tao: await mcpUsdPerTao(ctx),
@@ -11067,7 +11065,8 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
     description:
       "Fetch one subnet's external revenue against the TAO the network emits to it: " +
       "the measured tao_total denominator (SubnetTaoInEmission + SubnetExcessTao) with " +
-      "its alpha-priced and 18% owner-take alternates, the observed revenue, and the two " +
+      "its alpha-priced and owner-take alternates (the owner take at the subnet's declared " +
+      "owner share, null when its split is not observed), the observed revenue, and the two " +
       "ratios -- coverage_ratio (revenue/emission) and subsidy_multiple (emission/revenue). " +
       "COVERAGE_RATIO AND SUBSIDY_MULTIPLE ARE NULL WHENEVER REVENUE IS NOT OBSERVED, AND " +
       "THAT IS THE NORMAL CASE: two of 128 subnets publish a readable revenue figure, so " +
@@ -11112,6 +11111,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
           // read that never happened, which is invisible precisely because
           // the decline is the documented normal answer.
           observations: await mcpRevenueObservations(ctx, netuid),
+          owner_share: await loadOwnerShare(ctx.env, netuid),
         }),
         field_sources: SUBNET_REVENUE_FIELD_SOURCES,
       };
@@ -11148,6 +11148,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
         ),
       );
       const allObservations = await mcpRevenueObservations(ctx, null);
+      const ownerShares = await loadOwnerShares(ctx.env);
       // ONE READ (#11422). #11478 made the 129 per-subnet reads concurrent;
       // this removes them, matching REST and GraphQL. See
       // `groupSurfacesByNetuid` for why the bulk artifact is an exact
@@ -11184,6 +11185,7 @@ const MCP_TOOLS_BASE: McpToolDefinition[] = [
             surfaces: surfacesByNetuid.get(netuid) ?? null,
             usd_per_tao: usd,
             observations: allObservations,
+            owner_share: ownerShares.get(netuid) ?? null,
           }),
         );
       }

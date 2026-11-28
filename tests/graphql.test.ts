@@ -39,6 +39,10 @@ vi.mock("pg", () => pg.module);
 
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import {
+  DECLARED_OWNER_PARTS,
+  emissionStore,
+} from "./helpers/emission-store.ts";
+import {
   LEADERBOARD_TABLES,
   VALIDATOR_ECONOMICS_HISTORY_TABLES,
   VALIDATOR_ECONOMICS_RANKING_TABLES,
@@ -25340,6 +25344,45 @@ describe("revenue coverage over GraphQL (#10476)", () => {
     ) as Row;
     assert.equal(subset.contributes, false);
     assert.match(String(subset.excluded_reason), /superseded/);
+  });
+
+  test("the owner take is each subnet's declared share (MET-7385)", async () => {
+    // SN64 declares 33% here. The store is read once per field: one subnet's
+    // ranges for subnet_revenue, every current split for the sweep.
+    const store = emissionStore({ 64: DECLARED_OWNER_PARTS });
+    const env = { ...(revenueEnv() as Row), SUBNET_EMISSION_STORE: store };
+    const take = "emission { tao alternates { owner_take { tao } } }";
+    const tookAt = (emission: Row, share: number) =>
+      Math.abs(
+        (((emission.alternates as Row).owner_take as Row).tao as number) -
+          (emission.tao as number) * share,
+      ) < 1e-6;
+    const one = await gql(
+      `query { subnet_revenue(netuid: 64) { revenue { ${take} } } }`,
+      env,
+    );
+    assert.equal(one.body.errors, undefined);
+    const revenue = (one.body.data.subnet_revenue as Row).revenue as Row;
+    assert.ok(tookAt(revenue.emission as Row, 0.33));
+    assert.deepEqual(store.calls.subnet, [64]);
+    const all = await gql(
+      `query { chain_revenue_coverage { subnets { netuid ${take} } } }`,
+      env,
+    );
+    assert.equal(all.body.errors, undefined);
+    const [sn64] = (all.body.data.chain_revenue_coverage as Row)
+      .subnets as Row[];
+    assert.ok(tookAt(sn64.emission as Row, 0.33));
+    assert.equal(store.calls.current, 1);
+    // No store bound: the take declines, the denominator stands.
+    const bare = await gql(
+      `query { subnet_revenue(netuid: 64) { revenue { ${take} } } }`,
+      revenueEnv(),
+    );
+    const emission = ((bare.body.data.subnet_revenue as Row).revenue as Row)
+      .emission as Row;
+    assert.equal((emission.alternates as Row).owner_take, null);
+    assert.ok((emission.tao as number) > 0);
   });
 
   // #10925: the window is an argument on both revenue fields now. GraphQL is

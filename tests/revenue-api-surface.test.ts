@@ -36,6 +36,11 @@ import { MCP_TOOLS } from "../src/mcp-server.ts";
 import { jsonBody, mockEnv, type Row } from "./row-type.ts";
 import { pgMockEnv } from "./helpers/pg-mock.ts";
 import { TAO_USD_MAX_AGE_MS } from "../src/alpha-usd.ts";
+import {
+  DECLARED_OWNER_PARTS,
+  DEFAULT_OWNER_PARTS,
+  emissionStore,
+} from "./helpers/emission-store.ts";
 
 // The surfaces map is memoized per ISOLATE and the registry resets module state
 // between test FILES, not between tests -- so without this a fixture from one
@@ -195,6 +200,22 @@ function mcpCtx(artifacts: ArtifactMap, throwOn?: string) {
   } as never;
 }
 
+/** An env with the emission store bound: SN64's split at the default 18%
+ * unless `owners` says otherwise, so the owner take has a share to read. */
+function withSplits(
+  env: unknown,
+  store = emissionStore({ 64: DEFAULT_OWNER_PARTS }),
+) {
+  return { ...(env as Row), SUBNET_EMISSION_STORE: store } as never;
+}
+/** The same, for an MCP context's env. */
+function ctxWithSplits(
+  ctx: unknown,
+  store = emissionStore({ 64: DEFAULT_OWNER_PARTS }),
+) {
+  return { ...(ctx as Row), env: withSplits((ctx as Row).env, store) } as never;
+}
+
 function tool(name: string) {
   const found = MCP_TOOLS.find((t) => t.name === name);
   assert.ok(found, `${name} must be registered`);
@@ -339,7 +360,9 @@ describe("the TAO/USD read is allowed to come back empty", () => {
   test("no store bound declines every USD leg, and zeroes none", async () => {
     const res = await handleRequest(
       req("/api/v1/subnets/64/revenue"),
-      artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+      withSplits(
+        artifactEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+      ),
     );
     assert.equal(res.status, 200);
     const emission = (((await jsonBody(res)).data as Row).revenue as Row)
@@ -402,7 +425,9 @@ describe("a live price reaches every USD leg", () => {
     seedTaoUsd(204.03);
     const res = await handleRequest(
       req("/api/v1/subnets/64/revenue"),
-      pricedEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+      withSplits(
+        pricedEnv({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+      ),
     );
     assert.equal(res.status, 200);
     const emission = (((await jsonBody(res)).data as Row).revenue as Row)
@@ -620,7 +645,9 @@ describe("the get_subnet_revenue MCP tool", () => {
   test("no readable price declines the USD legs rather than zeroing them", async () => {
     const out = (await tool("get_subnet_revenue").handler(
       { netuid: 64 },
-      mcpCtx({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+      ctxWithSplits(
+        mcpCtx({ [ECONOMICS_PATH]: { subnets: [SN64_ECONOMICS] } }),
+      ),
     )) as Row;
     const emission = (out.revenue as Row).emission as Row;
     assert.ok((emission.tao as number) > 0);
@@ -718,5 +745,88 @@ describe("the list_revenue_coverage MCP tool", () => {
       mcpCtx({ [ECONOMICS_PATH]: undefined }),
     )) as Row;
     assert.equal(out.subnet_count, 0);
+  });
+});
+
+// MET-7385: the owner take is the subnet's declared owner share, read from the
+// emission store -- not the network's 18%, and never an assumed 18% when the
+// subnet's split is not observed.
+describe("the owner take is the subnet's declared share", () => {
+  const ARTIFACTS = {
+    [ECONOMICS_PATH]: {
+      subnets: [SN64_ECONOMICS, { ...SN64_ECONOMICS, netuid: 1 }],
+    },
+    [SUBNET_PATH(64)]: { surfaces: [REVENUE_SURFACE] },
+    [ALL_SURFACES_PATH]: { surfaces: [{ ...REVENUE_SURFACE, netuid: 64 }] },
+  };
+  const ownerTake = (revenue: Row) =>
+    ((revenue.emission as Row).alternates as Row).owner_take as Row | null;
+  const tao = (revenue: Row) => (revenue.emission as Row).tao as number;
+
+  test("REST: one subnet's take at its declared 33%, and null with no store", async () => {
+    const store = emissionStore({ 64: DECLARED_OWNER_PARTS });
+    const res = await handleRequest(
+      req("/api/v1/subnets/64/revenue"),
+      withSplits(artifactEnv(ARTIFACTS), store),
+    );
+    assert.equal(res.status, 200);
+    const revenue = ((await jsonBody(res)).data as Row).revenue as Row;
+    assert.ok(
+      Math.abs((ownerTake(revenue)?.tao as number) - tao(revenue) * 0.33) <
+        1e-6,
+    );
+    assert.deepEqual(store.calls.subnet, [64]);
+
+    const unbound = await handleRequest(
+      req("/api/v1/subnets/64/revenue"),
+      artifactEnv(ARTIFACTS),
+    );
+    const declined = ((await jsonBody(unbound)).data as Row).revenue as Row;
+    assert.equal(ownerTake(declined), null);
+    assert.ok(tao(declined) > 0, "the denominator does not depend on it");
+  });
+
+  test("REST: the sweep reads every share in one store read", async () => {
+    // SN1 has no current split in the store: its take declines alone.
+    const store = emissionStore({ 64: DECLARED_OWNER_PARTS });
+    const res = await handleRequest(
+      req("/api/v1/chain/revenue-coverage"),
+      withSplits(artifactEnv(ARTIFACTS), store),
+    );
+    assert.equal(res.status, 200);
+    const subnets = ((await jsonBody(res)).data as Row).subnets as Row[];
+    const by = new Map(subnets.map((s) => [s.netuid, s]));
+    const sn64 = by.get(64) as Row;
+    assert.ok(
+      Math.abs((ownerTake(sn64)?.tao as number) - tao(sn64) * 0.33) < 1e-6,
+    );
+    assert.equal(ownerTake(by.get(1) as Row), null);
+    assert.equal(store.calls.current, 1);
+    assert.deepEqual(store.calls.subnet, []);
+  });
+
+  test("MCP: both tools read the same shares REST does", async () => {
+    const store = emissionStore({ 64: DECLARED_OWNER_PARTS, 1: 0n });
+    const one = (await tool("get_subnet_revenue").handler(
+      { netuid: 64 },
+      ctxWithSplits(mcpCtx(ARTIFACTS), store),
+    )) as Row;
+    const revenue = one.revenue as Row;
+    assert.ok(
+      Math.abs((ownerTake(revenue)?.tao as number) - tao(revenue) * 0.33) <
+        1e-6,
+    );
+    const all = (await tool("list_revenue_coverage").handler(
+      {},
+      ctxWithSplits(mcpCtx(ARTIFACTS), store),
+    )) as Row;
+    const by = new Map((all.subnets as Row[]).map((s) => [s.netuid, s]));
+    assert.equal(ownerTake(by.get(1) as Row)?.tao, 0, "a declared 0% is 0");
+    assert.ok(
+      Math.abs(
+        (ownerTake(by.get(64) as Row)?.tao as number) -
+          tao(by.get(64) as Row) * 0.33,
+      ) < 1e-6,
+    );
   });
 });

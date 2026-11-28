@@ -11001,7 +11001,7 @@
     {
       "artifact_path": "/metagraph/subnets/{netuid}/owner-cut.json",
       "cache": "short",
-      "description": "Fetch one subnet's owner-cut accrual and its disposition. The share is 18% (SubnetOwnerCut is 11796/65535, not one sixth) and is echoed on the response so nobody has to assume it. READ disposition.buckets.unresolved AND disposition.reconciles BEFORE citing any of this: the cut is paid as stake rather than as a liquid balance, so where it went is frequently not determinable from what we index, and `unresolved` is a first-class answer rather than a failure. The buckets are not balanced to tie -- residual_alpha reports what is unaccounted for, and a negative residual means the parts exceed the whole. Never 404s.",
+      "description": "Fetch one subnet's owner-cut accrual and its disposition. The share is the subnet's declared owner share (its emission split's owner slot since runtime 497; 18% for the default split, 11796/65535, not one sixth) and is echoed on the response so nobody has to assume it. READ disposition.buckets.unresolved AND disposition.reconciles BEFORE citing any of this: the cut is paid as stake rather than as a liquid balance, so where it went is frequently not determinable from what we index, and `unresolved` is a first-class answer rather than a failure. The buckets are not balanced to tie -- residual_alpha reports what is unaccounted for, and a negative residual means the parts exceed the whole. Never 404s.",
       "id": "subnet-owner-cut",
       "mainnet_only": true,
       "method": "GET",

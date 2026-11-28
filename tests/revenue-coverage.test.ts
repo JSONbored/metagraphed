@@ -20,6 +20,8 @@ const SN64 = {
   usd_per_tao: 204.03,
   window_days: 1,
   revenue_usd: 11668,
+  // SN64's split is the default one, whose owner slot is the runtime's 18%.
+  owner_share: OWNER_CUT,
 };
 
 describe("the published SN64 numbers", () => {
@@ -94,7 +96,7 @@ describe("absent revenue is null, never zero", () => {
 });
 
 describe("the alternate denominators", () => {
-  test("alpha_out priced, and owner_take at 18%", () => {
+  test("alpha_out priced, and owner_take at the default split's 18%", () => {
     const r = computeCoverage(SN64);
     const alpha = r.emission.alternates.alpha_out_priced;
     assert.ok(alpha);
@@ -102,10 +104,38 @@ describe("the alternate denominators", () => {
     assert.ok(Math.abs(alpha.tao - 7200 * 0.086933658) < 1e-6);
 
     const owner = r.emission.alternates.owner_take;
+    assert.ok(owner);
     assert.ok(Math.abs(owner.tao - r.emission.tao * OWNER_CUT) < 1e-6);
     // 18%, not 1/6 — the difference is ~6 TAO/day here.
     assert.ok(Math.abs(OWNER_CUT - 0.18) < 0.0001);
     assert.ok(Math.abs(owner.tao - r.emission.tao / 6) > 1);
+  });
+
+  test("owner_take is the subnet's declared share, not the network's 18%", () => {
+    // Nine subnets declared a 33% owner slot on 2026-11-28, and two none.
+    const declared = computeCoverage({ ...SN64, owner_share: 0.33 });
+    const owner = declared.emission.alternates.owner_take;
+    assert.ok(owner);
+    assert.ok(Math.abs(owner.tao - declared.emission.tao * 0.33) < 1e-6);
+    assert.ok(
+      Math.abs((owner.usd ?? 0) - declared.emission.tao * 0.33 * 204.03) < 1e-3,
+    );
+    const none = computeCoverage({ ...SN64, owner_share: 0 });
+    assert.deepEqual(none.emission.alternates.owner_take, { tao: 0, usd: 0 });
+  });
+
+  test("an unobserved split declines the owner take and nothing else", () => {
+    const r = computeCoverage({ ...SN64, owner_share: null });
+    assert.equal(r.emission.alternates.owner_take, null);
+    const base = computeCoverage(SN64);
+    assert.deepEqual(
+      { ...r, emission: { ...r.emission, alternates: null } },
+      { ...base, emission: { ...base.emission, alternates: null } },
+    );
+    assert.deepEqual(
+      r.emission.alternates.alpha_out_priced,
+      base.emission.alternates.alpha_out_priced,
+    );
   });
 
   test("alpha pricing is null when either input is missing", () => {
@@ -143,6 +173,12 @@ describe("bad input throws instead of yielding NaN", () => {
       () => computeCoverage({ ...SN64, revenue_usd: -1 }),
       /revenue_usd/,
     );
+    for (const owner_share of [Number.NaN, -0.01, 1.01]) {
+      assert.throws(
+        () => computeCoverage({ ...SN64, owner_share }),
+        /owner_share/,
+      );
+    }
   });
 });
 
@@ -155,7 +191,7 @@ describe("an unpriceable window is null, never zero", () => {
    * and forgets an `alternates` branch fails here rather than in production. */
   const usdLegs = (r: ReturnType<typeof computeCoverage>) => [
     ["emission.usd", r.emission.usd],
-    ["alternates.owner_take.usd", r.emission.alternates.owner_take.usd],
+    ["alternates.owner_take.usd", r.emission.alternates.owner_take?.usd],
     [
       "alternates.alpha_out_priced.usd",
       r.emission.alternates.alpha_out_priced?.usd,

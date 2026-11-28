@@ -260,6 +260,8 @@ import {
 } from "../../src/neuron-snapshot-read.ts";
 import { H160_PATTERN, loadAddressMapping } from "../../src/address-mapping.ts";
 import { loadNetworkParameters } from "../../src/network-parameters.ts";
+import { loadOwnerShare, loadOwnerShares } from "../../src/owner-share.ts";
+import { declineRetainedHistoryFailure } from "../../src/retained-history-store.ts";
 import { loadRandomnessStatus } from "../../src/randomness.ts";
 import {
   ENTITY_LABELS_ARTIFACT,
@@ -8424,10 +8426,9 @@ export async function handleSubnetOwnerCut(
   request: Request,
   env: Env,
   netuid: number,
-  // Injected the same way /network/parameters' own siblings inject it, so the
-  // share can be driven in a test without a KV binding or an RPC.
+  // Injected so the flow read can be driven in a test without a history
+  // binding. The share is the emission store's, bound in `env`.
   deps: {
-    loadParams?: typeof loadNetworkParameters;
     loadFlows?: typeof loadAccountStakeFlowColdTier;
   } = {},
 ) {
@@ -8443,20 +8444,15 @@ export async function handleSubnetOwnerCut(
   // and price reads were simply sequenced behind a ~175ms Neon call for no
   // reason. Measured 2026-08-18 against production, the serial prefix was
   // ~175ms of a ~2.9s response.
-  const [{ row }, parameters, usdPerTao] = await Promise.all([
+  const [{ row }, ownerCut, usdPerTao] = await Promise.all([
     resolveSubnetEconomicsRow(env, netuid),
-    // THE LIVE READ, NOT THE ARTIFACT. `/metagraph/network/parameters.json`
-    // publishes no owner-cut field at all -- verified in production, where it
-    // carries no key matching /owner/ -- so reading it here returned undefined
-    // for all 129 subnets and every accrual served `owner cut share not read`.
-    // That is the #10566 shape exactly: a correct-looking decline standing in
-    // for a read that never happened. `/api/v1/network/parameters` computes the
-    // effective share (0.17999...) and is KV-cached, so this costs a cache hit
-    // rather than an RPC per request.
-    (deps.loadParams ?? loadNetworkParameters)(env),
+    // THE SUBNET'S OWN SHARE (MET-7385), not the network's SubnetOwnerCut:
+    // since runtime 497 that is only the default split's owner slot, and 22
+    // subnets declared another on 2026-11-28 (two of them none). Null when the
+    // split is not observed, which nulls the accrual rather than assume 18%.
+    loadOwnerShare(env, netuid),
     usdPerTaoOrNull(env),
   ]);
-  const ownerCut = parameters?.subnet_owner_cut_effective;
   // #10930: THE FLOW STREAMS, FINALLY READ. The disposition classifier has been
   // complete since #10485 and was handed nothing, so every subnet answered
   // `unresolved` with a note saying the streams "were not read for this
@@ -8473,15 +8469,16 @@ export async function handleSubnetOwnerCut(
     typeof row?.owner_coldkey === "string" && row.owner_coldkey
       ? row.owner_coldkey
       : null;
+  // An unanswerable retained read leaves the streams unread, which the
+  // disposition already answers (`unresolved`), rather than failing the
+  // accrual the economics row and the split answer on their own.
   const flows = ownerColdkey
-    ? await (deps.loadFlows ?? loadAccountStakeFlowColdTier)(
-        env,
-        ownerColdkey,
-        {
-          // The SAME window as the accrual. A 30-day accrual against a 7-day flow
-          // read is a reconciliation that cannot balance.
+    ? await declineRetainedHistoryFailure(
+        (deps.loadFlows ?? loadAccountStakeFlowColdTier)(env, ownerColdkey, {
+          // The SAME window as the accrual. A 30-day accrual against a 7-day
+          // flow read is a reconciliation that cannot balance.
           window: OWNER_CUT_FLOW_WINDOW,
-        },
+        }),
       )
     : null;
   const legs = ownerCutFlowLegs(flows?.rows ?? null, netuid);
@@ -8489,7 +8486,7 @@ export async function handleSubnetOwnerCut(
     netuid,
     window_days: ATTRIBUTION_WINDOW_DAYS,
     economics: row,
-    owner_cut: typeof ownerCut === "number" ? ownerCut : null,
+    owner_cut: ownerCut,
     usd_per_tao: usdPerTao,
     unstaked_alpha: legs.observed ? legs.unstaked_alpha : null,
     flows_observed: legs.observed,
@@ -8547,6 +8544,7 @@ export async function handleSubnetRevenue(
     surfaces: await subnetSurfacesFor(env, netuid),
     usd_per_tao: await usdPerTaoOrNull(env),
     observations: observations ?? null,
+    owner_share: await loadOwnerShare(env, netuid),
   });
   return envelopeResponse(
     request,
@@ -8587,6 +8585,8 @@ export async function handleChainRevenueCoverage(
     ? (blob.subnets as Array<Record<string, unknown>>)
     : [];
   const usd = await usdPerTaoOrNull(env);
+  // Every subnet's declared owner share, in one store read.
+  const ownerShares = await loadOwnerShares(env);
   // ONE read for the whole network, not one per subnet: 129 round trips would
   // price this route out of existence, and the table is small enough that the
   // whole of it is cheaper than the first dozen queries.
@@ -8623,6 +8623,7 @@ export async function handleChainRevenueCoverage(
         surfaces: surfacesByNetuid.get(netuid) ?? null,
         usd_per_tao: usd,
         observations: allObservations ?? null,
+        owner_share: ownerShares.get(netuid) ?? null,
       }),
     );
   }

@@ -12,8 +12,9 @@ _openapi:
     headings: []
     contents:
       - content: "Fetch one subnet's owner-cut accrual and its disposition. The share is
-          18% (SubnetOwnerCut is 11796/65535, not one sixth) and is echoed on
-          the response so nobody has to assume it. READ
+          the subnet's declared owner share (its emission split's owner slot
+          since runtime 497; 18% for the default split, 11796/65535, not one
+          sixth) and is echoed on the response so nobody has to assume it. READ
           disposition.buckets.unresolved AND disposition.reconciles BEFORE
           citing any of this: the cut is paid as stake rather than as a liquid
           balance, so where it went is frequently not determinable from what we

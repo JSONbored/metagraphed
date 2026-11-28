@@ -77,6 +77,8 @@ export interface SubnetRevenueInput {
   sources: RevenueSourceRow[];
   /** When the subnet was searched and nothing found (#10543). */
   searched_at?: string | null;
+  /** Its declared owner share; null declines the owner take. */
+  owner_share: number | null;
 }
 
 export interface SubnetRevenueView extends CoverageResult {
@@ -318,6 +320,7 @@ export function buildSubnetRevenue(
     usd_per_tao: input.usd_per_tao,
     window_days: input.window_days,
     revenue_usd,
+    owner_share: input.owner_share,
   });
 
   // The best evidence class present, so the response carries one answer rather

@@ -535,6 +535,7 @@ import { loadSudoKey } from "./sudo-key.ts";
 // GET /api/v1/queries/{id} route and run_saved_query MCP tool already share.
 import { runSavedQuery } from "./saved-queries.ts";
 import { loadNetworkParameters } from "./network-parameters.ts";
+import { loadOwnerShare, loadOwnerShares } from "./owner-share.ts";
 import { loadRandomnessStatus } from "./randomness.ts";
 import { loadAddressMapping, H160_PATTERN } from "./address-mapping.ts";
 import {
@@ -1659,6 +1660,7 @@ async function revenueForNetuid(
     surfaces: await surfacesForNetuid(context, netuid),
     usd_per_tao: await taoUsdForRevenue(context),
     observations: observations ?? null,
+    owner_share: await loadOwnerShare(context.env, netuid),
   });
 }
 
@@ -7799,6 +7801,7 @@ const rootValue = {
     const windowDays = revenueWindowDays(args?.window);
     const rows = await loadEconomicsRows(context);
     const usd = await taoUsdForRevenue(context);
+    const ownerShares = await loadOwnerShares(context.env);
     // ONE observation read for the whole network rather than one per subnet:
     // 129 round trips would price this field out of existence.
     const observations = await loadRevenueObservations(
@@ -7830,6 +7833,7 @@ const rootValue = {
           surfaces: surfacesByNetuid.get(netuid) ?? null,
           usd_per_tao: usd,
           observations: observations ?? null,
+          owner_share: ownerShares.get(netuid) ?? null,
         }),
       );
     }

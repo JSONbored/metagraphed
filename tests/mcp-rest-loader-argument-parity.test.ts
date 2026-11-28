@@ -60,6 +60,7 @@ describe("the shared loaders will not accept an omitted data argument", () => {
       surfaces: null,
       usd_per_tao: 200,
       observations: null,
+      owner_share: null,
     };
     assert.ok(loadSubnetRevenue(input));
     // Deleting the key is a TYPE error; at runtime the loader still answers,

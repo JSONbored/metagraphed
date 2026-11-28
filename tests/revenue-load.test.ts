@@ -125,6 +125,7 @@ describe("revenueSourcesFor", () => {
 describe("loadSubnetRevenue never throws on a missing piece", () => {
   test("the normal case: declared, not yet observed", () => {
     const r = loadSubnetRevenue({
+      owner_share: 11796 / 65535,
       netuid: 64,
       window_days: 1,
       economics: ECONOMICS,
@@ -143,6 +144,7 @@ describe("loadSubnetRevenue never throws on a missing piece", () => {
 
   test("with an observation it produces the published ratio", () => {
     const r = loadSubnetRevenue({
+      owner_share: 11796 / 65535,
       netuid: 64,
       window_days: 1,
       economics: ECONOMICS,
@@ -170,6 +172,7 @@ describe("loadSubnetRevenue never throws on a missing piece", () => {
     // denominator into null ratios rather than Infinity, so "no data" and
     // "gated" converge on the same honest output.
     const r = loadSubnetRevenue({
+      owner_share: 11796 / 65535,
       netuid: 999,
       window_days: 1,
       economics: null,
@@ -185,6 +188,7 @@ describe("loadSubnetRevenue never throws on a missing piece", () => {
 
   test("no TAO price yields null ratios rather than a bogus USD figure", () => {
     const r = loadSubnetRevenue({
+      owner_share: 11796 / 65535,
       netuid: 64,
       window_days: 1,
       economics: ECONOMICS,
@@ -207,7 +211,7 @@ describe("loadSubnetRevenue never throws on a missing piece", () => {
     // pinned -- the ratios were null as the test name says, but the USD legs
     // beside them published a hard zero against a real TAO denominator.
     assert.equal(r.emission.usd, null, "a missing rate declines, never zeroes");
-    assert.equal(r.emission.alternates.owner_take.usd, null);
+    assert.equal(r.emission.alternates.owner_take?.usd, null);
     assert.equal(r.emission.alternates.alpha_out_priced?.usd, null);
     assert.equal(r.coverage_ratio, null, "no rate means no USD comparison");
     assert.ok(r.emission.tao > 0, "the TAO denominator is still real");
@@ -217,6 +221,7 @@ describe("loadSubnetRevenue never throws on a missing piece", () => {
   // computeCoverage, so the unit test on the pure function could not see it.
   test("a live rate reaches every USD leg through the loader", () => {
     const r = loadSubnetRevenue({
+      owner_share: 11796 / 65535,
       netuid: 64,
       window_days: 1,
       economics: ECONOMICS,
@@ -225,7 +230,7 @@ describe("loadSubnetRevenue never throws on a missing piece", () => {
       observations: null,
     });
     assert.ok((r.emission.usd ?? 0) > 0, `${r.emission.usd}`);
-    assert.ok((r.emission.alternates.owner_take.usd ?? 0) > 0);
+    assert.ok((r.emission.alternates.owner_take?.usd ?? 0) > 0);
     assert.ok((r.emission.alternates.alpha_out_priced?.usd ?? 0) > 0);
   });
 });

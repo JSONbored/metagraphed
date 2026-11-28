@@ -31,8 +31,10 @@
 /** One day of blocks at 12s. Mirrors validator-economics.ts's own constant. */
 export const BLOCKS_PER_DAY = 7200;
 
-/** Share of alpha emission paid to the subnet owner. SubnetOwnerCut is
- * 11796/65535 -- 18%, not 1/6. The difference is ~6 TAO/day on SN64. */
+/** The runtime's default owner cut, SubnetOwnerCut's 11796/65535 -- 18%,
+ * not 1/6. Every subnet was paid it before runtime 497; since, it is only the
+ * default split's owner slot, and a subnet's own share is its declared split's
+ * (src/owner-share.ts). */
 export const OWNER_CUT = 11796 / 65535;
 
 export interface CoverageInput {
@@ -52,6 +54,9 @@ export interface CoverageInput {
   /** Summed external revenue over the window, from Tier A + B surfaces only.
    * NULL means not observed -- which is not the same as zero. */
   revenue_usd: number | null;
+  /** The subnet's declared owner share, or NULL when its split is not
+   * observed: the owner take then declines rather than assume 18%. */
+  owner_share: number | null;
 }
 
 export interface CoverageBasis {
@@ -71,7 +76,7 @@ export interface CoverageResult {
     /** Computed and published, never silently substituted for the basis. */
     alternates: {
       alpha_out_priced: CoverageBasis | null;
-      owner_take: CoverageBasis;
+      owner_take: CoverageBasis | null;
     };
   };
   revenue_usd: number | null;
@@ -103,6 +108,7 @@ export function computeCoverage(input: CoverageInput): CoverageResult {
     usd_per_tao,
     window_days,
     revenue_usd,
+    owner_share,
   } = input;
 
   for (const [name, value] of [
@@ -133,6 +139,12 @@ export function computeCoverage(input: CoverageInput): CoverageResult {
       "revenue_usd must be null or a finite, non-negative number",
     );
   }
+  if (
+    owner_share !== null &&
+    !(Number.isFinite(owner_share) && owner_share >= 0 && owner_share <= 1)
+  ) {
+    throw new Error("owner_share must be null or a share in [0, 1]");
+  }
 
   const blocks = BLOCKS_PER_DAY * window_days;
   const emissionTao = tao_total_per_block * blocks;
@@ -153,12 +165,16 @@ export function computeCoverage(input: CoverageInput): CoverageResult {
         }
       : null;
 
-  // The owner's 18% of the SAME denominator, so the two are comparable. Priced
-  // off tao_total rather than alpha so it does not silently change basis.
-  const ownerTake: CoverageBasis = {
-    tao: roundTo(emissionTao * OWNER_CUT),
-    usd: priced(emissionTao * OWNER_CUT),
-  };
+  // The owner's declared share of the SAME denominator, so the two are
+  // comparable. Priced off tao_total rather than alpha so it does not silently
+  // change basis.
+  const ownerTake: CoverageBasis | null =
+    owner_share === null
+      ? null
+      : {
+          tao: roundTo(emissionTao * owner_share),
+          usd: priced(emissionTao * owner_share),
+        };
 
   // Null propagates. Zero emission also yields null rather than Infinity: a
   // subnet the gate is emitting nothing to has no ratio, and Infinity would

@@ -60,6 +60,7 @@ function monthlySubnet(window_days: number) {
         [{ surface_id: "s-monthly", period: "2026-07", amount_usd: 30_000 }],
       ],
     ]),
+    owner_share: null,
   });
 }
 

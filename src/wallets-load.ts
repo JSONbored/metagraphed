@@ -49,9 +49,12 @@ export const SUBNET_WALLETS_FIELD_SOURCES = {
 export const SUBNET_OWNER_CUT_FIELD_SOURCES = {
   owner_coldkey: { kind: "measured", storage: "SubtensorModule.SubnetOwner" },
   owner_hotkey: { kind: "measured", storage: "SubtensorModule.SubnetOwner" },
-  // The share itself is reconstructed: the storage item is UNSET on chain, so
-  // the effective value is the runtime default rather than a read (#10484).
-  "accrual.owner_cut": { kind: "reconstructed", storage: null },
+  // The subnet's declared owner slot (MET-7385), read by the emission
+  // capture: since runtime 497 the share is each subnet's own.
+  "accrual.owner_cut": {
+    kind: "measured",
+    storage: "SubtensorModule.SubnetEmissionWeights",
+  },
   "accrual.alpha": { kind: "reconstructed", storage: null },
   "accrual.tao": { kind: "reconstructed", storage: null },
   "accrual.usd": { kind: "reconstructed", storage: null },
@@ -156,8 +159,8 @@ export interface LoadSubnetOwnerCutInput {
    *  reason rather than failing. Every name is still checked against the
    *  contract, so a typo is a compile error; only the arity is relaxed. */
   economics: Partial<SubnetEconomicsRow> | null;
-  /** network-parameters' `subnet_owner_cut_effective`. Null makes the accrual
-   * null rather than silently 18% (#10484). */
+  /** The subnet's declared owner share (src/owner-share.ts). Null makes the
+   * accrual null rather than silently 18% (#10484). */
   owner_cut: number | null;
   /** Required and explicitly nullable (#10926) -- an omitted rate is how
    * `accrual.usd` became permanently null on a whole surface. */

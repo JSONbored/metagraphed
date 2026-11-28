@@ -3601,7 +3601,7 @@ export type NetworkParameters = {
   stake_threshold_tao?: Maybe<Scalars['Float']['output']>;
   /** SubnetOwnerCut as stored: the u16 numerator over 65535, or null when the storage item is unset (its current state on finney). NOT the share the runtime applies -- read subnet_owner_cut_effective for that. */
   subnet_owner_cut?: Maybe<Scalars['Float']['output']>;
-  /** The share the runtime actually applies: the stored numerator over 65535, or the runtime default 11796/65535 = 0.17999... when the item is unset. Never 0 from absence. */
+  /** SubnetOwnerCut's share: the stored numerator over 65535, or the runtime default 11796/65535 = 0.17999... when the item is unset. Never 0 from absence. Since runtime 497 a subnet's owner is paid its own declared split's owner slot instead: read /api/v1/subnets/{netuid}/emission-split. */
   subnet_owner_cut_effective?: Maybe<Scalars['Float']['output']>;
   tao_weight?: Maybe<Scalars['Float']['output']>;
   total_issuance_tao?: Maybe<Scalars['Float']['output']>;
@@ -6009,7 +6009,8 @@ export type RevenueEmission = {
 export type RevenueEmissionAlternates = {
   __typename?: 'RevenueEmissionAlternates';
   alpha_out_priced?: Maybe<RevenueCoverageBasis>;
-  owner_take: RevenueCoverageBasis;
+  /** The owner's share of the same denominator, at the subnet's declared owner share (its emission split's owner slot since runtime 497). NULL when its split is not observed, never an assumed 18%. */
+  owner_take?: Maybe<RevenueCoverageBasis>;
 };
 
 export type RevenueSource = {
@@ -13833,7 +13834,7 @@ export type RevenueEmissionResolvers<ContextType = GqlContext, ParentType extend
 
 export type RevenueEmissionAlternatesResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RevenueEmissionAlternates'] = ResolversParentTypes['RevenueEmissionAlternates']> = ResolversObject<{
   alpha_out_priced?: Resolver<Maybe<ResolversTypes['RevenueCoverageBasis']>, ParentType, ContextType>;
-  owner_take?: Resolver<ResolversTypes['RevenueCoverageBasis'], ParentType, ContextType>;
+  owner_take?: Resolver<Maybe<ResolversTypes['RevenueCoverageBasis']>, ParentType, ContextType>;
 }>;
 
 export type RevenueSourceResolvers<ContextType = GqlContext, ParentType extends ResolversParentTypes['RevenueSource'] = ResolversParentTypes['RevenueSource']> = ResolversObject<{

@@ -4976,7 +4976,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Fetch one subnet's owner-cut accrual and its disposition. The share is 18% (SubnetOwnerCut is 11796/65535, not one sixth) and is echoed on the response so nobody has to assume it. READ disposition.buckets.unresolved AND disposition.reconciles BEFORE citing any of this: the cut is paid as stake rather than as a liquid balance, so where it went is frequently not determinable from what we index, and `unresolved` is a first-class answer rather than a failure. The buckets are not balanced to tie -- residual_alpha reports what is unaccounted for, and a negative residual means the parts exceed the whole. Never 404s. */
+        /** @description Fetch one subnet's owner-cut accrual and its disposition. The share is the subnet's declared owner share (its emission split's owner slot since runtime 497; 18% for the default split, 11796/65535, not one sixth) and is echoed on the response so nobody has to assume it. READ disposition.buckets.unresolved AND disposition.reconciles BEFORE citing any of this: the cut is paid as stake rather than as a liquid balance, so where it went is frequently not determinable from what we index, and `unresolved` is a first-class answer rather than a failure. The buckets are not balanced to tie -- residual_alpha reports what is unaccounted for, and a negative residual means the parts exceed the whole. Never 404s. */
         get: operations["subnetOwnerCut"];
         put?: never;
         post?: never;
@@ -7957,11 +7957,12 @@ export interface components {
                             /** @description The TAO leg priced through the TAO/USD index, or NULL when that moment is not priceable — an index below its two-pool quorum, a reading past its two-hour freshness bound, or no reading at all. NEVER 0: a zero here next to a positive `tao` claims the emission is worthless rather than unpriced, which is what this field published for all 129 subnets until the TAO/USD wiring was fixed. */
                             usd: number | null;
                         } | null;
+                        /** @description The owner's share of the same denominator, at the subnet's declared owner share (its emission split's owner slot since runtime 497). NULL when its split is not observed, never an assumed 18%. */
                         owner_take: {
                             tao: number;
                             /** @description The TAO leg priced through the TAO/USD index, or NULL when that moment is not priceable — an index below its two-pool quorum, a reading past its two-hour freshness bound, or no reading at all. NEVER 0: a zero here next to a positive `tao` claims the emission is worthless rather than unpriced, which is what this field published for all 129 subnets until the TAO/USD wiring was fixed. */
                             usd: number | null;
-                        };
+                        } | null;
                     };
                     /**
                      * @description SubnetTaoInEmission + SubnetExcessTao, the TAO the network directs into this subnet. Fully measured rather than reconstructed. The alternates are published beside it and never silently substituted.
@@ -10481,7 +10482,7 @@ export interface components {
             stake_threshold_tao?: number | null;
             /** @description SubnetOwnerCut as stored: the u16 numerator over 65535, or null when the storage item is unset (its current state on finney). NOT the share the runtime applies -- read subnet_owner_cut_effective for that. */
             subnet_owner_cut?: number | null;
-            /** @description The share the runtime actually applies: the stored numerator over 65535, or the runtime default 11796/65535 = 0.17999... when the item is unset. Never 0 from absence. */
+            /** @description SubnetOwnerCut's share: the stored numerator over 65535, or the runtime default 11796/65535 = 0.17999... when the item is unset. Never 0 from absence. Since runtime 497 a subnet's owner is paid its own declared split's owner slot instead: read /api/v1/subnets/{netuid}/emission-split. */
             subnet_owner_cut_effective?: number | null;
             tao_weight?: number | null;
             total_issuance_tao?: number | null;
@@ -13860,12 +13861,12 @@ export interface components {
             /** @description The resolved window label (7d/30d/90d). */
             window?: string | null;
         };
-        /** @description One subnet's owner-cut accrual and what became of it. The cut is 18% (SubnetOwnerCut is 11796/65535, not one sixth) and is paid as STAKE rather than a liquid balance — so a disposition derived from transfers alone would report 'held' for every subnet, and absence of flow evidence resolves to `unresolved` instead. Mirrors GET /api/v1/subnets/{netuid}/owner-cut. */
+        /** @description One subnet's owner-cut accrual and what became of it. The cut is the subnet's declared owner share (since runtime 497 each subnet's own; 18% for the default split, 11796/65535, not one sixth) and is paid as STAKE rather than a liquid balance — so a disposition derived from transfers alone would report 'held' for every subnet, and absence of flow evidence resolves to `unresolved` instead. Mirrors GET /api/v1/subnets/{netuid}/owner-cut. */
         SubnetOwnerCutArtifact: {
             accrual: {
                 accrues: boolean;
                 alpha: number | null;
-                /** @description The share applied, echoed so a reader never has to assume 18%. Null when SubnetOwnerCut could not be resolved — the storage item is unset on chain and the runtime default is used, so a null here means even that failed. */
+                /** @description The share applied, echoed so a reader never has to assume 18%: the subnet's declared owner share, its emission split's owner slot since runtime 497 (SubtensorModule.SubnetEmissionWeights). Null when the subnet's split is not observed, which nulls the accrual. */
                 owner_cut: number | null;
                 /** @description Why the figures are null or zero. A subnet with owner_cut_enabled false accrues a REAL zero with a stated reason; an unread price or emission is null instead. */
                 reason: string | null;
@@ -14258,11 +14259,12 @@ export interface components {
                             /** @description The TAO leg priced through the TAO/USD index, or NULL when that moment is not priceable — an index below its two-pool quorum, a reading past its two-hour freshness bound, or no reading at all. NEVER 0: a zero here next to a positive `tao` claims the emission is worthless rather than unpriced, which is what this field published for all 129 subnets until the TAO/USD wiring was fixed. */
                             usd: number | null;
                         } | null;
+                        /** @description The owner's share of the same denominator, at the subnet's declared owner share (its emission split's owner slot since runtime 497). NULL when its split is not observed, never an assumed 18%. */
                         owner_take: {
                             tao: number;
                             /** @description The TAO leg priced through the TAO/USD index, or NULL when that moment is not priceable — an index below its two-pool quorum, a reading past its two-hour freshness bound, or no reading at all. NEVER 0: a zero here next to a positive `tao` claims the emission is worthless rather than unpriced, which is what this field published for all 129 subnets until the TAO/USD wiring was fixed. */
                             usd: number | null;
-                        };
+                        } | null;
                     };
                     /**
                      * @description SubnetTaoInEmission + SubnetExcessTao, the TAO the network directs into this subnet. Fully measured rather than reconstructed. The alternates are published beside it and never silently substituted.
