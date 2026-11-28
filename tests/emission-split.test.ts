@@ -11,9 +11,13 @@ import {
   emissionSplitWindowLabel,
   EMISSION_SPLIT_HISTORY_ROW_CAP,
   parseEmissionSplitHistoryWindow,
+  PER_SUBNET_SPLIT_FIRST_DAY,
+  splitForDay,
+  splitOfRow,
   SUBNET_EMISSION_SPLIT_FIELD_SOURCES,
 } from "../src/emission-split.ts";
 import { OWNER_CUT } from "../src/revenue-coverage.ts";
+import type { SubnetEmissionHistory } from "../src/subnet-emission-store.ts";
 import { SubnetEmissionSplitHistoryArtifactSchema } from "../schemas-src/routes/emission-split.ts";
 
 type Row = Record<string, unknown>;
@@ -624,5 +628,196 @@ describe("the distribution's degrade arms (#11096)", () => {
     assert.equal(e.basis_date, null);
     assert.equal(e.p50_alpha_day, null, "no point, no day total");
     assert.equal(e.p50_usd_day, null);
+  });
+});
+
+// MET-7385: runtime 497 (2026-11-25 23:20Z) made the split per subnet. SN3's
+// real one at block 9,603,431 -- owner 18%, validators and miners 36% each,
+// 10% to SN51's gamma -- against the default the fixture above was paid under.
+describe("each day's own split since runtime 497 (MET-7385)", () => {
+  const SN3_SPLIT = {
+    netuid: 3,
+    burn_parts: "0",
+    recycle_parts: "0",
+    owner_parts: "3320413933267719290",
+    validator_parts: "6640827866535438581",
+    miner_parts: "6640827866535438583",
+    gamma_shares: [{ target: 51, parts: "1844674407370955161" }],
+    valid_from: "9603431",
+    valid_to: null,
+  };
+  const DEFAULT_SPLIT = {
+    ...SN3_SPLIT,
+    owner_parts: "3320329489486196244",
+    validator_parts: "7563207292111677685",
+    miner_parts: "7563207292111677686",
+    gamma_shares: [],
+  };
+  // The capture at block 9,604,739, 10:16:14Z: block 9,603,431 is 4 h 21 m
+  // before it at 12 s, early on 2026-11-28.
+  const observation = {
+    block_number: "9604739",
+    observed_at_ms: String(Date.parse("2026-11-28T10:16:14Z")),
+  };
+  const store = (splits: Row[]) =>
+    ({
+      observation,
+      splits,
+      lifecycle: [],
+    }) as unknown as SubnetEmissionHistory;
+  // SN3's UID set is paid 72% where SN74's is paid 82%: 259.2 per 360.
+  const sn3Day = (date: string) =>
+    sn74Day(date).map((row) => ({
+      ...row,
+      emission_tao: ((row.emission_tao as number) * 259.2) / 295.2016,
+    }));
+  const pointOn = (out: Row, date: string) =>
+    (out.points as Row[]).find((p) => p.snapshot_date === date) as Row;
+  const near = (actual: unknown, expected: number, label: string) =>
+    assert.ok(
+      Math.abs((actual as number) - expected) < 1e-6,
+      `${label}: ${String(actual)} != ${expected}`,
+    );
+
+  test("a day the capture observed is reconstructed over the declared split", () => {
+    const out = buildSubnetEmissionSplitHistory(sn3Day("2026-11-28"), 3, {
+      splits: store([SN3_SPLIT]),
+    });
+    SubnetEmissionSplitHistoryArtifactSchema.parse(out);
+    const p = pointOn(out, "2026-11-28");
+    assert.equal(p.split_source, "declared");
+    near(p.owner_share, 0.18, "owner");
+    near(p.gamma_share, 0.1, "gamma");
+    near(p.removed_share, 0, "removed");
+    near(p.gamma_alpha, 720, "gamma alpha");
+    near(
+      p.validator_share,
+      0.72 * (p.validator_share_of_uid as number),
+      "validators get their share of 72%, not of 82%",
+    );
+    const sum = [
+      "owner_share",
+      "removed_share",
+      "gamma_share",
+      "validator_share",
+      "miner_share",
+    ]
+      .map((key) => p[key] as number)
+      .reduce((a, b) => a + b, 0);
+    near(sum, 1, "the day's shares");
+  });
+
+  test("a day before the upgrade was paid under the runtime default, store or not", () => {
+    for (const splits of [store([SN3_SPLIT]), null]) {
+      const p = pointOn(
+        buildSubnetEmissionSplitHistory(sn74Day("2026-11-25"), 3, { splits }),
+        "2026-11-25",
+      );
+      assert.equal(p.split_source, "runtime_default");
+      near(p.owner_cut, OWNER_CUT, "owner cut");
+      assert.equal(p.gamma_share, 0);
+    }
+    assert.equal(PER_SUBNET_SPLIT_FIRST_DAY, "2026-11-26");
+  });
+
+  test("a day before the first observation carries it back only where it cannot have differed", () => {
+    // SN3's UID emission per unit of alpha out on 2026-11-27 is the observed
+    // day's own: the split was already in force.
+    const kept = buildSubnetEmissionSplitHistory(
+      [...sn3Day("2026-11-28"), ...sn3Day("2026-11-27")],
+      3,
+      { splits: store([SN3_SPLIT]) },
+    );
+    const carried = pointOn(kept, "2026-11-27");
+    assert.equal(carried.split_source, "first_observed");
+    near(carried.gamma_share, 0.1, "carried gamma");
+    // The same subnet paid 82% to its UIDs that day: some other split held.
+    const moved = buildSubnetEmissionSplitHistory(
+      [...sn3Day("2026-11-28"), ...sn74Day("2026-11-27")],
+      3,
+      { splits: store([SN3_SPLIT]) },
+    );
+    const unknown = pointOn(moved, "2026-11-27");
+    assert.equal(unknown.split_source, "unobserved");
+    for (const key of [
+      "owner_cut",
+      "owner_share",
+      "gamma_share",
+      "validator_share",
+      "owner_alpha",
+    ])
+      assert.equal(unknown[key], null, key);
+    // The measured half and the day's total stand on their own.
+    assert.equal(typeof unknown.validator_share_of_uid, "number");
+    assert.equal(unknown.total_alpha, 7200);
+    // A default first split needs no reference: no subnet that never set one
+    // can have held another.
+    const def = buildSubnetEmissionSplitHistory(sn74Day("2026-11-27"), 64, {
+      splits: store([DEFAULT_SPLIT]),
+    });
+    assert.equal(pointOn(def, "2026-11-27").split_source, "first_observed");
+    // And a custom first split with no observed day in the window to compare
+    // against is not carried back.
+    const alone = buildSubnetEmissionSplitHistory(sn3Day("2026-11-27"), 3, {
+      splits: store([SN3_SPLIT]),
+    });
+    assert.equal(pointOn(alone, "2026-11-27").split_source, "unobserved");
+  });
+
+  test("with no store, every day since the upgrade is unobserved", () => {
+    const out = buildSubnetEmissionSplitHistory(
+      [...sn74Day("2026-11-28"), ...sn74Day("2026-08-12")],
+      74,
+    );
+    assert.equal(pointOn(out, "2026-11-28").split_source, "unobserved");
+    assert.equal(pointOn(out, "2026-08-12").split_source, "runtime_default");
+  });
+
+  test("the resolver reads only whole rows, and names a day no range covers", () => {
+    for (const bad of [
+      { ...SN3_SPLIT, owner_parts: "x" },
+      { ...SN3_SPLIT, gamma_shares: null },
+      { ...SN3_SPLIT, gamma_shares: [{ target: 51, parts: -1 }] },
+    ])
+      assert.equal(splitOfRow(bad), null);
+    assert.deepEqual(
+      splitForDay(
+        "2026-11-28",
+        store([{ ...SN3_SPLIT, owner_parts: "x" }]),
+        OWNER_CUT,
+      ),
+      {
+        kind: "none",
+      },
+    );
+    // A range that closed before the day ends covers none of it.
+    const closed = { ...SN3_SPLIT, valid_from: "9603431", valid_to: "9603500" };
+    assert.deepEqual(splitForDay("2026-11-28", store([closed]), OWNER_CUT), {
+      kind: "none",
+    });
+    assert.deepEqual(
+      splitForDay(
+        "2026-11-28",
+        {
+          observation: { block_number: "x", observed_at_ms: null },
+          splits: [],
+          lifecycle: [],
+        },
+        OWNER_CUT,
+      ),
+      { kind: "none" },
+    );
+    const declared = splitForDay("2026-11-28", store([SN3_SPLIT]), OWNER_CUT);
+    assert.equal(declared.kind, "split");
+    assert.equal(declared.kind === "split" && declared.first, true);
+    // A later range is declared but not the first observed.
+    const later = { ...SN3_SPLIT, valid_from: "9604700" };
+    const earlier = {
+      ...SN3_SPLIT,
+      valid_from: "9603431",
+      valid_to: "9604700",
+    };
+    const newer = splitForDay("2026-11-28", store([later, earlier]), OWNER_CUT);
+    assert.equal(newer.kind === "split" && newer.first, false);
   });
 });

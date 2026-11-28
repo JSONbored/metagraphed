@@ -24,6 +24,7 @@ import { round9 } from "../src/lib/rao.ts";
 const CUT = round9(OWNER_CUT);
 import { ATTRIBUTION_VERDICT_VALUES } from "../schemas-src/attribution.ts";
 import { SubnetOwnerCaptureArtifactSchema } from "../schemas-src/routes/owner-capture.ts";
+import type { SubnetEmissionHistory } from "../src/subnet-emission-store.ts";
 
 const OWNER = "5Owner";
 const OUTSIDER = "5Outsider";
@@ -65,11 +66,13 @@ describe("L2 — emission on owner-held UIDs", () => {
     assert.equal(p.owner_attributed_share_of_uid, 0.3);
   });
 
-  test("THE WHOLE-DAY DENOMINATOR IS NOT THE SUM OF THE ROWS", () => {
-    // The trap src/emission-split.ts documents. The owner cut is paid OUTSIDE
-    // the UID set, so per-UID rows sum to the distributable ~82%. Dividing by
-    // that would inflate every share by 1/(1-cut) -- about 22% relative, which
-    // is exactly the size of error that looks plausible.
+  test("L2 OF THE WHOLE DAY IS ITS SHARE OF THE UID SET TIMES THE UID SLOTS", () => {
+    // Two traps. The owner cut is paid OUTSIDE the UID set, so the rows are
+    // the UID set's slots of the emission (82% under the default), and a
+    // share of their sum overstates a share of the day by 1/(1-cut). And the
+    // rows sum ONE TEMPO's emission while `total_alpha` is the whole day's,
+    // so dividing one by the other understated it by the tempos in a day --
+    // 20x on a 360-block tempo, which is what MET-7385 found published.
     const out = buildSubnetOwnerCapture(
       [
         row({ uid: 0, coldkey: OWNER, emission_tao: 30 }),
@@ -81,27 +84,118 @@ describe("L2 — emission on owner-held UIDs", () => {
     const p = (out.points as Row[])[0];
     // alpha_out_emission 1 x 7200 blocks = 7200 alpha for the whole day.
     assert.equal(p.total_alpha, 7200);
-    assert.equal(p.owner_attributed_share, round9(30 / 7200));
-    // ...and it is strictly BELOW the share-of-UID, never equal to it. If the
-    // two ever coincide the denominator has collapsed to the row sum.
+    assert.equal(p.split_source, "runtime_default");
+    assert.equal(p.owner_attributed_share, round9(0.3 * (1 - OWNER_CUT)));
+    // ...strictly BELOW the share-of-UID, never equal to it: if the two ever
+    // coincide the UID slots have dropped out of the reconstruction.
     assert.ok(
       (p.owner_attributed_share as number) <
         (p.owner_attributed_share_of_uid as number),
     );
   });
 
-  test("owner_combined_share is L1 + L2, and says so arithmetically", () => {
+  test("SN64's owner, measured: 11% of the UID set is 9% of the day, not 0.45%", () => {
+    // SN64 2026-11-28 under the default split: the owner's UIDs took
+    // 32.61 of the 295.20 the UID set was paid in one tempo.
     const out = buildSubnetOwnerCapture(
-      [row({ uid: 0, coldkey: OWNER, emission_tao: 720 })],
+      [
+        row({ uid: 0, coldkey: OWNER, emission_tao: 32.612259769 }),
+        row({ uid: 1, emission_tao: 295.201646457 - 32.612259769 }),
+      ],
+      64,
+      { ownerColdkey: OWNER },
+    );
+    const p = (out.points as Row[])[0];
+    assert.ok(
+      Math.abs((p.owner_attributed_share_of_uid as number) - 0.110474519) <
+        1e-9,
+    );
+    assert.ok(
+      Math.abs((p.owner_attributed_share as number) - 0.0905896) < 1e-6,
+    );
+    assert.ok(Math.abs((p.owner_combined_share as number) - 0.270585) < 1e-6);
+  });
+
+  test("owner_combined_share is L1 + L2, and says so arithmetically", () => {
+    // The owner's UID took a tenth of the UID set's emission.
+    const out = buildSubnetOwnerCapture(
+      [
+        row({ uid: 0, coldkey: OWNER, emission_tao: 720 }),
+        row({ uid: 1, emission_tao: 6480 }),
+      ],
       74,
       { ownerColdkey: OWNER },
     );
     const p = (out.points as Row[])[0];
+    const attributed = round9(0.1 * (1 - OWNER_CUT));
     assert.equal(p.owner_cut_share, CUT);
-    assert.equal(p.owner_attributed_share, 0.1);
+    assert.equal(p.owner_attributed_share, attributed);
     assert.ok(
-      Math.abs((p.owner_combined_share as number) - (CUT + 0.1)) < 1e-9,
+      Math.abs((p.owner_combined_share as number) - (CUT + attributed)) < 1e-9,
     );
+  });
+
+  test("since runtime 497, L1 and L2 read the subnet's own declared split", () => {
+    // SN3 at block 9,603,431: owner 18%, validators and miners 36% each, 10%
+    // to SN51's gamma -- its UID set is paid 72% of the day.
+    const splits = {
+      observation: {
+        block_number: "9604739",
+        observed_at_ms: String(Date.parse("2026-11-28T10:16:14Z")),
+      },
+      splits: [
+        {
+          netuid: 3,
+          burn_parts: "0",
+          recycle_parts: "0",
+          owner_parts: "3320413933267719290",
+          validator_parts: "6640827866535438581",
+          miner_parts: "6640827866535438583",
+          gamma_shares: [{ target: 51, parts: "1844674407370955161" }],
+          valid_from: "9603431",
+          valid_to: null,
+        },
+      ],
+      lifecycle: [],
+    } as unknown as SubnetEmissionHistory;
+    const out = buildSubnetOwnerCapture(
+      [
+        row({
+          snapshot_date: "2026-11-28",
+          uid: 0,
+          coldkey: OWNER,
+          emission_tao: 25.92,
+        }),
+        row({ snapshot_date: "2026-11-28", uid: 1, emission_tao: 233.28 }),
+      ],
+      3,
+      { ownerColdkey: OWNER, splits },
+    );
+    const p = (out.points as Row[])[0];
+    assert.equal(p.split_source, "declared");
+    assert.equal(p.owner_cut_share, 0.18);
+    assert.ok(Math.abs((p.owner_attributed_share as number) - 0.072) < 1e-9);
+    assert.ok(Math.abs((p.owner_combined_share as number) - 0.252) < 1e-9);
+    // With no store the same day's split is unknown, and so is every share.
+    const unknown = (
+      buildSubnetOwnerCapture(
+        [
+          row({
+            snapshot_date: "2026-11-28",
+            uid: 0,
+            coldkey: OWNER,
+            emission_tao: 1,
+          }),
+        ],
+        3,
+        { ownerColdkey: OWNER },
+      ).points as Row[]
+    )[0];
+    assert.equal(unknown.split_source, "unobserved");
+    assert.equal(unknown.owner_cut_share, null);
+    assert.equal(unknown.owner_attributed_share, null);
+    assert.equal(unknown.owner_combined_share, null);
+    assert.equal(unknown.owner_attributed_share_of_uid, 1);
   });
 
   test("the owner cut is the runtime default, not 1/6", () => {

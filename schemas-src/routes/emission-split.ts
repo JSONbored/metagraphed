@@ -9,9 +9,10 @@
 // Two things the schema has to carry that a naive response would drop:
 //
 //   1. WHICH HALF IS MEASURED. `validator_share_of_uid` / `miner_share_of_uid`
-//      are exact ratios of observed per-UID sums. Everything carrying the owner
-//      cut or a day's `alpha_out_emission` is RECONSTRUCTED over a runtime
-//      default -- `SubnetOwnerCut` is unset on chain. `field_sources` states it
+//      are exact ratios of observed per-UID sums. Everything carrying the
+//      day's split or its `alpha_out_emission` is RECONSTRUCTED over the split
+//      `split_source` names: the runtime default before runtime 497, the
+//      subnet's own declared split since (MET-7385). `field_sources` states it
 //      per field, and the descriptions here say it in prose so a reader of the
 //      OpenAPI alone cannot miss it.
 //   2. THE DENOMINATION. `*_alpha` is alpha for every non-root subnet despite
@@ -20,6 +21,15 @@
 //      summing alpha across subnets is adding different units.
 import { z } from "zod";
 import { FieldSourcesSchema, subnetHistoryArtifactSchema } from "../shared.ts";
+
+/** Where a day's split comes from (MET-7385): owned here, imported by every
+ * per-day surface that names one. */
+export const SPLIT_SOURCE_VALUES = [
+  "runtime_default",
+  "declared",
+  "first_observed",
+  "unobserved",
+] as const;
 
 const SubnetEmissionSplitPointSchema = z
   .object({
@@ -64,7 +74,11 @@ const SubnetEmissionSplitPointSchema = z
     }),
     owner_cut: z.number().nullable().optional().meta({
       description:
-        "The owner share applied to this day. `SubnetOwnerCut` is 11796/65535 — 18%, not 1/6 — and is UNSET on chain, so this is the runtime default rather than a read. Published so a reader can see which constant produced the reconstructed fields.",
+        "The owner share applied to this day (MET-7385). Before runtime 497 (2026-11-26 on) every subnet's was the runtime default `SubnetOwnerCut`, 11796/65535 — 18%, not 1/6; since, it is the subnet's own SubnetEmissionWeights owner slot, from 0% to 33%. `split_source` says which. Null when the day's split is unobserved.",
+    }),
+    split_source: z.enum(SPLIT_SOURCE_VALUES).optional().meta({
+      description:
+        "Which split reconstructed this day: `runtime_default` (a day before runtime 497, paid under the global owner cut), `declared` (the subnet's SubnetEmissionWeights and SubnetGammaEmission in force at the day's end, from the state capture), `first_observed` (a day between the upgrade and the capture's first observation, carried back from the first observed split only where it cannot have differed: it is the default, or the day's UID emission per unit of alpha out matches it) or `unobserved` (no split is known, so every owner, removed, gamma and validator/miner share of the day is null; the measured `*_share_of_uid` ratios are still published).",
     }),
     total_alpha: z.number().nullable().optional().meta({
       description:
@@ -76,11 +90,25 @@ const SubnetEmissionSplitPointSchema = z
     }),
     owner_share: z.number().nullable().optional().meta({
       description:
-        "Owner share of the whole day. Reconstructed. `owner_share + validator_share + miner_share` sums to 1 within rao precision.",
+        "Owner share of the whole day. Reconstructed. `owner_share + removed_share + gamma_share + validator_share + miner_share` sums to 1 within rao precision.",
+    }),
+    removed_share: z.number().nullable().optional().meta({
+      description:
+        "The day's burn and recycle slots together: alpha that left circulation rather than reaching anyone (MET-7385). 0 on every day paid under the runtime default. Reconstructed.",
+    }),
+    gamma_share: z.number().nullable().optional().meta({
+      description:
+        "The day's gamma shares together: alpha converted into other subnets' gamma for the owner hotkey (MET-7385). 0 on every day paid under the runtime default. Reconstructed.",
+    }),
+    removed_alpha: z.number().nullable().optional().meta({
+      description: "`total_alpha x removed_share`. Reconstructed.",
+    }),
+    gamma_alpha: z.number().nullable().optional().meta({
+      description: "`total_alpha x gamma_share`. Reconstructed.",
     }),
     validator_share: z.number().nullable().optional().meta({
       description:
-        "Validator share of the WHOLE day, owner leg included — so it is strictly below `validator_share_of_uid`, which is a share of the distributable remainder only. Reconstructed.",
+        "Validator share of the WHOLE day: the day's validator and miner slots together times the MEASURED `validator_share_of_uid` — so it is strictly below that ratio, which is a share of the UID set's emission only. Reconstructed.",
     }),
     tao_usd: z.number().nullable().optional().meta({
       description:
@@ -92,6 +120,12 @@ const SubnetEmissionSplitPointSchema = z
     }),
     owner_usd_day: z.number().nullable().optional().meta({
       description: "owner_alpha x alpha_price_tao x tao_usd; null as above.",
+    }),
+    removed_usd_day: z.number().nullable().optional().meta({
+      description: "removed_alpha, priced the same way; null as above.",
+    }),
+    gamma_usd_day: z.number().nullable().optional().meta({
+      description: "gamma_alpha, priced the same way; null as above.",
     }),
     validator_usd_day: z.number().nullable().optional().meta({
       description:

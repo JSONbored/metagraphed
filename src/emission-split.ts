@@ -49,6 +49,7 @@ import {
   toRaoBig,
 } from "./lib/rao.ts";
 import { BLOCKS_PER_DAY, OWNER_CUT } from "./revenue-coverage.ts";
+import type { SubnetEmissionHistory } from "./subnet-emission-store.ts";
 import {
   DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
   SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
@@ -62,9 +63,9 @@ type Row = Record<string, unknown>;
 // reconciling -- OWNER_CUT in particular is 11796/65535 (18%), NOT 1/6, a
 // distinction worth ~6 TAO/day on SN64 that a second copy is free to get wrong.
 //
-// The storage item is UNSET on chain, so OWNER_CUT is the runtime default
-// rather than a read -- which is why every field derived from it is published
-// as `reconstructed`.
+// OWNER_CUT is the runtime default the days before v497 were paid under; from
+// v497 on each day takes its subnet's own split (below), and every field
+// derived from either is published as `reconstructed`.
 
 /** Safety valve on the raw per-UID read. ~256 UIDs x 90d ~= 23k, so this leaves
  * head room, and the builder drops a truncated oldest day so every published
@@ -85,6 +86,211 @@ export const EMISSION_SPLIT_HISTORY_ROW_CAP = 50_000;
  */
 function isValidator(value: unknown): boolean {
   return value === true || Number(value) === 1;
+}
+
+// ## THE SPLIT IS PER SUBNET SINCE v497 (MET-7385)
+//
+// Runtime 497 (block 9,587,045, about 2026-11-25 23:20Z) replaced the global
+// SubnetOwnerCut with each subnet's own SubnetEmissionWeights `[burn, recycle,
+// owner, validator, miner]` and SubnetGammaEmission shares, all parts of
+// u64::MAX. The UID set is paid the validator and miner slots, not the total
+// less the owner's cut: measured 2026-11-28, SN64 (the default split) sums
+// 295.2016 per 360 of emission (82%) and SN3 (owner 18%, validators 36%,
+// miners 36%, 10% to SN51's gamma) exactly 259.2 (72%). Burn and recycle
+// leave circulation and the gamma shares convert into other subnets' gamma,
+// so neither reaches a UID either.
+//
+// So each day is reconstructed over the split in force at its end, from the
+// state store's validity ranges (src/subnet-emission-store.ts): a day before
+// v497 over the runtime default; a day the store observed over the declared
+// split; and a day between the upgrade and the store's first observation
+// over the first observed split only where it cannot have differed -- it is
+// the default, or the day's measured UID emission per unit of alpha out is
+// the first observed day's -- and otherwise not at all.
+
+/** The first UTC day paid under per-subnet splits. */
+export const PER_SUBNET_SPLIT_FIRST_DAY = "2026-11-26";
+const MS_PER_BLOCK = 12_000;
+const DAY_MS = 86_400_000;
+/** u64::MAX as a double: shares are read to nine places, far inside the
+ * rounding a double makes of it. */
+const PARTS_ONE = Number(2n ** 64n - 1n);
+
+/** Where a day's split comes from. */
+export type SplitSource =
+  "runtime_default" | "declared" | "first_observed" | "unobserved";
+
+/** One day's split as fractions of the subnet's emission, summing to one. */
+export interface DaySplit {
+  owner: number;
+  /** Burn plus recycle: alpha that leaves circulation. */
+  removed: number;
+  /** Converted into other subnets' gamma. */
+  gamma: number;
+  /** Validators plus miners: what the UID set is paid. */
+  uid: number;
+  source: Exclude<SplitSource, "unobserved">;
+}
+
+const partsShare = (value: unknown): number | null =>
+  typeof value === "string" && /^(0|[1-9][0-9]{0,19})$/.test(value)
+    ? Number(value) / PARTS_ONE
+    : null;
+
+/** A stored split row as fractions, or null when it does not read whole. */
+export function splitOfRow(row: Row): Omit<DaySplit, "source"> | null {
+  const [burn, recycle, owner, validator, miner] = [
+    "burn_parts",
+    "recycle_parts",
+    "owner_parts",
+    "validator_parts",
+    "miner_parts",
+  ].map((key) => partsShare(row[key]));
+  if (
+    burn === null ||
+    recycle === null ||
+    owner === null ||
+    validator === null ||
+    miner === null ||
+    !Array.isArray(row.gamma_shares)
+  )
+    return null;
+  let gamma = 0;
+  for (const entry of row.gamma_shares) {
+    const share = partsShare((entry as Row | null)?.parts);
+    if (share === null) return null;
+    gamma += share;
+  }
+  return { owner, removed: burn + recycle, gamma, uid: validator + miner };
+}
+
+/** The runtime's default split: the owner's cut, the rest to the UID set. */
+const defaultSplit = (
+  ownerCut: number,
+  source: DaySplit["source"],
+): DaySplit => ({
+  owner: ownerCut,
+  removed: 0,
+  gamma: 0,
+  uid: 1 - ownerCut,
+  source,
+});
+
+const isDefaultSplit = (split: Omit<DaySplit, "source">) =>
+  split.removed === 0 &&
+  split.gamma === 0 &&
+  Math.abs(split.owner - OWNER_CUT) < 1e-9;
+
+/** Which split a day was paid under, as splitForDay finds it. */
+export type DaySplitResolution =
+  | { kind: "split"; split: DaySplit; first: boolean }
+  | { kind: "gap"; candidate: Omit<DaySplit, "source"> }
+  | { kind: "none" };
+
+/**
+ * The split in force at the end of `date` (YYYY-MM-DD) -- `first` when it is
+ * the store's first observed range -- or the gap with that first observed
+ * split when the day falls between v497 and the store's first observation,
+ * or none. A block's time is reckoned back from the newest observation at 12
+ * s a block, which over the store's ranges (all since 2026-11-28) is minutes,
+ * against a day.
+ */
+export function splitForDay(
+  date: string,
+  history: SubnetEmissionHistory | null | undefined,
+  ownerCut: number,
+): DaySplitResolution {
+  if (date < PER_SUBNET_SPLIT_FIRST_DAY)
+    return {
+      kind: "split",
+      split: defaultSplit(ownerCut, "runtime_default"),
+      first: false,
+    };
+  const observedBlock = Number(history?.observation?.block_number);
+  const observedAt = Number(history?.observation?.observed_at_ms);
+  if (!Number.isSafeInteger(observedBlock) || !Number.isFinite(observedAt))
+    return { kind: "none" };
+  const timeOf = (block: unknown) =>
+    observedAt - (observedBlock - Number(block)) * MS_PER_BLOCK;
+  // The day's end, or the observation for the day still running.
+  const end = Math.min(
+    Date.parse(`${date}T00:00:00Z`) + DAY_MS - 1,
+    observedAt,
+  );
+  const ranges: {
+    from: number;
+    to: number;
+    split: Omit<DaySplit, "source">;
+  }[] = [];
+  for (const row of history?.splits ?? []) {
+    const split = splitOfRow(row as Row);
+    if (split === null) continue;
+    ranges.push({
+      from: timeOf(row.valid_from),
+      to: row.valid_to === null ? Infinity : timeOf(row.valid_to),
+      split,
+    });
+  }
+  // Newest first, so the last is the first observed.
+  const first = ranges[ranges.length - 1];
+  for (const range of ranges) {
+    if (range.from <= end && end < range.to)
+      return {
+        kind: "split",
+        split: { ...range.split, source: "declared" },
+        first: range === first,
+      };
+  }
+  if (first && end < first.from) return { kind: "gap", candidate: first.split };
+  return { kind: "none" };
+}
+
+/** A day's UID emission per unit of alpha out: the UID set's share of the
+ * split times the subnet's tempo, so two days of one split and one tempo
+ * agree on it and a moved split does not. Null without both. */
+function uidPerAlphaOut(dayRows: readonly Row[]): number | null {
+  let alphaOut: number | null = null;
+  let uid = 0;
+  for (const row of dayRows) {
+    alphaOut ??= nonNegativeCellOrNull(row?.alpha_out_emission);
+    uid += nonNegativeCellOrNull(row?.emission_tao) ?? 0;
+  }
+  return alphaOut === null || alphaOut <= 0 || uid <= 0 ? null : uid / alphaOut;
+}
+
+/**
+ * Each day's split, newest first like `days`, or null where none is known.
+ * A day between v497 and the store's first observation takes the first
+ * observed split only where it cannot have differed: the default, or a day
+ * whose UID emission per unit of alpha out is the first observed range's own
+ * (measured on its earliest day in `days`), within rounding. Shared by every
+ * per-day surface over neuron_daily, so they cannot disagree about a day.
+ */
+export function resolveDaySplits(
+  days: readonly (readonly [string, readonly Row[]])[],
+  splits: SubnetEmissionHistory | null | undefined,
+  ownerCut: number,
+): (DaySplit | null)[] {
+  const resolved = days.map(([date, dayRows]) => ({
+    dayRows,
+    resolution: splitForDay(date, splits, ownerCut),
+  }));
+  const reference = resolved
+    .filter((day) => day.resolution.kind === "split" && day.resolution.first)
+    .map((day) => uidPerAlphaOut(day.dayRows))
+    .filter((ratio): ratio is number => ratio !== null)
+    .pop();
+  return resolved.map(({ dayRows, resolution }) => {
+    if (resolution.kind === "split") return resolution.split;
+    if (resolution.kind === "none") return null;
+    const ratio = uidPerAlphaOut(dayRows);
+    return isDefaultSplit(resolution.candidate) ||
+      (reference !== undefined &&
+        ratio !== null &&
+        Math.abs(ratio / reference - 1) < 1e-4)
+      ? { ...resolution.candidate, source: "first_observed" }
+      : null;
+  });
 }
 
 /** Parse `?window` for the history route. Returns `{label, days}` or the
@@ -135,8 +341,9 @@ export function emissionSplitWindowLabel(
 }
 
 /** Per-field provenance. The shares between validator and miner are ratios of
- * observed sums; everything carrying the owner cut or a day's
- * `alpha_out_emission` is a reconstruction over a runtime default. */
+ * observed sums; everything carrying a day's split or its
+ * `alpha_out_emission` is a reconstruction over the split `split_source`
+ * names for that day (MET-7385). */
 export const SUBNET_EMISSION_SPLIT_FIELD_SOURCES = {
   "points.validator_alpha": {
     kind: "measured",
@@ -170,6 +377,12 @@ export const SUBNET_EMISSION_SPLIT_FIELD_SOURCES = {
   "points.validator_share_of_uid": { kind: "measured", storage: null },
   "points.miner_share_of_uid": { kind: "measured", storage: null },
   "points.owner_alpha": { kind: "reconstructed", storage: null },
+  "points.removed_alpha": { kind: "reconstructed", storage: null },
+  "points.gamma_alpha": { kind: "reconstructed", storage: null },
+  "points.removed_share": { kind: "reconstructed", storage: null },
+  "points.gamma_share": { kind: "reconstructed", storage: null },
+  "points.removed_usd_day": { kind: "reconstructed", storage: null },
+  "points.gamma_usd_day": { kind: "reconstructed", storage: null },
   "points.total_alpha": { kind: "reconstructed", storage: null },
   "points.owner_share": { kind: "reconstructed", storage: null },
   "points.validator_share": { kind: "reconstructed", storage: null },
@@ -192,7 +405,7 @@ export const SUBNET_EMISSION_SPLIT_FIELD_SOURCES = {
 function emissionSplitPoint(
   date: string,
   dayRows: Row[],
-  ownerCut: number,
+  split: DaySplit | null,
   burnHotkey?: string | null,
   usdPerTao?: number | null,
 ): Row {
@@ -250,18 +463,23 @@ function emissionSplitPoint(
   const minerShareOfUid = uidAlpha > 0 ? round9(minerAlpha / uidAlpha) : null;
   const burnedShareOfUid = uidAlpha > 0 ? round9(burnedAlpha / uidAlpha) : null;
 
-  // The reconstructed half. `alpha_out_emission` is alpha per block; a day is
-  // BLOCKS_PER_DAY of them, and the owner takes `ownerCut` of that. Computed as
-  // one guarded object so the null case is expressed once rather than repeated
-  // per field -- and so nothing needs a non-null assertion to typecheck.
-  const totals =
-    alphaOutPerBlock === null
+  // The reconstructed half. `alpha_out_emission` is alpha per block and a day
+  // is BLOCKS_PER_DAY of them; the day's split then says what of it the owner
+  // took, what left circulation, what became other subnets' gamma and what
+  // the UID set was paid. One guarded object, so a day with no known split
+  // keeps its total and states every leg unknown in one place.
+  const total =
+    alphaOutPerBlock === null ? null : alphaOutPerBlock * BLOCKS_PER_DAY;
+  const legs =
+    total === null || split === null
       ? null
-      : (() => {
-          const total = alphaOutPerBlock * BLOCKS_PER_DAY;
-          const owner = total * ownerCut;
-          return { total, owner, distributable: total - owner };
-        })();
+      : {
+          split,
+          owner: total * split.owner,
+          removed: total * split.removed,
+          gamma: total * split.gamma,
+          distributable: total * split.uid,
+        };
 
   // #11095: the per-day USD legs. Every input already rides the point -- the
   // reconstructed day totals, the measured shares, the day's alpha price, and
@@ -271,7 +489,7 @@ function emissionSplitPoint(
   // never a zero. The single largest error a real research session made was
   // assuming a split constant to hand-roll exactly this figure.
   const usdDay = (alphaDay: number | null | undefined): number | null =>
-    totals === null ||
+    total === null ||
     alphaDay == null ||
     alphaPriceTao === null ||
     usdPerTao == null ||
@@ -279,7 +497,7 @@ function emissionSplitPoint(
       ? null
       : round9(alphaDay * alphaPriceTao * usdPerTao);
   const shareAlphaDay = (share: number | null): number | null =>
-    totals === null || share === null ? null : totals.distributable * share;
+    legs === null || share === null ? null : legs.distributable * share;
 
   return {
     snapshot_date: date,
@@ -295,30 +513,38 @@ function emissionSplitPoint(
     validator_share_of_uid: validatorShareOfUid,
     miner_share_of_uid: minerShareOfUid,
     burned_share_of_uid: burnedShareOfUid,
-    owner_cut: round9(ownerCut),
-    total_alpha: totals === null ? null : round9(totals.total),
-    owner_alpha: totals === null ? null : round9(totals.owner),
-    // Shares OF THE WHOLE DAY, including the owner leg, so the three sum to 1.
-    owner_share: totals === null ? null : round9(ownerCut),
+    owner_cut: split === null ? null : round9(split.owner),
+    split_source: split?.source ?? "unobserved",
+    total_alpha: total === null ? null : round9(total),
+    owner_alpha: legs === null ? null : round9(legs.owner),
+    removed_alpha: legs === null ? null : round9(legs.removed),
+    gamma_alpha: legs === null ? null : round9(legs.gamma),
+    // Shares OF THE WHOLE DAY: owner, removed, gamma, validator and miner
+    // sum to 1.
+    owner_share: legs === null ? null : round9(legs.split.owner),
+    removed_share: legs === null ? null : round9(legs.split.removed),
+    gamma_share: legs === null ? null : round9(legs.split.gamma),
     validator_share:
-      totals === null || validatorShareOfUid === null
+      legs === null || validatorShareOfUid === null
         ? null
-        : round9((totals.distributable / totals.total) * validatorShareOfUid),
+        : round9(legs.split.uid * validatorShareOfUid),
     miner_share:
-      totals === null || minerShareOfUid === null
+      legs === null || minerShareOfUid === null
         ? null
-        : round9((totals.distributable / totals.total) * minerShareOfUid),
+        : round9(legs.split.uid * minerShareOfUid),
     tao_usd: usdPerTao == null ? null : round9(usdPerTao),
-    total_usd_day: usdDay(totals?.total),
-    owner_usd_day: usdDay(totals?.owner),
+    total_usd_day: usdDay(total),
+    owner_usd_day: usdDay(legs?.owner),
+    removed_usd_day: usdDay(legs?.removed),
+    gamma_usd_day: usdDay(legs?.gamma),
     validator_usd_day: usdDay(shareAlphaDay(validatorShareOfUid)),
     miner_usd_day: usdDay(shareAlphaDay(minerShareOfUid)),
     burned_usd_day: usdDay(shareAlphaDay(burnedShareOfUid)),
     alpha_price_tao: alphaPriceTao,
     total_tao:
-      totals === null || alphaPriceTao === null
+      total === null || alphaPriceTao === null
         ? null
-        : round9(totals.total * alphaPriceTao),
+        : round9(total * alphaPriceTao),
   };
 }
 
@@ -350,12 +576,17 @@ export function buildSubnetEmissionSplitHistory(
     window,
     capped,
     ownerCut = OWNER_CUT,
+    splits,
     burnHotkey,
     usdPerTaoByDay,
   }: {
     window?: string;
     capped?: boolean;
+    /** The runtime's owner cut for the days before v497 (MET-7385). */
     ownerCut?: number;
+    /** The subnet's split validity ranges and their observation, from the
+     * state store; absent, every day since v497 is unobserved. */
+    splits?: SubnetEmissionHistory | null;
     burnHotkey?: string | null;
     /** Day (YYYY-MM-DD) -> that day's last PRICED usd_per_tao observation. */
     usdPerTaoByDay?: ReadonlyMap<string, number>;
@@ -379,11 +610,12 @@ export function buildSubnetEmissionSplitHistory(
     Number.isFinite(ownerCut) && ownerCut >= 0 && ownerCut <= 1
       ? ownerCut
       : OWNER_CUT;
-  const points = days.map(([date, dayRows]) =>
+  const daySplits = resolveDaySplits(days, splits, effectiveCut);
+  const points = days.map(([date, dayRows], index) =>
     emissionSplitPoint(
       date,
       dayRows,
-      effectiveCut,
+      daySplits[index],
       burnHotkey,
       usdPerTaoByDay?.get(date) ?? null,
     ),

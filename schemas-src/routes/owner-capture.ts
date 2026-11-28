@@ -22,6 +22,7 @@
 // than restated, so this surface cannot drift into its own set of words for
 // what it is claiming.
 import { z } from "zod";
+import { SPLIT_SOURCE_VALUES } from "./emission-split.ts";
 import { attributedColdkeySchema } from "../attribution.ts";
 import { FieldSourcesSchema, subnetHistoryArtifactSchema } from "../shared.ts";
 
@@ -29,9 +30,13 @@ const OwnerCapturePointSchema = z
   .object({
     snapshot_date: z.string(),
     neuron_count: z.int().min(0).optional(),
+    split_source: z.enum(SPLIT_SOURCE_VALUES).optional().meta({
+      description:
+        "Which split reconstructed this day, exactly as /emission-split/history names it (MET-7385): the runtime default before runtime 497 (2026-11-26 on), the subnet's declared SubnetEmissionWeights since, the first observed split carried back over the days between, or `unobserved` — every reconstructed share of the day null.",
+    }),
     owner_cut_share: z.number().nullable().optional().meta({
       description:
-        "L1 — the protocol owner cut applied to this day. `SubnetOwnerCut` is 11796/65535 (18%, not 1/6) and is UNSET on chain, so this is the runtime default rather than a read. Every subnet pays it and no subnet chooses it.",
+        "L1 — the owner's slot of this day's split. Before runtime 497 every subnet paid the runtime default `SubnetOwnerCut`, 11796/65535 (18%, not 1/6); since, each subnet chooses its own, from 0% to 33% (MET-7385). Null when the day's split is unobserved.",
     }),
     owner_cut_alpha: z.number().nullable().optional().meta({
       description:
@@ -59,7 +64,7 @@ const OwnerCapturePointSchema = z
     }),
     owner_attributed_share: z.number().nullable().optional().meta({
       description:
-        "L2 as a share of the WHOLE day, `owner_uid_alpha / total_alpha`. RECONSTRUCTED, because the denominator is. ATTRIBUTED, NOT CAPTURED: this is emission that landed on owner-held UIDs, not what the owner ultimately keeps — the stake behind those UIDs (L3) and any application-layer treasury cut (L4) are outside what the chain shows. See `blind_spots`.",
+        "L2 as a share of the WHOLE day: `owner_attributed_share_of_uid` times what of the day the UID set was paid (its split's validator and miner slots). RECONSTRUCTED, because that factor is. Not `owner_uid_alpha / total_alpha`: the rows sum one tempo's emission and `total_alpha` is the whole day's, which understated this share by the tempos in a day until MET-7385. ATTRIBUTED, NOT CAPTURED: this is emission that landed on owner-held UIDs, not what the owner ultimately keeps — the stake behind those UIDs (L3) and any application-layer treasury cut (L4) are outside what the chain shows. See `blind_spots`.",
     }),
     owner_combined_share: z.number().nullable().optional().meta({
       description:

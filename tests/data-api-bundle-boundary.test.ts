@@ -378,11 +378,18 @@ describe("data-api's bundle boundary", () => {
     // src/artifact-storage.ts (+354) and the parts pattern's sample in
     // src/openapi-sample.ts (+227). The store, the builders and the capture
     // stay out of data-api's graph. Same 2,512 bytes of margin.
+    // Each day's own split since runtime 497 (MET-7385): +12,976 source bytes,
+    // for 4,996,891 -- the per-day split resolver and its measured rationale
+    // in src/emission-split.ts, owner capture reading it, the two route
+    // schemas' new fields, the store seam src/subnet-emission-store.ts the
+    // handlers now read the splits through, and the handlers' store reads in
+    // workers/data-api.ts. The store's Postgres code stays out of the graph.
+    // Same 2,512 bytes of margin.
     const firstParty = Object.entries(graph)
       .filter(([k]) => /^(src|workers|schemas-src|generated)\//.test(k))
       .reduce((sum, [, v]) => sum + v.bytes, 0);
     assert.ok(
-      firstParty < 4_986_427,
+      firstParty < 4_999_403,
       `first-party source in data-api's bundle is ${firstParty} bytes; ` +
         `something large was re-imported. See the named checks above.`,
     );

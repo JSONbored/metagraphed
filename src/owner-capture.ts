@@ -57,6 +57,8 @@ import {
   toRaoBig,
 } from "./lib/rao.ts";
 import { BLOCKS_PER_DAY, OWNER_CUT } from "./revenue-coverage.ts";
+import { type DaySplit, resolveDaySplits } from "./emission-split.ts";
+import type { SubnetEmissionHistory } from "./subnet-emission-store.ts";
 import {
   DEFAULT_SUBNET_EMISSION_SPLIT_HISTORY_WINDOW,
   SUBNET_EMISSION_SPLIT_HISTORY_WINDOW_DAYS,
@@ -207,7 +209,7 @@ function ownerCapturePoint(
   date: string,
   dayRows: Row[],
   ownerColdkey: string | null,
-  ownerCut: number,
+  split: DaySplit | null,
 ): Row {
   let uidRao = 0n;
   let ownerRao = 0n;
@@ -239,42 +241,46 @@ function ownerCapturePoint(
       ? null
       : round9(ownerUidAlpha / uidAlpha);
 
-  // The RECONSTRUCTED half. The owner cut is paid outside the UID set, so the
-  // day's whole is `alpha_out_emission x BLOCKS_PER_DAY` -- never the sum of
-  // the rows, which is the distributable 82% and would inflate every share by
-  // 1/(1-cut). Computed as one guarded object so the null case is expressed
-  // once. Same basis as /owner-cut and /emission-split/history, so the three
-  // cannot disagree about what a day of emission is.
-  const totals =
-    alphaOutPerBlock === null
-      ? null
-      : (() => {
-          const total = alphaOutPerBlock * BLOCKS_PER_DAY;
-          return { total, owner: total * ownerCut };
-        })();
+  // The RECONSTRUCTED half, over the day's split (MET-7385): the runtime
+  // default before runtime 497, the subnet's own since -- the same split
+  // /emission-split/history reconstructs that day over (resolveDaySplits).
+  // The day's whole is `alpha_out_emission x BLOCKS_PER_DAY`.
+  const total =
+    alphaOutPerBlock === null ? null : alphaOutPerBlock * BLOCKS_PER_DAY;
 
+  // L2 as a share of the WHOLE day: the owner's share of the UID set's
+  // emission times what of the day the UID set was paid. The rows sum ONE
+  // TEMPO's emission (alpha out x tempo x the UID slots), never the day's, so
+  // dividing them by the day's total understated this share by the tempos in
+  // a day -- 20x on a 360-block tempo: measured on SN64 2026-11-28, 0.45%
+  // published where its owner's UIDs took 11.05% of a UID set paid 82%.
   const attributedShare =
-    totals === null || totals.total <= 0 || ownerColdkey === null
+    split === null || attributedShareOfUid === null
       ? null
-      : round9(ownerUidAlpha / totals.total);
+      : round9(attributedShareOfUid * split.uid);
 
   return {
     snapshot_date: date,
     neuron_count: dayRows.length,
-    // L1. The protocol cut, which every subnet pays and no subnet chooses.
-    owner_cut_share: round9(ownerCut),
-    owner_cut_alpha: totals === null ? null : round9(totals.owner),
+    split_source: split?.source ?? "unobserved",
+    // L1. The owner's slot of the day's split: the protocol default before
+    // runtime 497, the subnet's own choice since.
+    owner_cut_share: split === null ? null : round9(split.owner),
+    owner_cut_alpha:
+      total === null || split === null ? null : round9(total * split.owner),
     // L2. Emission that landed on UIDs the `owner_coldkey` holds.
     owner_uid_count: ownerColdkey === null ? null : ownerUidCount,
     owner_uid_alpha: ownerColdkey === null ? null : round9(ownerUidAlpha),
     uid_alpha: round9(uidAlpha),
-    total_alpha: totals === null ? null : round9(totals.total),
+    total_alpha: total === null ? null : round9(total),
     owner_attributed_share_of_uid: attributedShareOfUid,
     owner_attributed_share: attributedShare,
     // L1 + L2 over one denominator. Named for the arithmetic it is, not for
     // what the owner ends up keeping -- that is L3/L4 and out of frame.
     owner_combined_share:
-      attributedShare === null ? null : round9(ownerCut + attributedShare),
+      attributedShare === null || split === null
+        ? null
+        : round9(split.owner + attributedShare),
   };
 }
 
@@ -422,12 +428,16 @@ export function buildSubnetOwnerCapture(
     ownerColdkey = null,
     positions,
     ownerCut = OWNER_CUT,
+    splits,
   }: {
     window?: string;
     capped?: boolean;
     ownerColdkey?: string | null;
     positions?: Row[] | null;
+    /** The runtime's owner cut for the days before runtime 497. */
     ownerCut?: number;
+    /** The subnet's split validity ranges, from the state store (MET-7385). */
+    splits?: SubnetEmissionHistory | null;
   } = {},
 ): Row {
   const list = Array.isArray(rows) ? rows : [];
@@ -449,8 +459,9 @@ export function buildSubnetOwnerCapture(
       ? ownerCut
       : OWNER_CUT;
 
-  const points = days.map(([date, dayRows]) =>
-    ownerCapturePoint(date, dayRows, owner, effectiveCut),
+  const daySplits = resolveDaySplits(days, splits, effectiveCut);
+  const points = days.map(([date, dayRows], index) =>
+    ownerCapturePoint(date, dayRows, owner, daySplits[index]),
   );
 
   // Rows arrive newest-first, so the first entry is the newest day.
