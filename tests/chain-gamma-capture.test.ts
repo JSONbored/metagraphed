@@ -8,15 +8,22 @@ import {
   decodeAccount,
   decodeBool,
   decodeGammaDeposit,
+  decodeMechanismCount,
+  decodeMechanismSplit,
   decodeServiceUrl,
   decodeTaoUsdPrice,
   decodeU128,
   decodeU64,
   loadChainGammaSnapshot,
+  mechanismShares,
   netuidAccountFromKey,
   type ChainGammaSnapshot,
 } from "../src/chain-gamma-capture.ts";
-import { bytesToHex, storageMapPrefix } from "../src/twox-storage-key.ts";
+import {
+  bytesToHex,
+  storageMapPrefix,
+  twox64ConcatU16StorageKey,
+} from "../src/twox-storage-key.ts";
 import { encodeAccountId32 } from "../src/ss58.ts";
 import { toPositionalPlaceholders } from "../src/pg-sql.ts";
 
@@ -37,7 +44,12 @@ const REAL = {
     "0x9468747470733a2f2f626c6f636b6d616368696e652e696f2f73657276696365732e6a736f6e",
   taoUsd: "0x21b8de6f2b00000021b8de6f2b0000000083920000000000",
   oracle: "0xaecbdd31b6677a5e42e832f6edaf3a693a3dbf193f1781832f665396c63fc536",
+  // SN68 at block 9,606,933: two mechanisms, split 46,812 / 18,723 of 65,535.
+  mechanismCount: "0x02",
+  mechanismSplit: "0x08dcb62349",
 };
+const mechanismKey = (item: string, netuid: number) =>
+  twox64ConcatU16StorageKey("SubtensorModule", item, netuid);
 const account = (hex: string) =>
   encodeAccountId32(Uint8Array.from(Buffer.from(hex, "hex")))!;
 const prefix = (item: string) =>
@@ -73,6 +85,27 @@ describe("v497 storage values decode exactly", () => {
       feed: "186560460833",
       fedAt: 9_601_792,
     });
+  });
+
+  test("a mechanism count and its split", () => {
+    assert.equal(decodeMechanismCount(REAL.mechanismCount), 2);
+    assert.deepEqual(
+      decodeMechanismSplit(REAL.mechanismSplit),
+      [46_812, 18_723],
+    );
+    assert.throws(() => decodeMechanismCount("0x0201"), /trailing bytes/);
+    assert.throws(() => decodeMechanismSplit("0x08dcb6"), /truncated/);
+  });
+
+  test("a mechanism's share is the runtime's split_emissions", () => {
+    const [first, second] = mechanismShares(2, [46_812, 18_723]);
+    assert.ok(Math.abs(first - 46_812 / 65_535) < 1e-15);
+    assert.ok(Math.abs(first + second - 1) < 1e-12);
+    // No split stored, or one that does not name every mechanism, is even.
+    assert.deepEqual(mechanismShares(2, null), [0.5, 0.5]);
+    assert.deepEqual(mechanismShares(2, [65_535]), [0.5, 0.5]);
+    assert.deepEqual(mechanismShares(1, null), [1]);
+    assert.deepEqual(mechanismShares(2, [0, 65_535]), [0, 1]);
   });
 
   test("a moved or malformed shape is refused, never misread", () => {
@@ -159,6 +192,11 @@ function storageFixture(): Map<string, string> {
     prefix("GammaDeposits") + "0300" + "01".repeat(16) + HOT2,
     REAL.deposit,
   );
+  // Subnet 3 runs two mechanisms on SN68's real split; subnet 2's epoch runs
+  // the null consensus; the rest are the defaults.
+  s.set(mechanismKey("MechanismCountCurrent", 3), REAL.mechanismCount);
+  s.set(mechanismKey("MechanismEmissionSplit", 3), REAL.mechanismSplit);
+  s.set(prefix("SubnetEpochConsensus") + "0200", "0x01");
   return s;
 }
 
@@ -196,7 +234,41 @@ test("one finalized block's state, read whole and decoded", async () => {
   ]);
   assert.equal(snapshot.deposits?.length, 2);
   assert.equal(snapshot.oracle?.oracle, account(REAL.oracle.slice(2)));
+  // Every listed subnet has mechanism 0; subnet 3 has a second, on its split.
+  assert.deepEqual(
+    snapshot.mechanisms?.map((m) => [m.netuid, m.mechid, m.consensus]),
+    [
+      [0, 0, "yuma"],
+      [1, 0, "yuma"],
+      [2, 0, "null"],
+      [3, 0, "yuma"],
+      [3, 1, "yuma"],
+    ],
+  );
+  assert.deepEqual(
+    snapshot.mechanisms?.map((m) => m.share),
+    [1, 1, 1, 46_812 / 65_535, 18_723 / 65_535],
+  );
   assert.equal(snapshot.undecoded, 0);
+});
+
+test("an undecodable mechanism value leaves every subnet's mechanisms unwritten", async () => {
+  for (const [item, value] of [
+    ["MechanismCountCurrent", "0x0201"],
+    ["MechanismCountCurrent", "0x00"],
+    ["MechanismEmissionSplit", "0x08dcb6"],
+  ] as const) {
+    const storage = storageFixture();
+    storage.set(mechanismKey(item, 1), value);
+    const snapshot = await loadChainGammaSnapshot(
+      "mainnet",
+      chain(storage).rpc,
+    );
+    assert.equal(snapshot.mechanisms, null, `${item} ${value}`);
+    assert.equal(snapshot.undecoded, 1);
+    // The rest of the capture is unaffected.
+    assert.equal(snapshot.services?.length, 1);
+  }
 });
 
 test("a map past the bound is read as incomplete, and an undecodable value is counted", async () => {
@@ -251,6 +323,14 @@ describe("the capture lands in the serving tables", () => {
           "utf8",
         ),
       );
+    // 0044's own table, read out of the migration rather than restated: the
+    // rest of 0044 alters neuron tables this database does not hold.
+    const mechanisms = readFileSync(
+      new URL("../migrations/postgres/0044_mechanisms.sql", import.meta.url),
+      "utf8",
+    ).match(/CREATE TABLE app\.subnet_mechanisms \([\s\S]*?\n\);/);
+    assert.ok(mechanisms, "0044 declares app.subnet_mechanisms");
+    await db.exec(mechanisms[0]);
   });
 
   test("a second capture deletes a removed service and closes a vanished deposit", async () => {
@@ -262,7 +342,7 @@ describe("the capture lands in the serving tables", () => {
       now: () => T1,
       load: async () => first,
     });
-    assert.deepEqual(one, { ok: true, captured: 9, undecoded: 0 });
+    assert.deepEqual(one, { ok: true, captured: 14, undecoded: 0 });
     const rows = async (sql: string) => (await db.query(sql)).rows;
     assert.deepEqual(await rows("SELECT enabled FROM chain_gamma"), [
       { enabled: true },
@@ -282,6 +362,19 @@ describe("the capture lands in the serving tables", () => {
       await rows("SELECT block_number::int, usd_per_tao FROM tao_usd_oracle"),
       [{ block_number: 9_601_792, usd_per_tao: 186.560460833 }],
     );
+    assert.deepEqual(
+      await rows(
+        "SELECT netuid::int, mechid, round(emission_split::numeric, 6)::float AS split, " +
+          "consensus_mode FROM subnet_mechanisms ORDER BY netuid, mechid",
+      ),
+      [
+        { netuid: 0, mechid: 0, split: 1, consensus_mode: "yuma" },
+        { netuid: 1, mechid: 0, split: 1, consensus_mode: "yuma" },
+        { netuid: 2, mechid: 0, split: 1, consensus_mode: "null" },
+        { netuid: 3, mechid: 0, split: 0.714305, consensus_mode: "yuma" },
+        { netuid: 3, mechid: 1, split: 0.285695, consensus_mode: "yuma" },
+      ],
+    );
 
     // The next capture: the service is gone and one deposit closed.
     const second: ChainGammaSnapshot = {
@@ -289,6 +382,10 @@ describe("the capture lands in the serving tables", () => {
       block: 9_601_900,
       services: [],
       deposits: first.deposits!.slice(0, 1),
+      // Subnet 3 went back to one mechanism, and subnet 0 is gone.
+      mechanisms: first
+        .mechanisms!.filter((m) => m.netuid !== 0 && m.mechid === 0)
+        .map((m) => ({ ...m, share: 1 })),
     };
     const two = await captureChainGamma(null, {
       db: store(),
@@ -310,6 +407,16 @@ describe("the capture lands in the serving tables", () => {
     assert.deepEqual(await rows("SELECT count(*)::int n FROM tao_usd_oracle"), [
       { n: 1 },
     ]);
+    assert.deepEqual(
+      await rows(
+        "SELECT netuid::int, mechid, emission_split FROM subnet_mechanisms ORDER BY netuid",
+      ),
+      [
+        { netuid: 1, mechid: 0, emission_split: 1 },
+        { netuid: 2, mechid: 0, emission_split: 1 },
+        { netuid: 3, mechid: 0, emission_split: 1 },
+      ],
+    );
   });
 
   test("an incomplete listing neither deletes nor closes", async () => {
@@ -319,6 +426,7 @@ describe("the capture lands in the serving tables", () => {
         enabled: null,
         subnets: [],
         services: null,
+        mechanisms: null,
         deposits: null,
         oracle: null,
         undecoded: 0,
@@ -358,6 +466,7 @@ describe("the capture never throws, and says why it did nothing", () => {
     enabled: true,
     subnets: [],
     services: [],
+    mechanisms: [],
     deposits: [],
     oracle: null,
     undecoded: 2,
@@ -403,7 +512,7 @@ describe("the capture never throws, and says why it did nothing", () => {
     });
     assert.deepEqual(partial, {
       ok: false,
-      captured: 3,
+      captured: 4,
       undecoded: 2,
       reason: "undecoded: 2",
     });
@@ -562,6 +671,7 @@ describe("every edge the reads can meet", () => {
         enabled: null,
         subnets: [],
         services: null,
+        mechanisms: null,
         deposits: null,
         oracle: { accepted: "0", feed: "0", fedAt: 5, oracle: null },
         undecoded: 0,
@@ -592,6 +702,7 @@ describe("every edge the reads can meet", () => {
             enabled: true,
             subnets: [],
             services: null,
+            mechanisms: null,
             deposits: null,
             oracle: null,
             undecoded: 0,

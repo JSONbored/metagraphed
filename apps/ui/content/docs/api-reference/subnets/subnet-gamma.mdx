@@ -17,7 +17,7 @@ _openapi:
           owns the scaling), and the SubnetGammaEmission / PendingGammaEmission
           / UnconvertedGammaEmission counters as u64 atomic units in decimal
           strings, with their capture stamp. Served live from the Gamma store;
-          until the engine's Gamma capture lands the store holds no rows and the
+          until a Gamma capture is observed the store holds no rows and the
           response is the schema-stable decline — gamma null, never a zeroed
           state, because an absent capture is not a measured Gamma-off subnet.
           The capture series lives on /api/v1/subnets/{netuid}/gamma/history."

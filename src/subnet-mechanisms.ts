@@ -5,7 +5,7 @@
 //
 // THE DECLINE IS NULL, NEVER ZERO. Every subnet has at least mechanism 0, so
 // an empty registry is not "this subnet has no mechanisms" -- it is "the
-// per-mechanism capture has not run" (the engine dependency #13162 defers),
+// per-mechanism capture has not run" (no capture observed yet),
 // and `mechanism_count: null` with an empty `mechanisms` is how the artifact
 // says so. See SubnetMechanismsArtifactSchema's own field comment.
 import { selectedSubnetMechanismsStore } from "./subnet-mechanisms-store.ts";

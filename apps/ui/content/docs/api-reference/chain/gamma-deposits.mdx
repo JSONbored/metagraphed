@@ -15,8 +15,8 @@ _openapi:
           account and hotkey, subnet, balance (SubtensorModule.GammaDeposits;
           u64 atomic units as a decimal string), authorized spender, daily spend
           cap and closed-at block with its capture stamp, largest balance first
-          and store-capped. Served live from the deposits store; until the
-          engine's GammaDeposits capture lands the state holds no rows and the
+          and store-capped. Served live from the deposits store; until a
+          GammaDeposits capture is observed the state holds no rows and the
           response is the schema-stable decline — an empty deposits array with
           deposit_count null, never 0, because an empty list is not a measured
           deposit-free chain."

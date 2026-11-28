@@ -3176,7 +3176,7 @@ export type GammaDeposit = {
   spender?: Maybe<Scalars['String']['output']>;
 };
 
-/** The chain's Gamma deposit state (#13164). Empty with a null deposit_count until the engine's deposit capture lands. Mirrors GET /api/v1/gamma/deposits. */
+/** The chain's Gamma deposit state (#13164). Empty with a null deposit_count until a deposit capture is observed. Mirrors GET /api/v1/gamma/deposits. */
 export type GammaDeposits = {
   __typename?: 'GammaDeposits';
   captured_at?: Maybe<Scalars['String']['output']>;
@@ -4134,7 +4134,7 @@ export type Query = {
   fixtures?: Maybe<Scalars['JSON']['output']>;
   /** Artifact freshness: each published artifact's generated_at/age, merged with the live cron snapshot stamp when the health store is warm. Null when no freshness artifact has been baked. Opaque JSON, matching the get_freshness MCP/REST shape. Mirrors GET /api/v1/freshness. */
   freshness?: Maybe<Scalars['JSON']['output']>;
-  /** The chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Until the engine's GammaDeposits capture lands, the state holds no rows and this resolves to the schema-stable decline -- an empty deposits array with deposit_count NULL, never 0, because an empty list is not a measured deposit-free chain. Mirrors GET /api/v1/gamma/deposits. */
+  /** The chain's Gamma deposit state (#13164): each deposit's owning account and hotkey, subnet, balance (u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped. Until a GammaDeposits capture is observed, the state holds no rows and this resolves to the schema-stable decline -- an empty deposits array with deposit_count NULL, never 0, because an empty list is not a measured deposit-free chain. Mirrors GET /api/v1/gamma/deposits. */
   gamma_deposits: GammaDeposits;
   /** Registry-wide interface gap report -- every active subnet's missing/unsupported public interface facets, gap_count, coverage_level, and curation_level. Filter by netuid/coverage_level/curation_level, sort with sort/order, and page with limit (1-100)/cursor. An invalid filter/sort/limit/cursor is a GraphQL error, not a silently substituted default. Distinct from subnet_gaps(netuid) (one subnet's contributor enrichment queue). Mirrors GET /api/v1/gaps. */
   gaps: GapsList;
@@ -4254,7 +4254,7 @@ export type Query = {
   subnet_events: SubnetEvents;
   /** One subnet's curation evidence record — the provenance trail (source URLs, checks, reviewer notes) behind its registry entry. Search with q across subject, claim, source_url, and support_summary; sort with sort + order; project with fields; and page with limit (1-100) / cursor, exactly as REST does — an unsupported sort/limit/cursor is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the claims rows. Null when no evidence record has been baked for the netuid (rather than a GraphQL error). Mirrors GET /api/v1/subnets/{netuid}/evidence. */
   subnet_evidence?: Maybe<Scalars['JSON']['output']>;
-  /** One subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string, and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters (u64 atomic units as decimal strings) with their capture stamp. Until the engine's Gamma capture lands, the store holds no rows and this resolves to the schema-stable decline -- gamma NULL, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. Mirrors GET /api/v1/subnets/{netuid}/gamma. */
+  /** One subnet's current Gamma state (#13164): the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string, and the SubnetGammaEmission / PendingGammaEmission / UnconvertedGammaEmission counters (u64 atomic units as decimal strings) with their capture stamp. Until a Gamma capture is observed, the store holds no rows and this resolves to the schema-stable decline -- gamma NULL, never a zeroed state, because an absent capture is not a measured Gamma-off subnet. Mirrors GET /api/v1/subnets/{netuid}/gamma. */
   subnet_gamma: SubnetGamma;
   /** One subnet's registry gap report — the reviewer-facing list of missing/incomplete surface coverage backing its curation state. Null when no gap report has been baked for the netuid (rather than a GraphQL error). Filter with curation_level, missing_kinds, and review_state; sort with sort + order; project with fields; and page with limit (1-100) / cursor, exactly as REST does -- an unsupported filter/sort value is a GraphQL error, not a silently substituted default. The envelope carries the same pagination meta REST returns (total, returned, limit, cursor, next_cursor, sort, order) alongside the priorities rows. Mirrors GET /api/v1/subnets/{netuid}/gaps. */
   subnet_gaps?: Maybe<Scalars['JSON']['output']>;
@@ -4288,7 +4288,7 @@ export type Query = {
   subnet_lifecycle: SubnetLifecycle;
   /** One subnet's LimitOrders order book (#13165, runtime v490): each captured order's H256 key, owner, OrderType variant, amount (u64 atomic units as a decimal string), raw price (canonical decimal text -- the engine's decode owns the scaling) and state, newest capture first and store-capped. Until the engine's order-book capture lands, the book holds no rows and this resolves to the schema-stable decline -- an empty orders array with order_count NULL, never 0, because an empty book is not a measured order-less subnet. Mirrors GET /api/v1/subnets/{netuid}/limit-orders. */
   subnet_limit_orders: SubnetLimitOrders;
-  /** One subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, emission split (0..1) and consensus mode with its capture stamp, ordered by mechid. Until the engine's per-mechanism capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty mechanisms array with mechanism_count NULL, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Mirrors GET /api/v1/subnets/{netuid}/mechanisms. */
+  /** One subnet's mechanism (sub-subnet) registry (#13162): each mechanism's mechid, emission split (0..1) and consensus mode with its capture stamp, ordered by mechid. Until a mechanism capture is observed, the registry holds no rows and this resolves to the schema-stable decline -- an empty mechanisms array with mechanism_count NULL, never 0, because every subnet has at least mechanism 0 and a zero count would be a fabricated measurement. Mirrors GET /api/v1/subnets/{netuid}/mechanisms. */
   subnet_mechanisms: SubnetMechanisms;
   /** One subnet's live metagraph: every neuron with its uid, keys, stake, trust/consensus/incentive/dividends, emission, and axon, plus the subnet's aggregate counters. Set validator_permit to true to return only permit-holding validators. A subnet with no indexed neurons resolves to a schema-stable empty metagraph, never null. Opaque JSON passed through verbatim, matching the get_subnet_metagraph MCP/REST shape. Mirrors GET /api/v1/subnets/{netuid}/metagraph. */
   subnet_metagraph?: Maybe<Scalars['JSON']['output']>;
@@ -4320,7 +4320,7 @@ export type Query = {
   subnet_registrations: SubnetRegistrations;
   /** One subnet's external revenue against the TAO the network emits to it. ALWAYS read provenance and verification.verified: only chain-verified and probe-derived figures reach the headline, and revenue_usd/coverage_ratio/subsidy_multiple are NULL whenever revenue is unobserved -- the normal case, true of 127 of 129 subnets. NULL MEANS NOT OBSERVED, NEVER ZERO: rendering an unmeasured subnet as '0% covered' is a false claim about it. A declared surface that did not reach the headline is still reported in sources, with excluded_reason saying why. Never errors for a subnet with no revenue data. Mirrors GET /api/v1/subnets/{netuid}/revenue Takes ?window=1d|7d|30d (default 1d): a surface contributes only when the window is a whole number of its declared grain's periods, so a monthly figure needs 30d and is invisible at 1d. */
   subnet_revenue: SubnetRevenueCard;
-  /** One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until the engine's Services capture lands, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services. */
+  /** One subnet's on-chain service-URL registry (#13164): each hotkey's published service URL (SubtensorModule.Services; events ServiceSet / ServiceRemoved) with the block it was set at and its capture stamp, ordered by hotkey. Until a Services capture is observed, the registry holds no rows and this resolves to the schema-stable decline -- an empty services array with service_count NULL, never 0, because an empty registry is not a measured service-less subnet. Mirrors GET /api/v1/subnets/{netuid}/services. */
   subnet_services: SubnetServices;
   /** Per-subnet axon-serving activity over a 7d/30d window (distinct servers, AxonServed announcement count, and announcements per server); a subnet with no events in the window resolves to a schema-stable zeroed card, never null. Mirrors GET /api/v1/subnets/{netuid}/serving. */
   subnet_serving: SubnetServing;
@@ -4368,7 +4368,7 @@ export type Query = {
   sudo_key?: Maybe<SudoKey>;
   /** Curated public interface surfaces with full REST filter parity: optionally scope to one subnet (netuid) and filter by kind/provider/id, sort with sort/order, and page with limit/cursor. An invalid filter/sort is a GraphQL error, not a silently substituted default. Mirrors GET /api/v1/surfaces. */
   surfaces: SurfaceList;
-  /** The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- and labelled source pool_composite. The chain's own TaoUsdPrice (runtime v490) rides beside it as the `oracle` block, labelled source chain_oracle with its TaoUsdPriceFed history (#13164), and stays NULL until the engine's oracle capture lands -- an absent capture is never served as a price. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd. */
+  /** The USD price of one TAO with the derivation behind it, plus the recent series. Composed per ADR 0025 -- a liquidity-weighted median across qualifying wTAO/WETH pools with 2% outlier rejection and a two-pool quorum, multiplied through an ETH/USDC anchor -- and labelled source pool_composite. The chain's own TaoUsdPrice (runtime v490) rides beside it as the `oracle` block, labelled source chain_oracle with its TaoUsdPriceFed history (#13164), and stays NULL until an oracle capture is observed -- an absent capture is never served as a price. A null usd_per_tao is a STATED OUTCOME (price_basis insufficient_pools), never a zero price. window is 1h, 24h (default), 7d or 30d. The series begins 2026-08-02, so a wide window returns everything that exists and oldest_observed_at says how far back that is. Mainnet only. Mirrors GET /api/v1/network/tao-usd. */
   tao_usd: TaoUsd;
   /** The largest TAO holders ranked by the chosen sort (total_tao by default), limit 1-100 (default 20). An unknown sort is a BAD_USER_INPUT error. Resolves to a schema-stable empty list when every holders tier is cold, never null. TWO TIERS (#9469): the net_flow_7d/30d/90d sorts are LIVE, recomputed daily from the account_events stake stream; the free_tao/delegated_tao/total_tao sorts are served from a fixed snapshot taken 2026-08-02 whose source scan has no writer any more, so on those captured_at/last_updated do not advance and balances are as of that date -- read that ranking as historical, and use account(ss58) for a live balance. On a flow-sorted page the three holdings columns are null, never zero. Opaque JSON, matching the get_top_holders MCP/REST shape. Mirrors GET /api/v1/accounts/top-holders. */
   top_holders?: Maybe<Scalars['JSON']['output']>;
@@ -7435,7 +7435,7 @@ export type SubnetEvents = {
   schema_version: Scalars['Int']['output'];
 };
 
-/** One subnet's current Gamma state (#13164). Null `gamma` until the engine's Gamma capture lands. Mirrors GET /api/v1/subnets/{netuid}/gamma. */
+/** One subnet's current Gamma state (#13164). Null `gamma` until a Gamma capture is observed. Mirrors GET /api/v1/subnets/{netuid}/gamma. */
 export type SubnetGamma = {
   __typename?: 'SubnetGamma';
   captured_at?: Maybe<Scalars['String']['output']>;
@@ -7772,15 +7772,15 @@ export type SubnetList = {
 export type SubnetMechanism = {
   __typename?: 'SubnetMechanism';
   captured_at?: Maybe<Scalars['String']['output']>;
-  /** The per-mechanism consensus variant, spelled as the chain spells it (SubtensorModule.ConsensusByMechanism). Null when not captured. */
+  /** The consensus this mechanism's epoch runs, spelled as the chain spells it: the subnet's SubtensorModule.SubnetEpochConsensus (`yuma` or `null`), which every mechanism of the subnet runs. Null when not captured. */
   consensus_mode?: Maybe<Scalars['String']['output']>;
-  /** This mechanism's share of the subnet's emission (0..1), from SubtensorModule.MechanismEmissionSplit. Null when the chain carried no split for it at capture time -- never fabricated as 0, which would claim a measured zero share. */
+  /** This mechanism's share of the subnet's emission (0..1), as the runtime splits it: its SubtensorModule.MechanismEmissionSplit part over u16::MAX, or an even share when the subnet stores no split for its mechanism count. Null when not captured -- never fabricated as 0, which would claim a measured zero share. */
   emission_split?: Maybe<Scalars['Float']['output']>;
   /** The mechanism (sub-subnet) id within this subnet; 0 is the original mechanism every subnet has. */
   mechid: Scalars['Int']['output'];
 };
 
-/** One subnet's mechanism (sub-subnet) registry (#13162). Empty with a null mechanism_count until the engine's per-mechanism capture lands. Mirrors GET /api/v1/subnets/{netuid}/mechanisms. */
+/** One subnet's mechanism (sub-subnet) registry (#13162). Empty with a null mechanism_count until a mechanism capture is observed. Mirrors GET /api/v1/subnets/{netuid}/mechanisms. */
 export type SubnetMechanisms = {
   __typename?: 'SubnetMechanisms';
   captured_at?: Maybe<Scalars['String']['output']>;
@@ -8461,7 +8461,7 @@ export type SubnetService = {
   set_at?: Maybe<Scalars['Int']['output']>;
 };
 
-/** One subnet's on-chain service-URL registry (#13164). Empty with a null service_count until the engine's Services capture lands. Mirrors GET /api/v1/subnets/{netuid}/services. */
+/** One subnet's on-chain service-URL registry (#13164). Empty with a null service_count until a Services capture is observed. Mirrors GET /api/v1/subnets/{netuid}/services. */
 export type SubnetServices = {
   __typename?: 'SubnetServices';
   captured_at?: Maybe<Scalars['String']['output']>;
@@ -9017,7 +9017,7 @@ export type TaoUsd = {
   latest?: Maybe<TaoUsdLatest>;
   /** How far back the answer actually reaches -- the series began 2026-08-02. */
   oldest_observed_at?: Maybe<Scalars['String']['output']>;
-  /** The chain's own TAO/USD oracle (SubtensorModule.TaoUsdPrice with its TaoUsdPriceFed history), labelled source `chain_oracle`. NULL until the engine's oracle capture lands (store unbound, or no feed captured): an absent capture is never served as a price. */
+  /** The chain's own TAO/USD oracle (SubtensorModule.TaoUsdPrice with its TaoUsdPriceFed history), labelled source `chain_oracle`. NULL until an oracle capture is observed (store unbound, or no feed captured): an absent capture is never served as a price. */
   oracle?: Maybe<TaoUsdOracle>;
   point_count: Scalars['Int']['output'];
   points: Array<TaoUsdPoint>;
@@ -9057,7 +9057,7 @@ export type TaoUsdLatest = {
   usd_per_tao?: Maybe<Scalars['Float']['output']>;
 };
 
-/** The chain's own TAO/USD oracle (#13164): the current SubtensorModule.TaoUsdPrice with its feeder and the TaoUsdPriceFed history behind it. Null on the card until the engine's oracle capture lands -- an absent capture is never served as a price. */
+/** The chain's own TAO/USD oracle (#13164): the current SubtensorModule.TaoUsdPrice with its feeder and the TaoUsdPriceFed history behind it. Null on the card until an oracle capture is observed -- an absent capture is never served as a price. */
 export type TaoUsdOracle = {
   __typename?: 'TaoUsdOracle';
   block_number: Scalars['Int']['output'];

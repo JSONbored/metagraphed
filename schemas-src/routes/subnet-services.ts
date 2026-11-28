@@ -1,10 +1,10 @@
 // GET /api/v1/subnets/{netuid}/services (#13164; #13161, epic #13142). One
 // subnet's on-chain service-URL registry, served live from
 // app.subnet_services (migration 0047) through the native store seam. The
-// table's writers -- the engine's SubtensorModule.Services decode (events
-// ServiceSet / ServiceRemoved) -- land separately, so until a store is bound
-// and filled this route serves the schema-stable decline below, never a
-// fabricated service-less subnet.
+// burn tick's Gamma capture (src/chain-gamma-capture.ts) fills it from
+// SubtensorModule.Services (events ServiceSet / ServiceRemoved), so until a
+// store is bound and a capture observed this route serves the schema-stable
+// decline below, never a fabricated service-less subnet.
 import { z } from "zod";
 
 export const SubnetServiceSchema = z
@@ -54,5 +54,5 @@ export const SubnetServicesArtifactSchema = z
   })
   .strict()
   .describe(
-    "One subnet's on-chain service-URL registry (#13164). Empty with a null service_count until the engine's Services capture lands. Mirrors GET /api/v1/subnets/{netuid}/services.",
+    "One subnet's on-chain service-URL registry (#13164). Empty with a null service_count until a Services capture is observed. Mirrors GET /api/v1/subnets/{netuid}/services.",
   );

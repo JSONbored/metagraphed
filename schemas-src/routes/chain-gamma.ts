@@ -53,5 +53,5 @@ export const ChainGammaArtifactSchema = z
   })
   .strict()
   .describe(
-    "The chain-wide Gamma state (#13164). Null `enabled` and an empty subnet list with a null subnet_count until the engine's Gamma capture lands. Mirrors GET /api/v1/chain/gamma.",
+    "The chain-wide Gamma state (#13164). Null `enabled` and an empty subnet list with a null subnet_count until a Gamma capture is observed. Mirrors GET /api/v1/chain/gamma.",
   );

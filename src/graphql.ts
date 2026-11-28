@@ -3072,7 +3072,7 @@ const rootValue = {
       window: label,
       includePoints: include_points ?? true,
       // #13164: same oracle decline contract the REST handler and the MCP
-      // tool share -- null until the engine's oracle capture lands.
+      // tool share -- null until an oracle capture is observed.
       oracle: buildTaoUsdOracle(await loadTaoUsdOracle(context.env)),
     });
   },

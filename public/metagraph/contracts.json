@@ -752,7 +752,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "One subnet's mechanism (sub-subnet) registry (#13162) — each mechanism's mechid, emission split and consensus mode with its capture stamp — served live from the mechanisms store at /api/v1/subnets/{netuid}/mechanisms (no static file). Empty with a null mechanism_count until the engine's per-mechanism capture lands: every subnet has at least mechanism 0, so a zero count is never published.",
+      "description": "One subnet's mechanism (sub-subnet) registry (#13162) — each mechanism's mechid, emission split and consensus mode with its capture stamp — served live from the mechanisms store at /api/v1/subnets/{netuid}/mechanisms (no static file). Empty with a null mechanism_count until a mechanism capture is observed: every subnet has at least mechanism 0, so a zero count is never published.",
       "id": "subnet-mechanisms",
       "path": "/metagraph/subnets/{netuid}/mechanisms.json",
       "retirement": null,
@@ -774,7 +774,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "One subnet's current Gamma state (#13164) — the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string, and the emission counters (u64 atomic units as decimal strings) with their capture stamp — served live from the Gamma store at /api/v1/subnets/{netuid}/gamma (no static file). gamma: null until the engine's Gamma capture lands: an absent capture is not a measured Gamma-off subnet, so a zeroed state is never published.",
+      "description": "One subnet's current Gamma state (#13164) — the SubnetGammaEnabled / SubnetGammaEmissionWhitelisted flags, the raw SubnetGammaPrice as a canonical decimal string, and the emission counters (u64 atomic units as decimal strings) with their capture stamp — served live from the Gamma store at /api/v1/subnets/{netuid}/gamma (no static file). gamma: null until a Gamma capture is observed: an absent capture is not a measured Gamma-off subnet, so a zeroed state is never published.",
       "id": "subnet-gamma",
       "path": "/metagraph/subnets/{netuid}/gamma.json",
       "retirement": null,
@@ -785,7 +785,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "One subnet's Gamma capture series (#13164) — the per-capture states behind /subnets/{netuid}/gamma, newest first and store-capped — served live from the Gamma store at /api/v1/subnets/{netuid}/gamma/history (no static file). Empty with a null point_count until the engine's Gamma capture lands: an empty series is not a measured history, so a zero count is never published.",
+      "description": "One subnet's Gamma capture series (#13164) — the per-capture states behind /subnets/{netuid}/gamma, newest first and store-capped — served live from the Gamma store at /api/v1/subnets/{netuid}/gamma/history (no static file). Empty with a null point_count until a Gamma capture is observed: an empty series is not a measured history, so a zero count is never published.",
       "id": "subnet-gamma-history",
       "path": "/metagraph/subnets/{netuid}/gamma/history.json",
       "retirement": null,
@@ -796,7 +796,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "One subnet's on-chain service-URL registry (#13164) — each hotkey's published service URL (SubtensorModule.Services) with the block it was set at and its capture stamp, ordered by hotkey — served live from the services store at /api/v1/subnets/{netuid}/services (no static file). Empty with a null service_count until the engine's Services capture lands: an empty registry is not a measured service-less subnet, so a zero count is never published.",
+      "description": "One subnet's on-chain service-URL registry (#13164) — each hotkey's published service URL (SubtensorModule.Services) with the block it was set at and its capture stamp, ordered by hotkey — served live from the services store at /api/v1/subnets/{netuid}/services (no static file). Empty with a null service_count until a Services capture is observed: an empty registry is not a measured service-less subnet, so a zero count is never published.",
       "id": "subnet-services",
       "path": "/metagraph/subnets/{netuid}/services.json",
       "retirement": null,
@@ -1159,7 +1159,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "The chain-wide Gamma state (#13164) — the global GammaEnabled switch beside every subnet's newest captured Gamma state, ordered by netuid and store-capped — served live from the Gamma store at /api/v1/chain/gamma (no static file). enabled: null with an empty subnet list and a null subnet_count until the engine's Gamma capture lands: an unfilled store is never served as a measured Gamma-less chain.",
+      "description": "The chain-wide Gamma state (#13164) — the global GammaEnabled switch beside every subnet's newest captured Gamma state, ordered by netuid and store-capped — served live from the Gamma store at /api/v1/chain/gamma (no static file). enabled: null with an empty subnet list and a null subnet_count until a Gamma capture is observed: an unfilled store is never served as a measured Gamma-less chain.",
       "id": "chain-gamma",
       "path": "/metagraph/chain/gamma.json",
       "retirement": null,
@@ -1170,7 +1170,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "The chain's Gamma deposit state (#13164) — each deposit's owning account and hotkey, subnet, balance (u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped — served live from the deposits store at /api/v1/gamma/deposits (no static file). Empty with a null deposit_count until the engine's GammaDeposits capture lands: an empty list is not a measured deposit-free chain, so a zero count is never published.",
+      "description": "The chain's Gamma deposit state (#13164) — each deposit's owning account and hotkey, subnet, balance (u64 atomic units as a decimal string), authorized spender, daily spend cap and closed-at block with its capture stamp, largest balance first and store-capped — served live from the deposits store at /api/v1/gamma/deposits (no static file). Empty with a null deposit_count until a GammaDeposits capture is observed: an empty list is not a measured deposit-free chain, so a zero count is never published.",
       "id": "gamma-deposits",
       "path": "/metagraph/gamma/deposits.json",
       "retirement": null,
@@ -1863,7 +1863,7 @@
     {
       "content_type": "application/json",
       "contract_version": "2026-07-03.2",
-      "description": "The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series, labelled source `pool_composite` -- COMPOSED off-chain per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. The chain's own TaoUsdPrice (runtime v490) rides beside the index as the `oracle` block, labelled source `chain_oracle` with its TaoUsdPriceFed history (#13164); it is NULL until the engine's oracle capture lands -- an absent capture is never served as a price. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart.",
+      "description": "The TAO/USD index (#9609) -- the current USD price of one TAO with the derivation that produced it, plus the recent series, labelled source `pool_composite` -- COMPOSED off-chain per ADR 0025 (src/tao-usd-index.ts): a LIQUIDITY-WEIGHTED median across qualifying wTAO/WETH pools, rejecting any pool more than 2% from the unweighted median, refusing to publish below a two-pool quorum, multiplied through an ETH/USDC anchor leg. Composed rather than read from a wTAO/USDC pool deliberately: measured 2026-07-31 all three such pools traded $81k/day combined against WETH/USDC's $118M, ~1,455x deeper, and the thin pools demonstrably misprice -- two well-priced hops beat one badly-priced one. `latest` carries the whole reading together (price, price_basis, eth_usd, block_number, pool_count and the per-pool breakdown) so the number and its audit trail always describe the same block. A NULL usd_per_tao is a STATED OUTCOME, not a gap: the producer writes price_basis `insufficient_pools` when the quorum was not met, and the schema enforces that pairing as a CHECK constraint -- read it as 'not priceable at that block', never as a zero price. ?window=1h|24h|7d|30d (default 24h), newest first, capped at 2000 points; change_usd/change_pct describe the movement across the RETURNED window over PRICED points only, and are null when there is nothing to compare against. point_count and priced_point_count are reported separately: a gap between them is how a window with unpriceable blocks announces itself. The chain's own TaoUsdPrice (runtime v490) rides beside the index as the `oracle` block, labelled source `chain_oracle` with its TaoUsdPriceFed history (#13164); it is NULL until an oracle capture is observed -- an absent capture is never served as a price. THE SERIES BEGINS 2026-08-02 and accrues about one point per minute, so a 30d window today returns everything that exists rather than a month -- `oldest_observed_at` says exactly how far back the answer reaches. Mainnet-only: wrapped TAO on Ethereum has no testnet counterpart.",
       "id": "tao-usd",
       "path": "/metagraph/network/tao-usd.json",
       "retirement": null,

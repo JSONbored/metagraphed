@@ -1,10 +1,10 @@
 // GET /api/v1/subnets/{netuid}/mechanisms (#13162; #13161, epic #13142).
 // One subnet's mechanism (sub-subnet) registry, served live from
 // app.subnet_mechanisms (migration 0044) through the native store seam. The
-// table's writers -- the engine's MechanismCountCurrent /
-// MechanismEmissionSplit / ConsensusByMechanism decode -- land separately, so
-// until a store is bound and filled this route serves the schema-stable
-// decline below, never a fabricated zero-mechanism subnet.
+// burn tick's Gamma capture (src/chain-gamma-capture.ts) fills it from
+// MechanismCountCurrent, MechanismEmissionSplit and SubnetEpochConsensus, so
+// until a store is bound and a capture observed this route serves the
+// schema-stable decline below, never a fabricated zero-mechanism subnet.
 import { z } from "zod";
 
 export const SubnetMechanismSchema = z
@@ -21,13 +21,13 @@ export const SubnetMechanismSchema = z
       .max(1)
       .nullable()
       .describe(
-        "This mechanism's share of the subnet's emission (0..1), from SubtensorModule.MechanismEmissionSplit. Null when the chain carried no split for it at capture time -- never fabricated as 0, which would claim a measured zero share.",
+        "This mechanism's share of the subnet's emission (0..1), as the runtime splits it: its SubtensorModule.MechanismEmissionSplit part over u16::MAX, or an even share when the subnet stores no split for its mechanism count. Null when not captured -- never fabricated as 0, which would claim a measured zero share.",
       ),
     consensus_mode: z
       .string()
       .nullable()
       .describe(
-        "The per-mechanism consensus variant, spelled as the chain spells it (SubtensorModule.ConsensusByMechanism). Null when not captured.",
+        "The consensus this mechanism's epoch runs, spelled as the chain spells it: the subnet's SubtensorModule.SubnetEpochConsensus (`yuma` or `null`), which every mechanism of the subnet runs. Null when not captured.",
       ),
     captured_at: z.string().nullable(),
   })
@@ -62,5 +62,5 @@ export const SubnetMechanismsArtifactSchema = z
   })
   .strict()
   .describe(
-    "One subnet's mechanism (sub-subnet) registry (#13162). Empty with a null mechanism_count until the engine's per-mechanism capture lands. Mirrors GET /api/v1/subnets/{netuid}/mechanisms.",
+    "One subnet's mechanism (sub-subnet) registry (#13162). Empty with a null mechanism_count until a mechanism capture is observed. Mirrors GET /api/v1/subnets/{netuid}/mechanisms.",
   );
